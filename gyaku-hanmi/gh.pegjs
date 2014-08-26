@@ -1,4 +1,4 @@
-G = h:rule t:(rulesep+ i:rule {return i})* { return [h].concat(t) }
+G = rulesep* h:rule t:(rulesep+ i:rule {return i})* rulesep* { return [h].concat(t) }
 
 ws = (' ' / '\t')
 
@@ -8,7 +8,7 @@ rule = ows name:lhs ows eq ows rhs:rhs ows { return ['rule', name, rhs] }
 
 lhs = id
 
-id = letters:([a-z-]i [a-z0-9-]i*) { return letters.join(''); }
+id = h:[a-z-]i t:[a-z0-9-]i* { return [h].concat(t).join('')}
 
 rhs = ralt
 

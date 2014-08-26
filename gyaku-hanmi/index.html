@@ -1,0 +1,57 @@
+<html>
+<head>
+	<title>G-H</title>
+</head>
+<script src="http://code.jquery.com/jquery-1.11.0.js"></script>
+<script>
+// function require(url, success) {
+// 	$.get('gh.js', function(data) {
+// 		//console.log(data);
+// 		var module = {};
+// 		(new Function('module', data))(module);
+// 		if (success) success(module.exports);
+// 	}, 'text');
+// }
+
+// require('gh.js', function(GH) {
+// 	console.log(GH);
+// 	$.get('ai.gh', function(data) {
+// 		console.log(data);
+// 		var parsed = GH.parse(data);
+// 		console.log(parsed);
+// 	}, 'text');
+// });
+
+
+</script>
+<script>//var module = {}</script>
+<script src="peg-0.8.0.js"></script>
+<script>
+	var GH; // = module.exports;
+	$.get('gh.pegjs', function(data) {
+		console.log(data);
+		GH = PEG.buildParser(data);
+		$.get('ai.gh', function(data) {
+			console.log(data);
+			try {
+				var parsed = GH.parse(data);
+				console.log(JSON.stringify(parsed, null, '   '));
+			} catch(e) {
+				console.error(e);
+			}
+		}, 'text');
+	});
+	// $.get('ai.gh', function(data) {
+	// 	console.log(data);
+	// 	try {
+	// 		var parsed = GH.parse(data);
+	// 	} catch(e) {
+	// 		console.error(e);
+	// 	}
+	// 	console.log(parsed);
+	// }, 'text');
+</script>
+<body>
+
+</body>
+</html>
