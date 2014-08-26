@@ -1,0 +1,23 @@
+T = Waza Entry Exit Side?
+
+Dori2 = ushiro? (ryote | ryokata | ryokatate ) dori
+
+Dori1 = Hanmi? (katate | kata) dori
+
+Hanmi = ( gyaku | ai ) hanmi
+
+Uchi = (shomen) uchi
+
+Tsuki = (chudan | zudan) tsuki
+
+Nage = (irimi | tenchi | ikkyo) nage
+
+Kyo = ikkyo | nikkyo | sankyo
+
+Waza = (tachi | suvari | hanmi handachi) waza | seiza
+
+Entry = Uchi? Dori1 | Dori2 | Tsuki
+
+Exit = Kyo | Nage
+
+Side = omote | ura
