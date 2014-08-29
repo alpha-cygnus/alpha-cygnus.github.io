@@ -1,7 +1,7 @@
 
 T = Waza Entry Exit Side?
 
-Entry = Uchi? Dori1 | Dori2 | Tsuki
+Entry = Uchi | Uchi Dori1 | Dori2 | Tsuki
 
 Exit = Kyo | Nage
 
