@@ -1,11 +1,13 @@
 <html>
 <head>
+	<meta charset="utf-8"> 
 	<title>G-H</title>
 </head>
 <script src="http://code.jquery.com/jquery-1.11.0.js"></script>
 <script src="../lib/peg-0.8.0.js"></script>
 <script src="../lib/oo.js"></script>
 <script src="../lib/gg.js"></script>
+<script src="rr.js"></script>
 <script>
 	var GH; // = module.exports;
 	$.get('gh.pegjs', function(data) {
@@ -39,7 +41,8 @@
 		console.log(GG.rules);
 		for (var i = 0; i < 10; i++) {
 			var s = flatten(start.generate({})).join(' ');
-			$('#tlist').append($('<li>').html(s));
+			var r = RR.hepburn2polivanov(s);
+			$('#tlist').append($('<li>').html(s + ' - ' + r));
 		}
 	}
 </script>
