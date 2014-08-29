@@ -8,7 +8,8 @@ rule = ows name:lhs ows eq ows rhs:rhs ows { return ['rule', name, rhs] }
 
 lhs = id
 
-id = h:[a-z-]i t:[a-z0-9-]i* { return [h].concat(t).join('')}
+//id = h:[a-z-]i t:[a-z0-9-]i* { return [h].concat(t).join('')}
+id = $([a-z-]i [a-z0-9-]i*)
 
 rhs = ralt
 
