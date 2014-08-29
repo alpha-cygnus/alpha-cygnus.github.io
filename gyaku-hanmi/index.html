@@ -39,16 +39,43 @@
 			start = start || rule;
 		};
 		console.log(GG.rules);
-		for (var i = 0; i < 10; i++) {
-			var s = flatten(start.generate({})).join(' ');
-			var r = RR.hepburn2polivanov(s);
-			$('#tlist').append($('<li>').html(s + ' - ' + r));
+		var ti = 0;
+		window.ischo = function() {
+			for (var i = 0; i < 10; i++) {
+				ti++;
+				var s = flatten(start.generate({})).join(' ');
+				var r = RR.hepburn2polivanov(s);
+				//$('#tlist').append($('<li>').html('<i>' + s + '</i> &mdash; ' + r));
+				$('#ttab').append($('<tr>')
+					.append($('<td class="num">').html(ti))
+					.append($('<td class="rom">').html(s))
+					.append($('<td class="rus">').html(r))
+				);
+			}
 		}
+		ischo();
 	}
 </script>
+<style>
+td.num {
+	text-align: right;
+}
+td.rom {
+	text-align: center;
+	padding-left: 20px;
+	font-style: italic;
+}
+td.rus {
+	text-align: center;
+	padding-left: 20px;
+}
+</style>
 <body>
 	<ul id="tlist">
 	</ul>
-
+	<table id="ttab">
+		<th>№</th><th>Romaji</th><th>Русидзи</th>
+	</table>
+	<button onclick="ischo()">Исчо</button>
 </body>
 </html>
