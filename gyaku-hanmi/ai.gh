@@ -17,7 +17,7 @@ Uchi = (shomen | yokomen | men) uchi
 
 Tsuki = (chudan | gedan | jodan) tsuki
 
-Nage = (irimi | kokyu | tenchi | ikkyo | kaiten | shiho ) nage | kote gaeshi | kokyu ho
+Nage = (sokumen? irimi | kokyu | tenchi | ikkyo | kaiten | shiho ) nage | kote gaeshi | kokyu ho
 
 Kyo = ikkyo | nikkyo | sankyo
 
