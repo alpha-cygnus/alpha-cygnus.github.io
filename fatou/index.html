@@ -58,21 +58,67 @@
 	}
 </script>
 
+<script id="fsJulia" type="x-shader/x-fragment">
+	precision mediump float;
+	uniform vec3 uPos;
+	varying vec4 Position;
+
+	void main() {
+		float sx = Position.x * 1.5;
+		float sy = -Position.y * 1.5;
+
+		vec2 z = vec2(sx, sy);
+		vec2 z1 = vec2(sx, sy);
+		vec2 c = vec2(uPos.x, uPos.y);
+		float dist = 0.0;
+		float step = 0.0;
+		//float dist2 = 0.0;
+		int broken = 0;
+		for (int i = 0; i < 256; i++) {
+			z1 = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+			dist += distance(z1, z)/100.0;
+			//dist2 = dist/10.0;
+			z = z1;
+			if (length(z) > 100.0) {
+				broken = 1;
+				break;
+			}
+			step++;
+		}
+		if (broken > 0) {
+			//if (step > 256.0) step -= 256.0;
+			gl_FragColor = vec4(0.0, sqrt(fract(step/256.0)), 0.0, 1);
+		} else {
+			//gl_FragColor = vec4(0.0, 0.0, 0.7, 1);
+			float c = (abs(fract(dist*5.0)-0.5)*2.0);
+			gl_FragColor = vec4(1.0 - c*c, 0.0, 0.0, 1);
+			//gl_FragColor = vec4(step/255.0*1.0, step/255.0*0.0, step/255.0*0.0, 1);
+		}
+
+	}
+</script>
+
 
 <script type="text/javascript">
 	var gl;
 	var canvas;
 	var wgl;
 
-	var quadProgram;
+	var prgFatou;
+	var prgJulia;
 
 	function initShaders()
 	{
 		//debugger;
-		quadProgram = wgl.compileProgram("vsFatou", "fsFatou");
-		quadProgram.vPosition = gl.getAttribLocation(quadProgram, "vPosition");
-		quadProgram.uRatio = gl.getUniformLocation(quadProgram, "uRatio");
-		quadProgram.uPos = gl.getUniformLocation(quadProgram, "uPos");
+		prgFatou = wgl.compileProgram("vsFatou", "fsFatou");
+		prgFatou.vPosition = gl.getAttribLocation(prgFatou, "vPosition");
+		prgFatou.uRatio = gl.getUniformLocation(prgFatou, "uRatio");
+		prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
+
+		prgJulia = wgl.compileProgram("vsFatou", "fsJulia");
+		prgJulia.vPosition = gl.getAttribLocation(prgJulia, "vPosition");
+		prgJulia.uRatio = gl.getUniformLocation(prgJulia, "uRatio");
+		prgJulia.uPos = gl.getUniformLocation(prgJulia, "uPos");
 	}
 
 	var quadBuffer;
@@ -107,16 +153,16 @@
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-		gl.useProgram(quadProgram);
+		gl.useProgram(prgFatou);
 		gl.disable(gl.DEPTH_TEST);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-		gl.enableVertexAttribArray(quadProgram.vPosition);
-		gl.vertexAttribPointer(quadProgram.vPosition, 2, gl.FLOAT, false, 8, 0);
+		gl.enableVertexAttribArray(prgFatou.vPosition);
+		gl.vertexAttribPointer(prgFatou.vPosition, 2, gl.FLOAT, false, 8, 0);
 		
 		var x = cx + midX;
 		var y = cy + midY;
-		gl.uniform3f(quadProgram.uPos, x, y, 0);
+		gl.uniform3f(prgFatou.uPos, x, y, 0);
 		x = Math.round(x*1000)/1000;
 		y = Math.round(y*1000)/1000;
 		$('#divInfo').html(x + '+' + y + 'i');
@@ -125,7 +171,7 @@
 		if (scaleFactor < minScale) scaleFactor = minScale;
 		if (scaleFactor > maxScale) scaleFactor = maxScale;
 
-		gl.uniform4f(quadProgram.uRatio, ratioX * scaleFactor, ratioY * scaleFactor, 1, 1);
+		gl.uniform4f(prgFatou.uRatio, ratioX * scaleFactor, ratioY * scaleFactor, 1, 1);
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 		gl.disable(gl.BLEND);
 	}
@@ -245,6 +291,7 @@
 		var timeNow = new Date().getTime();
 		if (lastTime != 0 && !mouseDown) {
 			var delta = (timeNow - lastTime)/1000;
+			if (delta > 1) delta = 1;
 
 			dcx += Math.random()*dspd - dspd/2;
 			if (dcx < -maxdc) dcx = -maxdc;
@@ -272,9 +319,7 @@
 		animate();
 	}
 
-	// setInterval(function() {
-	// 	drawScene();
-	// }, 50);
+	setInterval(animate, 500);
 
 
 	// document.onmousedown = function(event) {
