@@ -199,6 +199,7 @@
 	var lastDY = 0;
 	var lastMouseTime = 0;
 	var mouseTime = 1;
+	var mouseDown = false;
 
 	document.onmousedown = function(event) {
 		event = event || window.event;
@@ -221,15 +222,16 @@
 		var dx = x - mouseX;
 		var dy = y - mouseY;
 		
-		cx += (dx / canvas.width) / ratioX * cScale;
-		cy -= (dy / canvas.height) / ratioY * cScale;
+		var scl = cScale;
+		if (event.shiftKey) scl /= 10;
+		if (event.ctrlKey) scl *= 2;
+		
+		cx += (dx / canvas.width) / ratioX * scl;
+		cy -= (dy / canvas.height) / ratioY * scl;
 		
 		mouseX = x;
 		mouseY = y;
 
-		//console.log('move', cx, cy);
-		
-		//drawScene();
 	}
 	
 	var dcx = 0;
@@ -241,23 +243,25 @@
 
 	function animate() {
 		var timeNow = new Date().getTime();
-		if (lastTime != 0) {
+		if (lastTime != 0 && !mouseDown) {
 			var delta = (timeNow - lastTime)/1000;
 
-			midX += dcx * delta;
-			midY += dcy * delta;
 			dcx += Math.random()*dspd - dspd/2;
 			if (dcx < -maxdc) dcx = -maxdc;
 			if (dcx > maxdc) dcx = maxdc;
 			dcy += Math.random()*dspd - dspd/2;
 			if (dcy < -maxdc) dcy = -maxdc;
 			if (dcy > maxdc) dcy = maxdc;
+
+			if (cx + midX > 0.5) dcx = -2*Math.abs(dcx);
+			if (cx + midX < -2) dcx = 2*Math.abs(dcx);
 			
-			if (midX > 0.5) dcx = -Math.abs(dcx);
-			if (midX < -2) dcx = Math.abs(dcx);
+			if (cy + midY > 1) dcy = -Math.abs(dcy);
+			if (cy + midY < -1) dcy = Math.abs(dcy);
+
+			midX += dcx * delta;
+			midY += dcy * delta;
 			
-			if (midY > 1) dcy = -Math.abs(dcy);
-			if (midY < -1) dcy = Math.abs(dcy);
 		}
 		lastTime = timeNow;
 	}
