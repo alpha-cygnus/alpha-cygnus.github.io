@@ -147,6 +147,8 @@
 	var midY = 0;
 	var cScale = 2;
 
+	var last_times = [];
+
 	function drawScene()
 	{
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -163,9 +165,6 @@
 		var x = cx + midX;
 		var y = cy + midY;
 		gl.uniform3f(prgFatou.uPos, x, y, 0);
-		x = Math.round(x*1000)/1000;
-		y = Math.round(y*1000)/1000;
-		$('#divInfo').html(x + '+' + y + 'i');
 
 		var minScale = 0.5, maxScale = 2.0 / (ratioX < ratioY ? ratioX : ratioY);
 		if (scaleFactor < minScale) scaleFactor = minScale;
@@ -174,13 +173,31 @@
 		gl.uniform4f(prgFatou.uRatio, ratioX * scaleFactor, ratioY * scaleFactor, 1, 1);
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 		gl.disable(gl.BLEND);
+		
+		var timeNow = new Date().getTime();
+		last_times.push(timeNow);
+		while (last_times.length > 10) last_times.shift();
+
+		var fps = 0;
+		var dts = 0;
+		var dtn = 0;
+		for (var i = 1; i < last_times.length; i++) {
+			dts += last_times[i] - last_times[i - 1];
+			dtn++;
+		};
+		if (dtn) fps = Math.round(1000*dtn/dts);
+
+		x = Math.round(x*1000)/1000;
+		y = Math.round(y*1000)/1000;
+		$('#divInfo').html(x + (y < 0 ? '' : '+') + y + 'i' + '<br />' + fps + ' FPS');
 	}
 
 
 	function resizeCanvas() {
-		if (canvas.width != canvas.clientWidth || canvas.height != canvas.clientHeight) {
-			canvas.width = canvas.clientWidth;
-			canvas.height = canvas.clientHeight;
+		var dpr = window.devicePixelRatio || 1;
+		if (canvas.width != canvas.clientWidth*dpr || canvas.height != canvas.clientHeight*dpr) {
+			canvas.width = canvas.clientWidth*dpr;
+			canvas.height = canvas.clientHeight*dpr;
 		}
 
 		if (gl) {
