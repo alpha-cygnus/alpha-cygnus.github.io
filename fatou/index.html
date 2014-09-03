@@ -3,6 +3,7 @@
 <head>
 <title>Fatou dust</title>
 <script src="http://code.jquery.com/jquery-1.11.0.js"></script>
+<script type="text/javascript" src="../lib/oo.js"></script>
 <script type="text/javascript" src="../lib/webgl-utils.js"></script>
 <script type="text/javascript" src="../lib/wgl.js"></script>
 
@@ -109,7 +110,7 @@
 			step++;
 		}
 		// float cc = log(dist);
-		float cc = 1.0 - step/30.0;
+		float cc = 1.0 - step/20.0;
 		if (broken == 0) {
 			gl_FragColor = vec4(0.0, 0.0, 0.0, 1);
 		}
@@ -134,20 +135,22 @@
 	var progs = {
 	};
 	
-	function Uni(prog, name, val) {
-		this.val = val;
-		this.prog = prog;
-		this.name = name;
-		prog.uni[name] = this;
-		this.loc = prog.gl.getUniformLocation(prog.prg, 'u_' + name);
-	}
-	Uni.prototype = {
-		set: function(val) { this.val = val; return this; },
-		get: function() { return this.val; },
-		put: function() {
-			// to be defined
+	var Uni = OO.inherit(
+		function Uni(prog, name, val) {
+			this.val = val;
+			this.prog = prog;
+			this.name = name;
+			prog.uni[name] = this;
+			this.loc = prog.gl.getUniformLocation(prog.prg, 'u_' + name);
 		},
-	}
+		OO.Base,
+		{
+			set: function(val) { this.val = val; return this; },
+			get: function() { return this.val; },
+			put: function() {
+				// to be defined
+		},
+	});
 	
 	function makeUni(prog, name, val) {
 		var sgn = Object.keys(val).sort().join('');
@@ -185,6 +188,7 @@
 		}
 		this.lastTime = 0;
 		this.last_times = [];
+		this.movers = [];
 	}
 	QProg.prototype = {
 		animate: function() {
@@ -193,17 +197,24 @@
 				var delta = (timeNow - this.lastTime)/1000;
 				if (delta > 1) delta = 1;
 				
-				if (this.move) this.move(delta);
+				//if (this.move) this.move(delta);
+				for (var i = 0; i < this.movers.length; i++) {
+					var m = this.movers[i];
+					if (m.move) m.move(delta);
+				};
 
 			}
 			this.lastTime = timeNow;
 		},
-		setMover: function(mover) {
-			$.extend(this, Object.create(mover));
+		// setMover: function(mover) {
+		// 	$.extend(this, Object.create(mover));
+		// 	return this;
+		// },
+		addMover: function() {
+			var mover = OO.fromList([].slice.call(arguments, 0));
+			this.movers.push(mover.setProg(this));
 			return this;
 		},
-		move: function() {},
-		getInfo: function() { return '' },
 		drawScene: function ()
 		{
 			var gl = this.gl;
@@ -246,18 +257,54 @@
 			};
 			if (dtn) fps = Math.round(1000*dtn/dts);
 			
-			var info = this.getInfo();
-			$('#divInfo').html(fps + ' FPS<br />' + info);
+			var infos = [fps + ' FPS'];
+			for (var i = 0; i < this.movers.length; i++) {
+				var m = this.movers[i]
+				var info;
+				if (m.getInfo) info = m.getInfo();
+				if (info) infos.push(info);
+			};
+			$('#divInfo').html(infos.join('<br />'));
 		},
-
+		m_down: 0,
+		m_last: {x: 0, y: 0},
+		onmousedown: function(e, pos) {
+			this.m_down = 1;
+			this.m_last = pos;
+		},
+		onmouseup: function(e, pos) {
+			this.m_down = 0;
+			this.m_last = pos;
+		},
+		onmousemove: function(event, pos) {
+			for (var i = 0; i < this.movers.length; i++) {
+				var m = this.movers[i];
+				if (m.onmousemove) m.onmousemove(event, pos);
+			};
+			this.m_last = pos;
+		},
 	};
 	
-	var moverWanderPos = {
-		dc: {x: 0, y: 0},
+	var Mover = OO.inherit(function Mover() {}, OO.Base, {
+		setProg: function(prog) { this.prog = prog; return this; },
+		move: function(dt) { return this; },
+		getInfo: function() { return '' },
+	});
+	var UniMover = OO.inherit(function UniMover() {}, Mover, {
+		_init: function(u_name, params) {
+			this.u_name = u_name;
+			if (params) $.extend(this, params);
+		},
+		getUni: function() {
+			return this.prog.uni[this.u_name].get()
+		},
+	});
+	var Wanderer = OO.inherit(function Wanderer() { this.dc = {x: 0, y: 0} }, UniMover,
+	{
 		dspd: 0.005,
 		maxdc: 0.02,
 		move: function(dt) {
-			if (this.m_down) return;
+			if (this.prog.m_down) return;
 			var dc = this.dc;
 			var maxdc = this.maxdc;
 			var dpsd = this.dspd;
@@ -269,7 +316,7 @@
 			if (dc.y < -maxdc) dc.y = -maxdc;
 			if (dc.y > maxdc) dc.y = maxdc;
 
-			var c = this.uni.pos.get();
+			var c = this.getUni();
 			
 			if (c.x > 0.5) dc.x = -2*Math.abs(dc.x);
 			if (c.x < -2) dc.x = 2*Math.abs(dc.x);
@@ -282,52 +329,117 @@
 			
 			// this.uni.pos.set(c);
 			//this.dc = {x: dcx, y: dcy};
+			return this;
 		},
 		getInfo: function() {
-			var c = this.uni.pos.get();
+			var c = this.getUni();
 			var x = c.x;
 			var y = c.y;
 			
 			x = Math.round(x*1000)/1000;
 			y = Math.round(y*1000)/1000;
 			
-			return x + (y < 0 ? '' : '+') + y + 'i';
+			return this.u_name + ': ' + x + (y < 0 ? '' : '+') + y + 'i';
 		},
-	};
-	var moverMousePos = {
-		m_scale: 2,
-		m_down: 0,
-		m_last: {x: 0, y: 0},
-		onmousedown: function(e, pos) {
-			this.m_down = 1;
-			this.m_last = pos;
+	});
+	
+	var InfoMover = OO.inherit(function InfoMover() {}, UniMover, {
+		getInfo: function() {
+			var c = this.getUni();
+			var x = c.x;
+			var y = c.y;
+			
+			x = Math.round(x*1000)/1000;
+			y = Math.round(y*1000)/1000;
+			
+			return this.u_name + ': ' + x + (y < 0 ? '' : '+') + y + 'i';
 		},
-		onmouseup: function(e, pos) {
-			this.m_down = 0;
-			this.m_last = pos;
-		},
+	});
+
+	var MouseMover = OO.inherit(function MouseMover() {}, UniMover, {
+		scale: 2,
 		onmousemove: function(event, pos) {
+			if (!this.prog.m_down) return;
 			var d = {
-				x: pos.x - this.m_last.x,
-				y: pos.y - this.m_last.y,
+				x: pos.x - this.prog.m_last.x,
+				y: pos.y - this.prog.m_last.y,
 			};
-			this.m_last = pos;
-			if (!this.m_down) return;
-			var scl = this.m_scale;
+			var scl = this.scale;
 			if (event.shiftKey) scl /= 10;
 			if (event.ctrlKey) scl *= 2;
 			
-			var c = this.uni.pos.get();
+			var c = this.getUni();
 			c.x += d.x * scl;
 			c.y -= d.y * scl;
-		}
+		},
+	});
+
+	function sqr(x) {
+		return x*x;
 	}
+	function v2len(v) {
+		return Math.sqrt(sqr(v.x) + sqr(v.y));
+	}
+	function v2diff(a, b) {
+		return {x: a.x - b.x, y: a.y - b.y};
+	}
+	function v2dist(a, b) {
+		return v2len(v2diff(a, b));
+	}
+
+	var GraviMover = OO.inherit(function GraviMover() {}, Mover, {
+		_init: function(unis) {
+			this.unis = unis;
+			for (var uni in unis) {
+				var u = unis[uni];
+				u.m = u.m || 5;
+				u.v = u.v || { x: (Math.random() - 0.5)/1, y: (Math.random() - 0.5)/1 };
+			}
+		},
+		move: function (dt) {
+			for (var uni in this.unis) {
+				var u = this.unis[uni];
+				u.c = this.prog.uni[uni].get();
+			}
+			for (var uni in this.unis) {
+				var u = this.unis[uni];
+				u.a = {x: 0, y: 0};
+				for (var ub in this.unis) {
+					var u2 = this.unis[ub];
+					var rv = v2diff(u2.c, u.c);
+					var rl = v2len(rv);
+					if (rl < 0.1) continue;
+					u.a.x += rv.x*u2.m/(rl*rl*rl);
+					u.a.y += rv.y*u2.m/(rl*rl*rl);
+				}
+			}
+			for (var uni in this.unis) {
+				var u = this.unis[uni];
+				dt /= 7;
+				u.v.x += u.a.x*dt;
+				u.v.y += u.a.y*dt;
+				var s = {x: 1, y: 1};
+
+				if (u.v.x < 0) s.x = -1;
+				if (Math.abs(u.v.x) < 0.1) u.v.x = s.x*0.1;
+				if (Math.abs(u.v.y) > 10) u.v.x = s.x*10;
+				if (Math.abs(u.c.x) > 3) u.v.x = (u.c.x < 0 ? 1 : -1)*Math.abs(u.v.x);
+				if (u.v.y < 0) s.y = -1;
+				if (Math.abs(u.v.y) < 0.1) u.v.y = s.y*0.1;
+				if (Math.abs(u.v.y) > 10) u.v.y = s.y*10;
+				if (Math.abs(u.c.y) > 3) u.v.y = (u.c.y < 0 ? 1 : -1)*Math.abs(u.v.y);
+
+				u.c.x += u.v.x*dt;
+				u.c.y += u.v.y*dt;
+			}
+		},
+	});
 
 	function initShaders()
 	{
 		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}})
-			.setMover(moverWanderPos)
-			.setMover(moverMousePos)
+			.addMover('Wanderer', 'pos')
+			.addMover('MouseMover', 'pos')
 		;
 
 		// prgFatou = 
@@ -337,10 +449,19 @@
 		// prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
 
 		progs.newton = new QProg(wgl, "vsFatou", "fsNewton", {
-			a: {x: -0.5, y: +0.466},
-			b: {x: -0.5, y: -0.366},
+			a: {x: -0.5, y: +0.866},
+			b: {x: -0.5, y: -0.866},
 			c: {x: 1, y: 0},
-		});
+		})
+			.addMover('GraviMover', {
+				a: {},
+				b: {},
+				c: {},
+			})
+			.addMover('InfoMover', 'a')
+			.addMover('InfoMover', 'b')
+			.addMover('InfoMover', 'c')
+		;
 		the_prog = progs.newton;
 	}
 
