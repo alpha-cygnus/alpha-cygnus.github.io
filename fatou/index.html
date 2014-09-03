@@ -20,7 +20,7 @@
 
 <script id="fsFatou" type="x-shader/x-fragment">
 	precision mediump float;
-	uniform vec3 uPos;
+	uniform vec2 u_pos;
 	varying vec4 Position;
 
 	void main() {
@@ -29,72 +29,99 @@
 
 		vec2 z = vec2(sx, sy);
 		vec2 z1 = vec2(sx, sy);
-		vec2 c = vec2(uPos.x, uPos.y);
+		vec2 c = u_pos; //vec2(u_pos.x, u_pos.y);
+
 		float dist = 0.0;
 		float step = 0.0;
 		//float dist2 = 0.0;
 		int broken = 0;
 		for (int i = 0; i < 256; i++) {
 			z1 = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
-			dist += distance(z1, z)/100.0;
-			//dist2 = dist/10.0;
+			// dist += distance(z1, z)/100.0;
+			z = z - z1;
+			dist += abs(z.x) + abs(z.y);
 			z = z1;
-			if (length(z) > 100.0) {
+			//if (z.x*z.x + z.y*z.y > 10000.0) {
+			if (abs(z.x) + abs(z.y) > 100.0) {
 				broken = 1;
 				break;
 			}
 			step++;
 		}
 		if (broken > 0) {
-			//if (step > 256.0) step -= 256.0;
 			gl_FragColor = vec4(0.0, sqrt(fract(step/256.0)), 0.0, 1);
 		} else {
-			//gl_FragColor = vec4(0.0, 0.0, 0.7, 1);
-			float c = (abs(fract(dist*5.0)-0.5)*2.0);
-			gl_FragColor = vec4(0.0, 0.0, 1.0 - c*c, 1);
-			//gl_FragColor = vec4(step/255.0*1.0, step/255.0*0.0, step/255.0*0.0, 1);
+			float cc = (abs(fract(dist*0.05)-0.5)*2.0);
+			gl_FragColor = vec4(0.0, 0.0, 1.0 - cc, 1);
 		}
 
 	}
 </script>
 
-<script id="fsJulia" type="x-shader/x-fragment">
+<script id="fsNewton" type="x-shader/x-fragment">
 	precision mediump float;
-	uniform vec3 uPos;
+	uniform vec2 u_a;
+	uniform vec2 u_b;
+	uniform vec2 u_c;
 	varying vec4 Position;
+	
+	vec2 cmul(vec2 a, vec2 b) {
+		return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+	}
+	vec2 cdiv(vec2 a, vec2 b) {
+		return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y)/(b.x*b.x + b.y*b.y);
+	}
 
 	void main() {
 		float sx = Position.x * 1.5;
 		float sy = -Position.y * 1.5;
 
-		vec2 z = vec2(sx, sy);
-		vec2 z1 = vec2(sx, sy);
-		vec2 c = vec2(uPos.x, uPos.y);
-		float dist = 0.0;
-		float step = 0.0;
-		//float dist2 = 0.0;
+		gl_FragColor = vec4(0.0, 0.0, 1.0, 1);
+		
+		vec2 a = u_a; vec2 b = u_b; vec2 c = u_c;
+		vec2 sabc = u_a + u_b + u_c;
+		vec2 ab = cmul(a, b);
+		vec2 abacbc = ab + cmul(a, c) + cmul(b, c);
+		vec2 abc = cmul(ab, c);
+		
 		int broken = 0;
+		vec2 x = vec2(sx, sy);
+		float step = 0.0;
+		float dist = 0.0;
 		for (int i = 0; i < 256; i++) {
-			z1 = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
-			dist += distance(z1, z)/100.0;
-			//dist2 = dist/10.0;
-			z = z1;
-			if (length(z) > 100.0) {
+			vec2 xx = cmul(x, x);
+			vec2 xxx = cmul(xx, x);
+			vec2 xn = x - cdiv(xxx - cmul(sabc, xx) + cmul(abacbc, x) - abc, 3.0*xx - 2.0*cmul(sabc, x) + abacbc);
+			dist += distance(x, xn);
+			x = xn;
+			if (distance(x, a) < 0.01) {
 				broken = 1;
+				break;
+			}
+			if (distance(x, b) < 0.01) {
+				broken = 2;
+				break;
+			}
+			if (distance(x, c) < 0.01) {
+				broken = 3;
 				break;
 			}
 			step++;
 		}
-		if (broken > 0) {
-			//if (step > 256.0) step -= 256.0;
-			gl_FragColor = vec4(0.0, sqrt(fract(step/256.0)), 0.0, 1);
-		} else {
-			//gl_FragColor = vec4(0.0, 0.0, 0.7, 1);
-			float c = (abs(fract(dist*5.0)-0.5)*2.0);
-			gl_FragColor = vec4(1.0 - c*c, 0.0, 0.0, 1);
-			//gl_FragColor = vec4(step/255.0*1.0, step/255.0*0.0, step/255.0*0.0, 1);
+		// float cc = log(dist);
+		float cc = 1.0 - step/30.0;
+		if (broken == 0) {
+			gl_FragColor = vec4(0.0, 0.0, 0.0, 1);
 		}
-
+		if (broken == 1) {
+			gl_FragColor = vec4(cc, 0.0, 0.0, 1);
+		}
+		if (broken == 2) {
+			gl_FragColor = vec4(0.0, cc, 0.0, 1);
+		}
+		if (broken == 3) {
+			gl_FragColor = vec4(0.0, 0.0, cc, 1);
+		}
 	}
 </script>
 
@@ -104,21 +131,217 @@
 	var canvas;
 	var wgl;
 
-	var prgFatou;
-	var prgJulia;
+	var progs = {
+	};
+	
+	function Uni(prog, name, val) {
+		this.val = val;
+		this.prog = prog;
+		this.name = name;
+		prog.uni[name] = this;
+		this.loc = prog.gl.getUniformLocation(prog.prg, 'u_' + name);
+	}
+	Uni.prototype = {
+		set: function(val) { this.val = val; return this; },
+		get: function() { return this.val; },
+		put: function() {
+			// to be defined
+		},
+	}
+	
+	function makeUni(prog, name, val) {
+		var sgn = Object.keys(val).sort().join('');
+		var uni = new Uni(prog, name, val);
+		var ext = {
+			xy: {
+				put: function() {
+					this.prog.gl.uniform2f(this.loc, this.val.x, this.val.y);
+				},
+			},
+			xyz: {
+				put: function() {
+					this.prog.gl.uniform3f(this.loc, this.val.x, this.val.y, this.val.z);
+				},
+			},
+			wxyz: {
+				put: function() {
+					this.prog.gl.uniform4f(this.loc, this.val.x, this.val.y, this.val.z, this.val.w);
+				},
+			},
+		}[sgn] || {};
+		$.extend(uni, ext);
+	}
+	
+	function QProg(wgl, vsh, fsh, unis) {
+		this.wgl = wgl;
+		this.gl = wgl.gl;
+		var prg = wgl.compileProgram(vsh, fsh);
+		this.prg = prg;
+		this.vPosition = gl.getAttribLocation(prg, "vPosition");
+		this.uRatio = gl.getUniformLocation(prg, "uRatio");
+		this.uni = {};
+		for (var uni in unis) {
+			makeUni(this, uni, unis[uni]);
+		}
+		this.lastTime = 0;
+		this.last_times = [];
+	}
+	QProg.prototype = {
+		animate: function() {
+			var timeNow = new Date().getTime();
+			if (this.lastTime != 0) {
+				var delta = (timeNow - this.lastTime)/1000;
+				if (delta > 1) delta = 1;
+				
+				if (this.move) this.move(delta);
+
+			}
+			this.lastTime = timeNow;
+		},
+		setMover: function(mover) {
+			$.extend(this, Object.create(mover));
+			return this;
+		},
+		move: function() {},
+		getInfo: function() { return '' },
+		drawScene: function ()
+		{
+			var gl = this.gl;
+			
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			
+			var prg = this.prg;
+			gl.useProgram(prg);
+			gl.disable(gl.DEPTH_TEST);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+			gl.enableVertexAttribArray(this.vPosition);
+			gl.vertexAttribPointer(this.vPosition, 2, gl.FLOAT, false, 8, 0);
+			
+			for (var uni in this.uni) {
+				this.uni[uni].put();
+			}
+			
+			var minScale = 0.5, maxScale = 2.0 / (ratioX < ratioY ? ratioX : ratioY);
+			if (scaleFactor < minScale) scaleFactor = minScale;
+			if (scaleFactor > maxScale) scaleFactor = maxScale;
+
+			gl.uniform4f(this.uRatio, ratioX * scaleFactor, ratioY * scaleFactor, 1, 1);
+			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+			gl.disable(gl.BLEND);
+			
+			var timeNow = new Date().getTime();
+			var last_times = this.last_times;
+			last_times.push(timeNow);
+			while (last_times.length > 10) last_times.shift();
+
+			var fps = 0;
+			var dts = 0;
+			var dtn = 0;
+			for (var i = 1; i < last_times.length; i++) {
+				dts += last_times[i] - last_times[i - 1];
+				dtn++;
+			};
+			if (dtn) fps = Math.round(1000*dtn/dts);
+			
+			var info = this.getInfo();
+			$('#divInfo').html(fps + ' FPS<br />' + info);
+		},
+
+	};
+	
+	var moverWanderPos = {
+		dc: {x: 0, y: 0},
+		dspd: 0.005,
+		maxdc: 0.02,
+		move: function(dt) {
+			if (this.m_down) return;
+			var dc = this.dc;
+			var maxdc = this.maxdc;
+			var dpsd = this.dspd;
+			
+			dc.x += Math.random()*dspd - dspd/2;
+			if (dc.x < -maxdc) dc.x = -maxdc;
+			if (dc.x > maxdc) dc.x = maxdc;
+			dc.y += Math.random()*dspd - dspd/2;
+			if (dc.y < -maxdc) dc.y = -maxdc;
+			if (dc.y > maxdc) dc.y = maxdc;
+
+			var c = this.uni.pos.get();
+			
+			if (c.x > 0.5) dc.x = -2*Math.abs(dc.x);
+			if (c.x < -2) dc.x = 2*Math.abs(dc.x);
+			
+			if (c.y > 1) dc.y = -Math.abs(dc.y);
+			if (c.y < -1) dc.y = Math.abs(dc.y);
+			
+			c.x += dc.x * dt;
+			c.y += dc.y * dt;
+			
+			// this.uni.pos.set(c);
+			//this.dc = {x: dcx, y: dcy};
+		},
+		getInfo: function() {
+			var c = this.uni.pos.get();
+			var x = c.x;
+			var y = c.y;
+			
+			x = Math.round(x*1000)/1000;
+			y = Math.round(y*1000)/1000;
+			
+			return x + (y < 0 ? '' : '+') + y + 'i';
+		},
+	};
+	var moverMousePos = {
+		m_scale: 2,
+		m_down: 0,
+		m_last: {x: 0, y: 0},
+		onmousedown: function(e, pos) {
+			this.m_down = 1;
+			this.m_last = pos;
+		},
+		onmouseup: function(e, pos) {
+			this.m_down = 0;
+			this.m_last = pos;
+		},
+		onmousemove: function(event, pos) {
+			var d = {
+				x: pos.x - this.m_last.x,
+				y: pos.y - this.m_last.y,
+			};
+			this.m_last = pos;
+			if (!this.m_down) return;
+			var scl = this.m_scale;
+			if (event.shiftKey) scl /= 10;
+			if (event.ctrlKey) scl *= 2;
+			
+			var c = this.uni.pos.get();
+			c.x += d.x * scl;
+			c.y -= d.y * scl;
+		}
+	}
 
 	function initShaders()
 	{
-		//debugger;
-		prgFatou = wgl.compileProgram("vsFatou", "fsFatou");
-		prgFatou.vPosition = gl.getAttribLocation(prgFatou, "vPosition");
-		prgFatou.uRatio = gl.getUniformLocation(prgFatou, "uRatio");
-		prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
+		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}})
+			.setMover(moverWanderPos)
+			.setMover(moverMousePos)
+		;
 
-		prgJulia = wgl.compileProgram("vsFatou", "fsJulia");
-		prgJulia.vPosition = gl.getAttribLocation(prgJulia, "vPosition");
-		prgJulia.uRatio = gl.getUniformLocation(prgJulia, "uRatio");
-		prgJulia.uPos = gl.getUniformLocation(prgJulia, "uPos");
+		// prgFatou = 
+		// prgFatou = wgl.compileProgram();
+		// prgFatou.vPosition = gl.getAttribLocation(prgFatou, "vPosition");
+		// prgFatou.uRatio = gl.getUniformLocation(prgFatou, "uRatio");
+		// prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
+
+		progs.newton = new QProg(wgl, "vsFatou", "fsNewton", {
+			a: {x: -0.5, y: +0.466},
+			b: {x: -0.5, y: -0.366},
+			c: {x: 1, y: 0},
+		});
+		the_prog = progs.newton;
 	}
 
 	var quadBuffer;
@@ -148,48 +371,52 @@
 	var cScale = 2;
 
 	var last_times = [];
+	
+	var the_prog = progs.fatou;
 
 	function drawScene()
 	{
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-		gl.enable(gl.BLEND);
-		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-		gl.useProgram(prgFatou);
-		gl.disable(gl.DEPTH_TEST);
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-		gl.enableVertexAttribArray(prgFatou.vPosition);
-		gl.vertexAttribPointer(prgFatou.vPosition, 2, gl.FLOAT, false, 8, 0);
+		the_prog.drawScene();
 		
-		var x = cx + midX;
-		var y = cy + midY;
-		gl.uniform3f(prgFatou.uPos, x, y, 0);
+		// gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		// gl.enable(gl.BLEND);
+		// gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-		var minScale = 0.5, maxScale = 2.0 / (ratioX < ratioY ? ratioX : ratioY);
-		if (scaleFactor < minScale) scaleFactor = minScale;
-		if (scaleFactor > maxScale) scaleFactor = maxScale;
+		// gl.useProgram(prgFatou);
+		// gl.disable(gl.DEPTH_TEST);
 
-		gl.uniform4f(prgFatou.uRatio, ratioX * scaleFactor, ratioY * scaleFactor, 1, 1);
-		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-		gl.disable(gl.BLEND);
+		// gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+		// gl.enableVertexAttribArray(prgFatou.vPosition);
+		// gl.vertexAttribPointer(prgFatou.vPosition, 2, gl.FLOAT, false, 8, 0);
 		
-		var timeNow = new Date().getTime();
-		last_times.push(timeNow);
-		while (last_times.length > 10) last_times.shift();
+		// var x = cx + midX;
+		// var y = cy + midY;
+		// gl.uniform3f(prgFatou.uPos, x, y, 0);
 
-		var fps = 0;
-		var dts = 0;
-		var dtn = 0;
-		for (var i = 1; i < last_times.length; i++) {
-			dts += last_times[i] - last_times[i - 1];
-			dtn++;
-		};
-		if (dtn) fps = Math.round(1000*dtn/dts);
+		// var minScale = 0.5, maxScale = 2.0 / (ratioX < ratioY ? ratioX : ratioY);
+		// if (scaleFactor < minScale) scaleFactor = minScale;
+		// if (scaleFactor > maxScale) scaleFactor = maxScale;
 
-		x = Math.round(x*1000)/1000;
-		y = Math.round(y*1000)/1000;
-		$('#divInfo').html(x + (y < 0 ? '' : '+') + y + 'i' + '<br />' + fps + ' FPS');
+		// gl.uniform4f(prgFatou.uRatio, ratioX * scaleFactor, ratioY * scaleFactor, 1, 1);
+		// gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+		// gl.disable(gl.BLEND);
+		
+		// var timeNow = new Date().getTime();
+		// last_times.push(timeNow);
+		// while (last_times.length > 10) last_times.shift();
+
+		// var fps = 0;
+		// var dts = 0;
+		// var dtn = 0;
+		// for (var i = 1; i < last_times.length; i++) {
+		// 	dts += last_times[i] - last_times[i - 1];
+		// 	dtn++;
+		// };
+		// if (dtn) fps = Math.round(1000*dtn/dts);
+
+		// x = Math.round(x*1000)/1000;
+		// y = Math.round(y*1000)/1000;
+		// $('#divInfo').html(x + (y < 0 ? '' : '+') + y + 'i' + '<br />' + fps + ' FPS');
 	}
 
 
@@ -246,6 +473,16 @@
 			//initTextures();
 
 			//drawScene();
+			for (var pn in progs) {
+				var opt = $('<option value="' + pn + '">').html(pn);
+				if (progs[pn] === the_prog) opt.attr('selected', 'selected');
+				//console.log(pn, opt);
+				$('#selectProgs').append(opt);
+			}
+			$('#selectProgs').change(function() {
+				the_prog = progs[$(this).val()] || the_prog;
+			});
+			
 			tick();
 		}
 		else {
@@ -262,38 +499,50 @@
 	var lastDY = 0;
 	var lastMouseTime = 0;
 	var mouseTime = 1;
-	var mouseDown = false;
+	//var mouseDown = false;
+	
+	function getMousePos(event) {
+		var ix = event.offsetX ? (event.offsetX) : event.pageX - canvas.offsetLeft;
+		var iy = event.offsetY ? (event.offsetY) : event.pageY - canvas.offsetTop;
+		return {
+			x: ix / (canvas.width * ratioX),
+			y: iy / (canvas.height * ratioY)
+		};
+	}
 
 	document.onmousedown = function(event) {
 		event = event || window.event;
-		mouseX = event.offsetX ? (event.offsetX) : event.pageX - canvas.offsetLeft;
-		mouseY = event.offsetY ? (event.offsetY) : event.pageY - canvas.offsetTop;
-		mouseDown = true;
+		if (the_prog.onmousedown) the_prog.onmousedown(
+			event, getMousePos(event)
+		);
 	}
 	document.onmouseup = function(event) {
 		event = event || window.event;
-		mouseX = event.offsetX ? (event.offsetX) : event.pageX - canvas.offsetLeft;
-		mouseY = event.offsetY ? (event.offsetY) : event.pageY - canvas.offsetTop;
-		mouseDown = false;
+		if (the_prog.onmouseup) the_prog.onmouseup(
+			event, getMousePos(event)
+		);
 	}
 	document.onmousemove = function(event) {
-		if (!mouseDown) return;
-		event = event || window.event;
-		var x = event.offsetX ? (event.offsetX) : event.pageX - canvas.offsetLeft;
-		var y = event.offsetY ? (event.offsetY) : event.pageY - canvas.offsetTop;
+		if (the_prog.onmousemove) the_prog.onmousemove(
+			event, getMousePos(event)
+		);
+		// if (!mouseDown) return;
+		// event = event || window.event;
+		// var x = event.offsetX ? (event.offsetX) : event.pageX - canvas.offsetLeft;
+		// var y = event.offsetY ? (event.offsetY) : event.pageY - canvas.offsetTop;
 		
-		var dx = x - mouseX;
-		var dy = y - mouseY;
+		// var dx = x - mouseX;
+		// var dy = y - mouseY;
 		
-		var scl = cScale;
-		if (event.shiftKey) scl /= 10;
-		if (event.ctrlKey) scl *= 2;
+		// var scl = cScale;
+		// if (event.shiftKey) scl /= 10;
+		// if (event.ctrlKey) scl *= 2;
 		
-		cx += (dx / canvas.width) / ratioX * scl;
-		cy -= (dy / canvas.height) / ratioY * scl;
+		// cx += (dx / canvas.width) / ratioX * scl;
+		// cy -= (dy / canvas.height) / ratioY * scl;
 		
-		mouseX = x;
-		mouseY = y;
+		// mouseX = x;
+		// mouseY = y;
 
 	}
 	
@@ -305,29 +554,30 @@
 	var lastTime = 0;
 
 	function animate() {
-		var timeNow = new Date().getTime();
-		if (lastTime != 0 && !mouseDown) {
-			var delta = (timeNow - lastTime)/1000;
-			if (delta > 1) delta = 1;
+		the_prog.animate();
+		// var timeNow = new Date().getTime();
+		// if (lastTime != 0 && !mouseDown) {
+		// 	var delta = (timeNow - lastTime)/1000;
+		// 	if (delta > 1) delta = 1;
 
-			dcx += Math.random()*dspd - dspd/2;
-			if (dcx < -maxdc) dcx = -maxdc;
-			if (dcx > maxdc) dcx = maxdc;
-			dcy += Math.random()*dspd - dspd/2;
-			if (dcy < -maxdc) dcy = -maxdc;
-			if (dcy > maxdc) dcy = maxdc;
+		// 	dcx += Math.random()*dspd - dspd/2;
+		// 	if (dcx < -maxdc) dcx = -maxdc;
+		// 	if (dcx > maxdc) dcx = maxdc;
+		// 	dcy += Math.random()*dspd - dspd/2;
+		// 	if (dcy < -maxdc) dcy = -maxdc;
+		// 	if (dcy > maxdc) dcy = maxdc;
 
-			if (cx + midX > 0.5) dcx = -2*Math.abs(dcx);
-			if (cx + midX < -2) dcx = 2*Math.abs(dcx);
+		// 	if (cx + midX > 0.5) dcx = -2*Math.abs(dcx);
+		// 	if (cx + midX < -2) dcx = 2*Math.abs(dcx);
 			
-			if (cy + midY > 1) dcy = -Math.abs(dcy);
-			if (cy + midY < -1) dcy = Math.abs(dcy);
+		// 	if (cy + midY > 1) dcy = -Math.abs(dcy);
+		// 	if (cy + midY < -1) dcy = Math.abs(dcy);
 
-			midX += dcx * delta;
-			midY += dcy * delta;
+		// 	midX += dcx * delta;
+		// 	midY += dcy * delta;
 			
-		}
-		lastTime = timeNow;
+		// }
+		// lastTime = timeNow;
 	}
 
 	function tick() {
@@ -405,11 +655,18 @@
 		left: 0px;
 		top: 0px;
 	}
+	#selectProgs {
+		position: absolute;
+		right: 0px;
+		top: 0px;
+	}
 </style>
 
 <body onload="webGLStart();">
 	<canvas id="planet-canvas" style="position:absolute; top:0px; left:0px; background-color:#000000; width:100%; height:100%;"></canvas>
 	<div id="divInfo">INFO</div>
+	<select id="selectProgs">
+	</select>
 </body>
 
 </html>
