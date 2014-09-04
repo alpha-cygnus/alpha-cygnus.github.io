@@ -139,6 +139,100 @@
 	}
 </script>
 
+<script id="fsNewton4" type="x-shader/x-fragment">
+	precision mediump float;
+	uniform vec2 u_a;
+	uniform vec2 u_b;
+	uniform vec2 u_c;
+	uniform vec2 u_d;
+	varying vec4 Position;
+	
+	vec2 cmul(vec2 a, vec2 b) {
+		return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+	}
+	vec2 cmul3(vec2 a, vec2 b, vec2 c) {
+		return cmul(cmul(a, b), c);
+	}
+	vec2 cmul4(vec2 a, vec2 b, vec2 c, vec2 d) {
+		return cmul(cmul3(a, b, c), d);
+	}
+	vec2 cdiv(vec2 a, vec2 b) {
+		return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y)/(b.x*b.x + b.y*b.y);
+	}
+
+	void main() {
+		float sx = Position.x * 1.5;
+		float sy = -Position.y * 1.5;
+
+		gl_FragColor = vec4(0.0, 0.0, 1.0, 1);
+		
+		vec2 a = u_a; vec2 b = u_b; vec2 c = u_c; vec2 d = u_d;
+
+		int broken = 0;
+		vec2 x = vec2(sx, sy);
+		float step = 0.0;
+		float dist = 0.0;
+		for (int i = 0; i < 256; i++) {
+			vec2 xa = x - a;
+			vec2 xb = x - b;
+			vec2 xc = x - c;
+			vec2 xd = x - d;
+			vec2 xn = x - cdiv(cmul4(xa, xb, xc, xd), cmul3(xa, xb, xc) + cmul3(xa, xb, xd) + cmul3(xa, xc, xd) + cmul3(xb, xc, xd));
+			vec2 dx = x - xn;
+			dist += length(dx);
+			x = xn;
+			//da = 
+			if (distance(x, a) < 0.01) {
+				broken = 1;
+				break;
+			}
+			if (distance(x, b) < 0.01) {
+				broken = 2;
+				break;
+			}
+			if (distance(x, c) < 0.01) {
+				broken = 3;
+				break;
+			}
+			if (distance(x, d) < 0.01) {
+				broken = 4;
+				break;
+			}
+			step++;
+		}
+		//float cc = (log(dist) + 5.0)/5.0;
+		float cc = dist / 8.0;
+		//float cc = 5.0 - step/4.5;
+		//float cc = 3.0 - step/8.5;
+		//float cc = sqrt(step)/3.5;
+		vec3 colors[5];
+		colors[0] = vec3(0.0, 0.0, 0.0);
+		colors[1] = vec3(1.0, 0.1, 0.1);
+		colors[2] = vec3(0.1, 1.0, 0.1);
+		colors[3] = vec3(0.1, 0.1, 1.0);
+		colors[4] = vec3(1.0, 0.1, 1.0);
+		//gl_FragColor = vec4(colors[broken]*cc, 1);
+		vec2 pxy = Position.xy;
+		pxy = clamp((abs(pxy) - (0.95, 0.95))*20.0, 0.0, 1.0);
+		float alpha = 1.0 - length(pxy); //(1.0 - max(abs(Position.xy), 0.0))*20.0;
+		if (broken == 0) {
+			gl_FragColor = vec4(colors[0]*cc, alpha);
+		}
+		if (broken == 1) {
+			gl_FragColor = vec4(colors[1]*cc, alpha);
+		}
+		if (broken == 2) {
+			gl_FragColor = vec4(colors[2]*cc, alpha);
+		}
+		if (broken == 3) {
+			gl_FragColor = vec4(colors[3]*cc, alpha);
+		}
+		if (broken == 4) {
+			gl_FragColor = vec4(colors[4]*cc, alpha);
+		}
+	}
+</script>
+
 
 <script type="text/javascript">
 	var gl;
@@ -147,6 +241,62 @@
 
 	var progs = {
 	};
+	
+	function initShaders()
+	{
+		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}})
+			.addMover('Wanderer', 'pos')
+			.addMover('MouseMover', 'pos')
+		;
+
+		// prgFatou = 
+		// prgFatou = wgl.compileProgram();
+		// prgFatou.vPosition = gl.getAttribLocation(prgFatou, "vPosition");
+		// prgFatou.uRatio = gl.getUniformLocation(prgFatou, "uRatio");
+		// prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
+
+		progs.newton = new QProg(wgl, "vsFatou", "fsNewton", {
+			a: {x: -0.5, y: +0.866},
+			b: {x: -0.5, y: -0.866},
+			c: {x: 1, y: 0},
+		})
+			.addMover('GraviMover', {
+				a: {},
+				b: {},
+				c: {},
+			})
+			.addMover('InfoMover', 'a')
+			.addMover('InfoMover', 'b')
+			.addMover('InfoMover', 'c')
+		;
+		
+		progs.newton4 = new QProg(wgl, "vsFatou", "fsNewton4", {
+			// a: {x: -0.5, y: +0.5},
+			// b: {x: -0.5, y: -0.5},
+			// c: {x: +0.5, y: +0.5},
+			// d: {x: +0.5, y: -0.5},
+			a: {x: -1, y: 0},
+			b: {x: 0, y: -1},
+			c: {x: +1, y: 0},
+			d: {x: 0, y: +1},
+		})
+			.addMover('GraviMover', {
+				a: {},
+				b: {},
+				c: {},
+				d: {},
+			})
+			.addMover('InfoMover', 'a')
+			.addMover('InfoMover', 'b')
+			.addMover('InfoMover', 'c')
+			.addMover('InfoMover', 'd')
+		;
+		
+		var hash = document.location.hash.toString().replace('#', '');
+		//console.log('hash', hash, progs[hash]);
+		//the_prog = progs[hash] || progs.fatou;
+		selectProg(hash);
+	}
 	
 	var Uni = OO.inherit(
 		function Uni(prog, name, val) {
@@ -447,40 +597,6 @@
 			}
 		},
 	});
-
-	function initShaders()
-	{
-		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}})
-			.addMover('Wanderer', 'pos')
-			.addMover('MouseMover', 'pos')
-		;
-
-		// prgFatou = 
-		// prgFatou = wgl.compileProgram();
-		// prgFatou.vPosition = gl.getAttribLocation(prgFatou, "vPosition");
-		// prgFatou.uRatio = gl.getUniformLocation(prgFatou, "uRatio");
-		// prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
-
-		progs.newton = new QProg(wgl, "vsFatou", "fsNewton", {
-			a: {x: -0.5, y: +0.866},
-			b: {x: -0.5, y: -0.866},
-			c: {x: 1, y: 0},
-		})
-			.addMover('GraviMover', {
-				a: {},
-				b: {},
-				c: {},
-			})
-			.addMover('InfoMover', 'a')
-			.addMover('InfoMover', 'b')
-			.addMover('InfoMover', 'c')
-		;
-		
-		var hash = document.location.hash.toString().replace('#', '');
-		//console.log('hash', hash, progs[hash]);
-		//the_prog = progs[hash] || progs.fatou;
-		selectProg(hash);
-	}
 
 	var quadBuffer;
 
