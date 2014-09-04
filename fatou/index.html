@@ -80,19 +80,23 @@
 		gl_FragColor = vec4(0.0, 0.0, 1.0, 1);
 		
 		vec2 a = u_a; vec2 b = u_b; vec2 c = u_c;
-		vec2 sabc = u_a + u_b + u_c;
-		vec2 ab = cmul(a, b);
-		vec2 abacbc = ab + cmul(a, c) + cmul(b, c);
-		vec2 abc = cmul(ab, c);
+		// vec2 sabc = u_a + u_b + u_c;
+		// vec2 ab = cmul(a, b);
+		// vec2 abacbc = ab + cmul(a, c) + cmul(b, c);
+		// vec2 abc = cmul(ab, c);
 		
 		int broken = 0;
 		vec2 x = vec2(sx, sy);
 		float step = 0.0;
 		float dist = 0.0;
 		for (int i = 0; i < 256; i++) {
-			vec2 xx = cmul(x, x);
-			vec2 xxx = cmul(xx, x);
-			vec2 xn = x - cdiv(xxx - cmul(sabc, xx) + cmul(abacbc, x) - abc, 3.0*xx - 2.0*cmul(sabc, x) + abacbc);
+			// vec2 xx = cmul(x, x);
+			// vec2 xxx = cmul(xx, x);
+			// vec2 xn = x - cdiv(xxx - cmul(sabc, xx) + cmul(abacbc, x) - abc, 3.0*xx - 2.0*cmul(sabc, x) + abacbc);
+			vec2 xa = x - a;
+			vec2 xb = x - b;
+			vec2 xc = x - c;
+			vec2 xn = x - cdiv(cmul(cmul(xa, xb), xc), cmul(xa, xb) + cmul(xa, xc) + cmul(xb, xc));
 			dist += distance(x, xn);
 			x = xn;
 			if (distance(x, a) < 0.01) {
@@ -111,17 +115,26 @@
 		}
 		// float cc = log(dist);
 		float cc = 1.0 - step/20.0;
+		vec3 colors[4];
+		colors[0] = vec3(0.0, 0.0, 0.0);
+		colors[1] = vec3(1.0, 0.0, 0.0);
+		colors[2] = vec3(0.0, 1.0, 0.0);
+		colors[3] = vec3(0.0, 0.0, 1.0);
+		//gl_FragColor = vec4(colors[broken]*cc, 1);
+		vec2 pxy = Position.xy;
+		pxy = clamp((abs(pxy) - (0.95, 0.95))*20.0, 0.0, 1.0);
+		float alpha = 1.0 - length(pxy); //(1.0 - max(abs(Position.xy), 0.0))*20.0;
 		if (broken == 0) {
-			gl_FragColor = vec4(0.0, 0.0, 0.0, 1);
+			gl_FragColor = vec4(colors[0]*cc, alpha);
 		}
 		if (broken == 1) {
-			gl_FragColor = vec4(cc, 0.0, 0.0, 1);
+			gl_FragColor = vec4(colors[1]*cc, alpha);
 		}
 		if (broken == 2) {
-			gl_FragColor = vec4(0.0, cc, 0.0, 1);
+			gl_FragColor = vec4(colors[2]*cc, alpha);
 		}
 		if (broken == 3) {
-			gl_FragColor = vec4(0.0, 0.0, cc, 1);
+			gl_FragColor = vec4(colors[3]*cc, alpha);
 		}
 	}
 </script>
@@ -423,11 +436,11 @@
 				if (u.v.x < 0) s.x = -1;
 				if (Math.abs(u.v.x) < 0.1) u.v.x = s.x*0.1;
 				if (Math.abs(u.v.y) > 10) u.v.x = s.x*10;
-				if (Math.abs(u.c.x) > 3) u.v.x = (u.c.x < 0 ? 1 : -1)*Math.abs(u.v.x);
+				if (Math.abs(u.c.x) > 3) u.v.x = (u.c.x < 0 ? 1 : -1)*Math.abs(u.v.x)*0.7;
 				if (u.v.y < 0) s.y = -1;
 				if (Math.abs(u.v.y) < 0.1) u.v.y = s.y*0.1;
 				if (Math.abs(u.v.y) > 10) u.v.y = s.y*10;
-				if (Math.abs(u.c.y) > 3) u.v.y = (u.c.y < 0 ? 1 : -1)*Math.abs(u.v.y);
+				if (Math.abs(u.c.y) > 3) u.v.y = (u.c.y < 0 ? 1 : -1)*Math.abs(u.v.y)*0.7;
 
 				u.c.x += u.v.x*dt;
 				u.c.y += u.v.y*dt;
@@ -462,7 +475,11 @@
 			.addMover('InfoMover', 'b')
 			.addMover('InfoMover', 'c')
 		;
-		the_prog = progs.newton;
+		
+		var hash = document.location.hash.toString().replace('#', '');
+		//console.log('hash', hash, progs[hash]);
+		//the_prog = progs[hash] || progs.fatou;
+		selectProg(hash);
 	}
 
 	var quadBuffer;
@@ -578,6 +595,11 @@
 		event.returnValue = false;
 		return false;
 	}
+	
+	function selectProg(pn) {
+		the_prog = progs[pn] || the_prog || progs.fatou;
+		document.location.hash = '#' + pn;
+	}
 
 	function webGLStart() {
 		canvas = document.getElementById("planet-canvas");
@@ -601,7 +623,7 @@
 				$('#selectProgs').append(opt);
 			}
 			$('#selectProgs').change(function() {
-				the_prog = progs[$(this).val()] || the_prog;
+				selectProg($(this).val());
 			});
 			
 			tick();
