@@ -22,7 +22,42 @@
 <script id="fsFatou" type="x-shader/x-fragment">
 	precision mediump float;
 	uniform vec2 u_pos;
+	uniform float u_pw;
 	varying vec4 Position;
+	
+	vec3 col2step(float cc, vec3 c1, vec3 c2) {
+		if (cc < 1.0) return c1*cc;
+		return c2*(cc - 1.0) + c1;
+	}
+
+	vec2 cmul(vec2 a, vec2 b) {
+		return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+	}
+	vec2 cmul3(vec2 a, vec2 b, vec2 c) {
+		return cmul(cmul(a, b), c);
+	}
+	vec2 cmul4(vec2 a, vec2 b, vec2 c, vec2 d) {
+		return cmul(cmul3(a, b, c), d);
+	}
+	
+	vec2 cpow(vec2 z, float p) {
+		float r = length(z);
+		float phi = atan(z.y, z.x);
+		return vec2(cos(p*phi), sin(p*phi))*pow(r, p);
+	}
+	
+	vec2 pcmul(vec2 p, vec2 q) {
+		return vec2(p.x*q.x, p.y + q.y);
+	}
+	vec2 pcpow(vec2 pc, float p) {
+		return vec2(pow(pc.x, p), pc.y*p);
+	}
+	vec2 c2p(vec2 c) {
+		return vec2(length(c), atan(c.y, c.x));
+	}
+	vec2 p2c(vec2 p) {
+		return vec2(p.x*cos(p.y), p.x*sin(p.y));
+	}
 
 	void main() {
 		float sx = Position.x * 1.5;
@@ -30,29 +65,42 @@
 
 		vec2 z = vec2(sx, sy);
 		vec2 z1 = vec2(sx, sy);
+		
+		vec2 pz = c2p(z);
+		vec2 pz1 = pz;
+		
 		vec2 c = u_pos; //vec2(u_pos.x, u_pos.y);
 
 		float dist = 0.0;
 		float step = 0.0;
 		//float dist2 = 0.0;
 		int broken = 0;
+		vec2 dz;
+		float la = 0.0;
 		for (int i = 0; i < 256; i++) {
-			z1 = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+			//z1 = cmul4(z, z, z, z) + c;
+			//z1 = cmul3(z, z, z) + c;
+			z1 = p2c(pcpow(pz, u_pw)) + c;
+			pz1 = c2p(z1);
 			// dist += distance(z1, z)/100.0;
-			z = z - z1;
-			dist += abs(z.x) + abs(z.y);
+			dz = z - z1;
+			dist += abs(dz.x) + abs(dz.y);
 			z = z1;
-			//if (z.x*z.x + z.y*z.y > 10000.0) {
-			if (abs(z.x) + abs(z.y) > 100.0) {
+			pz = pz1;
+			if (pz.x > 10000.0) {
+			//if (abs(z.x) + abs(z.y) > 100.0) {
 				broken = 1;
 				break;
 			}
 			step++;
 		}
 		if (broken > 0) {
-			gl_FragColor = vec4(0.0, sqrt(fract(step/256.0)), 0.0, 1);
+			float cc = sqrt(fract(step/256.0))*2.0;
+			gl_FragColor = vec4(col2step(cc, vec3(0.1, 1.0, 0.1), vec3(1, 1, 1)), 1);
 		} else {
+			//float la = atan(dz.x, dz.y);
 			float cc = (abs(fract(dist*0.05)-0.5)*2.0);
+			//if (la <= 0.0) cc = 1.0 - cc;
 			gl_FragColor = vec4(0.0, 0.0, 1.0 - cc, 1);
 		}
 
@@ -89,6 +137,7 @@
 		vec2 x = vec2(sx, sy);
 		float step = 0.0;
 		float dist = 0.0;
+		vec2 dx;
 		for (int i = 0; i < 256; i++) {
 			// vec2 xx = cmul(x, x);
 			// vec2 xxx = cmul(xx, x);
@@ -96,8 +145,9 @@
 			vec2 xa = x - a;
 			vec2 xb = x - b;
 			vec2 xc = x - c;
-			vec2 xn = x - cdiv(cmul(cmul(xa, xb), xc), cmul(xa, xb) + cmul(xa, xc) + cmul(xb, xc));
-			dist += distance(x, xn);
+			dx = cdiv(cmul(cmul(xa, xb), xc), cmul(xa, xb) + cmul(xa, xc) + cmul(xb, xc));
+			vec2 xn = x - dx;
+			dist += length(dx);
 			x = xn;
 			if (distance(x, a) < 0.01) {
 				broken = 1;
@@ -113,6 +163,7 @@
 			}
 			step++;
 		}
+		float la = atan(dx.x, dx.y);
 		// float cc = log(dist);
 		float cc = 1.0 - step/20.0;
 		vec3 colors[4];
@@ -128,12 +179,15 @@
 			gl_FragColor = vec4(colors[0]*cc, alpha);
 		}
 		if (broken == 1) {
+			if (la < 0.0) cc = 1.0 - cc;
 			gl_FragColor = vec4(colors[1]*cc, alpha);
 		}
 		if (broken == 2) {
+			if (la < 0.0) cc = 1.0 - cc;
 			gl_FragColor = vec4(colors[2]*cc, alpha);
 		}
 		if (broken == 3) {
+			if (la < 0.0) cc = 1.0 - cc;
 			gl_FragColor = vec4(colors[3]*cc, alpha);
 		}
 	}
@@ -158,6 +212,11 @@
 	}
 	vec2 cdiv(vec2 a, vec2 b) {
 		return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y)/(b.x*b.x + b.y*b.y);
+	}
+
+	vec3 col2step(float cc, vec3 c1, vec3 c2) {
+		if (cc < 1.0) return c1*cc;
+		return c2*(cc - 1.0) + c1;
 	}
 
 	void main() {
@@ -211,24 +270,25 @@
 		colors[2] = vec3(0.1, 1.0, 0.1);
 		colors[3] = vec3(0.1, 0.1, 1.0);
 		colors[4] = vec3(1.0, 0.1, 1.0);
+		vec3 white = vec3(0.1, 0.1, 0.1);
 		//gl_FragColor = vec4(colors[broken]*cc, 1);
 		vec2 pxy = Position.xy;
 		pxy = clamp((abs(pxy) - (0.95, 0.95))*20.0, 0.0, 1.0);
 		float alpha = 1.0 - length(pxy); //(1.0 - max(abs(Position.xy), 0.0))*20.0;
 		if (broken == 0) {
-			gl_FragColor = vec4(colors[0]*cc, alpha);
+			gl_FragColor = vec4(col2step(cc, colors[0], white), alpha);
 		}
 		if (broken == 1) {
-			gl_FragColor = vec4(colors[1]*cc, alpha);
+			gl_FragColor = vec4(col2step(cc, colors[1], white), alpha);
 		}
 		if (broken == 2) {
-			gl_FragColor = vec4(colors[2]*cc, alpha);
+			gl_FragColor = vec4(col2step(cc, colors[2], white), alpha);
 		}
 		if (broken == 3) {
-			gl_FragColor = vec4(colors[3]*cc, alpha);
+			gl_FragColor = vec4(col2step(cc, colors[3], white), alpha);
 		}
 		if (broken == 4) {
-			gl_FragColor = vec4(colors[4]*cc, alpha);
+			gl_FragColor = vec4(col2step(cc, colors[4], white), alpha);
 		}
 	}
 </script>
@@ -244,9 +304,10 @@
 	
 	function initShaders()
 	{
-		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}})
+		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}, pw: 2.0})
 			.addMover('Wanderer', 'pos')
 			.addMover('MouseMover', 'pos')
+			.addMover('Wanderer1d', 'pw', {min: 1.0, max: 10.0})
 		;
 
 		// prgFatou = 
@@ -316,9 +377,15 @@
 	});
 	
 	function makeUni(prog, name, val) {
-		var sgn = Object.keys(val).sort().join('');
+		var sgn = typeof(val);
+		if (sgn == 'object') sgn = Object.keys(val).sort().join('');
 		var uni = new Uni(prog, name, val);
 		var ext = {
+			number: {
+				put: function() {
+					this.prog.gl.uniform1f(this.loc, this.val);
+				},
+			},
 			xy: {
 				put: function() {
 					this.prog.gl.uniform2f(this.loc, this.val.x, this.val.y);
@@ -459,7 +526,10 @@
 			if (params) $.extend(this, params);
 		},
 		getUni: function() {
-			return this.prog.uni[this.u_name].get()
+			return this.prog.uni[this.u_name].get();
+		},
+		setUni: function(v) {
+			return this.prog.uni[this.u_name].set(v);
 		},
 	});
 	var Wanderer = OO.inherit(function Wanderer() { this.dc = {x: 0, y: 0} }, UniMover,
@@ -503,6 +573,41 @@
 			y = Math.round(y*1000)/1000;
 			
 			return this.u_name + ': ' + x + (y < 0 ? '' : '+') + y + 'i';
+		},
+	});
+	
+	var Wanderer1d = OO.inherit(function Wanderer1d() { this.dc = 0 }, UniMover,
+	{
+		dspd: 0.005,
+		maxdc: 0.02,
+		max: 1,
+		min: -1,
+		move: function(dt) {
+			if (this.prog.m_down) return;
+			var dc = this.dc;
+			var maxdc = this.maxdc;
+			var dpsd = this.dspd;
+			
+			dc += Math.random()*dspd - dspd/2;
+			if (dc < -maxdc) dc = -maxdc;
+			if (dc > maxdc) dc = maxdc;
+
+			var c = this.getUni();
+			
+			if (c > this.max) dc = -2*Math.abs(dc);
+			if (c < this.min) dc = 2*Math.abs(dc);
+			
+			c += dc * dt;
+			
+			this.setUni(c);
+			this.dc = dc;
+			return this;
+		},
+		getInfo: function() {
+			var c = this.getUni();
+			c = Math.round(c*1000)/1000;
+			
+			return this.u_name + ': ' + c;
 		},
 	});
 	
