@@ -107,11 +107,66 @@
 	}
 </script>
 
+<script id="fsFatou2" type="x-shader/x-fragment">
+	precision mediump float;
+	uniform vec2 u_pos;
+	varying vec4 Position;
+	
+	vec3 col2step(float cc, vec3 c1, vec3 c2) {
+		if (cc < 1.0) return c1*cc;
+		return c2*(cc - 1.0) + c1;
+	}
+
+	vec2 cmul(vec2 a, vec2 b) {
+		return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+	}
+
+	void main() {
+		float sx = Position.x * 1.5;
+		float sy = -Position.y * 1.5;
+
+		vec2 z = vec2(sx, sy);
+		vec2 z1 = vec2(sx, sy);
+		
+		vec2 c = u_pos; //vec2(u_pos.x, u_pos.y);
+
+		float dist = 0.0;
+		float step = 0.0;
+		//float dist2 = 0.0;
+		int broken = 0;
+		vec2 dz;
+		float la = 0.0;
+		for (int i = 0; i < 256; i++) {
+			z1 = cmul(z, z) + c;
+			dz = z - z1;
+			dist += abs(dz.x) + abs(dz.y);
+			z = z1;
+			if (length(z) > 100.0) {
+				broken = 1;
+				break;
+			}
+			step++;
+		}
+		if (broken > 0) {
+			float cc = sqrt(fract(step/256.0))*2.0;
+			gl_FragColor = vec4(col2step(cc, vec3(0.1, 1.0, 0.1), vec3(1, 1, 1)), 1);
+		} else {
+			//float la = atan(dz.x, dz.y);
+			float cc = (abs(fract(dist*0.05)-0.5)*2.0);
+			//if (la <= 0.0) cc = 1.0 - cc;
+			gl_FragColor = vec4(0.0, 0.0, 1.0 - cc, 1);
+		}
+
+	}
+</script>
+
 <script id="fsNewton" type="x-shader/x-fragment">
 	precision mediump float;
 	uniform vec2 u_a;
 	uniform vec2 u_b;
 	uniform vec2 u_c;
+	
+	uniform vec2 u_cs;
 	varying vec4 Position;
 	
 	vec2 cmul(vec2 a, vec2 b) {
@@ -120,18 +175,9 @@
 	vec2 cdiv(vec2 a, vec2 b) {
 		return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y)/(b.x*b.x + b.y*b.y);
 	}
-
-	void main() {
-		float sx = Position.x * 1.5;
-		float sy = -Position.y * 1.5;
-
-		gl_FragColor = vec4(0.0, 0.0, 1.0, 1);
-		
+	
+	vec3 calcColor(float sx, float sy) {
 		vec2 a = u_a; vec2 b = u_b; vec2 c = u_c;
-		// vec2 sabc = u_a + u_b + u_c;
-		// vec2 ab = cmul(a, b);
-		// vec2 abacbc = ab + cmul(a, c) + cmul(b, c);
-		// vec2 abc = cmul(ab, c);
 		
 		int broken = 0;
 		vec2 x = vec2(sx, sy);
@@ -173,23 +219,112 @@
 		colors[3] = vec3(0.0, 0.0, 1.0);
 		//gl_FragColor = vec4(colors[broken]*cc, 1);
 		vec2 pxy = Position.xy;
-		pxy = clamp((abs(pxy) - (0.95, 0.95))*20.0, 0.0, 1.0);
 		float alpha = 1.0 - length(pxy); //(1.0 - max(abs(Position.xy), 0.0))*20.0;
 		if (broken == 0) {
-			gl_FragColor = vec4(colors[0]*cc, alpha);
+			return colors[0]*cc;
 		}
 		if (broken == 1) {
 			if (la < 0.0) cc = 1.0 - cc;
-			gl_FragColor = vec4(colors[1]*cc, alpha);
+			return colors[1]*cc;
 		}
 		if (broken == 2) {
 			if (la < 0.0) cc = 1.0 - cc;
-			gl_FragColor = vec4(colors[2]*cc, alpha);
+			return colors[2]*cc;
 		}
 		if (broken == 3) {
 			if (la < 0.0) cc = 1.0 - cc;
-			gl_FragColor = vec4(colors[3]*cc, alpha);
+			return colors[3]*cc;
 		}
+	}
+
+	void main() {
+		float sx = Position.x * 1.5;
+		float sy = -Position.y * 1.5;
+
+		vec2 pxy = Position.xy;
+		pxy = clamp((abs(pxy) - (0.95, 0.95))*20.0, 0.0, 1.0);
+		float alpha = 1.0 - length(pxy); //(1.0 - max(abs(Position.xy), 0.0))*20.0;
+		
+		float dx = 0.5/u_cs.x;
+		float dy = 0.5/u_cs.y;
+		
+		vec3 colors[4];
+		colors[0] = calcColor(sx, sy);
+		colors[1] = calcColor(sx + dx, sy + dy);
+		// colors[2] = calcColor(sx + dx, sy);
+		// colors[3] = calcColor(sx + dx, sy + dy);
+		vec3 color = colors[0];
+		color += colors[1];
+		// color += colors[2];
+		// color += colors[3];
+		color /= 2.0;
+		
+		
+		gl_FragColor = vec4(color, alpha);
+		
+		// vec2 a = u_a; vec2 b = u_b; vec2 c = u_c;
+		// // vec2 sabc = u_a + u_b + u_c;
+		// // vec2 ab = cmul(a, b);
+		// // vec2 abacbc = ab + cmul(a, c) + cmul(b, c);
+		// // vec2 abc = cmul(ab, c);
+		
+		// int broken = 0;
+		// vec2 x = vec2(sx, sy);
+		// float step = 0.0;
+		// float dist = 0.0;
+		// vec2 dx;
+		// for (int i = 0; i < 256; i++) {
+		// 	// vec2 xx = cmul(x, x);
+		// 	// vec2 xxx = cmul(xx, x);
+		// 	// vec2 xn = x - cdiv(xxx - cmul(sabc, xx) + cmul(abacbc, x) - abc, 3.0*xx - 2.0*cmul(sabc, x) + abacbc);
+		// 	vec2 xa = x - a;
+		// 	vec2 xb = x - b;
+		// 	vec2 xc = x - c;
+		// 	dx = cdiv(cmul(cmul(xa, xb), xc), cmul(xa, xb) + cmul(xa, xc) + cmul(xb, xc));
+		// 	vec2 xn = x - dx;
+		// 	dist += length(dx);
+		// 	x = xn;
+		// 	if (distance(x, a) < 0.01) {
+		// 		broken = 1;
+		// 		break;
+		// 	}
+		// 	if (distance(x, b) < 0.01) {
+		// 		broken = 2;
+		// 		break;
+		// 	}
+		// 	if (distance(x, c) < 0.01) {
+		// 		broken = 3;
+		// 		break;
+		// 	}
+		// 	step++;
+		// }
+		// float la = atan(dx.x, dx.y);
+		// // float cc = log(dist);
+		// float cc = 1.0 - step/20.0;
+		// vec3 colors[4];
+		// colors[0] = vec3(0.0, 0.0, 0.0);
+		// colors[1] = vec3(1.0, 0.0, 0.0);
+		// colors[2] = vec3(0.0, 1.0, 0.0);
+		// colors[3] = vec3(0.0, 0.0, 1.0);
+		// //gl_FragColor = vec4(colors[broken]*cc, 1);
+		// vec2 pxy = Position.xy;
+		// pxy = clamp((abs(pxy) - (0.95, 0.95))*20.0, 0.0, 1.0);
+		// float alpha = 1.0 - length(pxy); //(1.0 - max(abs(Position.xy), 0.0))*20.0;
+		// if (broken == 0) {
+		// 	gl_FragColor = vec4(colors[0]*cc, alpha);
+		// }
+		// if (broken == 1) {
+		// 	if (la < 0.0) cc = 1.0 - cc;
+		// 	gl_FragColor = vec4(colors[1]*cc, alpha);
+		// }
+		// if (broken == 2) {
+		// 	if (la < 0.0) cc = 1.0 - cc;
+		// 	gl_FragColor = vec4(colors[2]*cc, alpha);
+		// }
+		// if (broken == 3) {
+		// 	if (la < 0.0) cc = 1.0 - cc;
+		// 	gl_FragColor = vec4(colors[3]*cc, alpha);
+		// }
 	}
 </script>
 
@@ -304,22 +439,27 @@
 	
 	function initShaders()
 	{
-		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou", {pos: {x: 0, y: 0}, pw: 2.0})
+		progs.fatou = new QProg(wgl, "vsFatou", "fsFatou2", {
+				pos: {x: Math.random()*2 - 1.5, y: Math.random()*2 - 1}
+			})
+			.addMover('Wanderer', 'pos')
+			.addMover('MouseMover', 'pos')
+		;
+
+		progs.fatouPower = new QProg(wgl, "vsFatou", "fsFatou", {
+				pos: {x: Math.random()*2 - 1.5, y: Math.random()*2 - 1},
+				pw: Math.random()*4 + 1.5
+			})
 			.addMover('Wanderer', 'pos')
 			.addMover('MouseMover', 'pos')
 			.addMover('Wanderer1d', 'pw', {min: 1.0, max: 10.0})
 		;
 
-		// prgFatou = 
-		// prgFatou = wgl.compileProgram();
-		// prgFatou.vPosition = gl.getAttribLocation(prgFatou, "vPosition");
-		// prgFatou.uRatio = gl.getUniformLocation(prgFatou, "uRatio");
-		// prgFatou.uPos = gl.getUniformLocation(prgFatou, "uPos");
-
 		progs.newton = new QProg(wgl, "vsFatou", "fsNewton", {
 			a: {x: -0.5, y: +0.866},
 			b: {x: -0.5, y: -0.866},
 			c: {x: 1, y: 0},
+			cs: {x: canvas.width, y: canvas.height}
 		})
 			.addMover('GraviMover', {
 				a: {},
@@ -354,9 +494,7 @@
 		;
 		
 		var hash = document.location.hash.toString().replace('#', '');
-		//console.log('hash', hash, progs[hash]);
-		//the_prog = progs[hash] || progs.fatou;
-		selectProg(hash);
+		selectProg(hash, progs.fatou);
 	}
 	
 	var Uni = OO.inherit(
@@ -817,8 +955,8 @@
 		return false;
 	}
 	
-	function selectProg(pn) {
-		the_prog = progs[pn] || the_prog || progs.fatou;
+	function selectProg(pn, def) {
+		the_prog = progs[pn] || the_prog || def || progs.fatou;
 		document.location.hash = '#' + pn;
 	}
 
