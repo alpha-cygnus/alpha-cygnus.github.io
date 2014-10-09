@@ -8,18 +8,32 @@
 <script src="../lib/aa.js"></script>
 <script>
 var theRack = AA.newObj(['Rack',
-	['Osc', {t: 'triangle'}],
+	['Osc', {t: 'sawtooth'}],
+	['Osc', {t: 'sawtooth'}],
+	['Osc', {t: 'square'}],
 	['Amp'],
-	['Env', {a:0.1, d:0.5, s:0.4, r:0.8}],
+	['Amp'],
+	['Env', {a:0.3, d:0.5, s:0.4, r:0.8}],
+	['Env', {a:0, d:0.5, s:0.8, r:0.2}],
 	['Mono'],
 	['Const'],
-	['Keyboard', {p: 0.1}],
+	['Keyboard', {p: 0.05}],
 	{
-		'O1>A1': 1,
-		'A1>M1': 1,
+		'O1>A1': 0.5,
+		'O2>A1': 0.5,
+		'O3>A2': 0.5,
+		'A1>M1': 0.5,
+		'A2>M1': 0.5,
 		'E1>A1.g':1,
+		'E2>A2.g':1,
 		'K1>O1.n':1,
+		'K1>O2.n':1,
+		'K1>O3.n':1,
+		'C1>O1.n':-0.01,
+		'C1>O2.n':+0.01,
+		'C1>O3.n':-2,
 		'g:K1>E1':1,
+		'g:K1>E2':1,
 	}
 ]);
 var keysDown = {};
