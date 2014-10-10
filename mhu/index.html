@@ -6,6 +6,7 @@
 <script src="../lib/Tone.js"></script>
 <script src="../lib/oo.js"></script>
 <script src="../lib/aa.js"></script>
+<script src="../lib/handlebars-v2.0.0.js"></script>
 <script>
 var theRack = AA.newObj(['Rack',
 	['Osc', {t: 'sawtooth'}],
@@ -19,13 +20,14 @@ var theRack = AA.newObj(['Rack',
 	['Env', {a:0.3, d:0.5, s:0.4, r:0.8}],
 	['Env', {a:0, d:0.5, s:0.8, r:0.2}],
 	['Env', {min:-1, max:1, a:0.2, d:0.2, s:0.5, r:1}],
+	['Env', {a:5, d:0, s:1, r:1}],
 	['Mono'],
 	['Const'],
 	['Keyboard', {p: 0.05}],
 	{
 		'O1>F1': 0.2,
 		'O2>F1': 0.2,
-		'O3>F1': 0.2,
+		//'O3>F1': 0.2,
 		'O1>A1': 0.2,
 		'O2>A1': 0.2,
 		'O3>A2': 0.2,
@@ -34,22 +36,24 @@ var theRack = AA.newObj(['Rack',
 		'A1>M1': 0.5,
 		'A2>M1': 0.5,
 		'E1>A1.g':1,
-		'E2>A2.g':1,
-		'E3>F1.n':3,
-		'E3>F2.n':3,
+		//'E2>A2.g':1,
+		'E4>A2.g':1,
+		'E3>F1.n':36,
+		'E3>F2.n':36,
 		'K1>O1.n':1,
 		'K1>O2.n':1,
 		'K1>O3.n':1,
 		'K1>F1.n':1,
 		'K1>F2.n':1,
-		'C1>O1.n':-0.01,
-		'C1>O2.n':+0.01,
-		'C1>O3.n':-2,
-		'C1>F1.n':+2,
-		'C1>F2.n':+2,
+		'C1>O1.n':-0.1,
+		'C1>O2.n':+0.1,
+		'C1>O3.n':-24,
+		'C1>F1.n':+24,
+		'C1>F2.n':+24,
 		'g:K1>E1':1,
 		'g:K1>E2':1,
 		'g:K1>E3':1,
+		'g:K1>E4':1,
 	}
 ]);
 var keysDown = {};
@@ -112,8 +116,105 @@ $(window).on('keyup', function(e) {
 		}
 	}
 });
+
+var hbTemplates = {};
+$(function() {
+	$('.hbPartial').map(function() {
+		Handlebars.registerPartial(this.id, $(this).html());
+	});
+
+	$('script[type="text/x-hb-template"]').map(function() {
+		hbTemplates[this.id] = Handlebars.compile($(this).html());
+	});
+	
+	Handlebars.registerHelper('call', function(name) {
+		return new Handlebars.SafeString(hbTemplates[name](this));
+	});
+
+	Handlebars.registerHelper('clog', function(what) {
+		console.log(what);
+		return '';
+	});
+	Handlebars.registerHelper('callEach', function(list, name) {
+		res = [];
+		for (var i in list) {
+			console.log(list[i]);
+			res.push(hbTemplates[name](list[i]));
+		}
+		console.log(res);
+		return new Handlebars.SafeString(res.join(''));
+	});
+	Handlebars.registerHelper('connTpl', function(mtx, d0, o0, d1, i1) {
+		console.log(mtx, d0, o0, d1, i1);
+		
+		return new Handlebars.SafeString(hbTemplates['conn' + mtx.kind](mtx.getConnector(d0 + '.' + o0, d1 + '.' + i1)));
+	});
+	Handlebars.registerHelper('round', function(v, n) {
+		return new Handlebars.SafeString((Math.round(v*100)/100).toString().replace('-', '&ndash;'));
+	});
+
+	$('#devices').html(hbTemplates.aaRack(theRack));
+});
+
+
+</script>
+<script type="text/x-hb-template" id="aaRack">
+	{{#each devList}}
+		{{call 'aaDevice'}}
+	{{/each}}
+	{{#matrixAnalog}}
+		{{call 'aaMatrix'}}
+	{{/matrixAnalog}}
+	{{#matrixGate}}
+		{{call 'aaMatrix'}}
+	{{/matrixGate}}
+</script>
+<script type="text/x-hb-template" id="aaDevice">
+	<div>
+	{{name}}: {{_cls}}
+	{{#each listParam}}
+		{{call 'aaParam'}}
+	{{/each}}
+	</div>
+</script>
+<script type="text/x-hb-template" id="aaParam">
+	{{name}}={{_value}}
+</script>
+<script type="text/x-hb-template" id="aaMatrix">
+	<h2>{{kind}} {{_cls}}</h2>
+	<table class="aaMatrix">
+		<tr>
+			<th></th>
+			{{#each inList}}<th>{{device.name}}<sub>{{name}}</sub></th>{{/each}}
+		</tr>
+		{{#each outList}}
+		<tr>
+			<th>{{device.name}}<sub>{{name}}</sub></th>
+			{{#each ../inList}}<td align="center">{{ connTpl ../.. ../device.name ../name device.name name }}</td>{{/each}}
+		</tr>
+		{{/each}}
+	</table>
+</script>
+<script type="text/x-hb-template" id="inTH">
+	<th>{{name}}:{{_cls}}</th>
+</script>
+<script type="text/x-hb-template" id="connAnalog">
+	{{#if _value}}{{round _value}}{{/if}}
+</script>
+<script type="text/x-hb-template" id="connGate">
+	{{#if _value}}*{{/if}}
 </script>
 </head>
+<style>
+	.hbTemplate, .hbPartial {
+		display: none;
+	}
+	.aaMatrix tr:nth-child(2n+1) {
+		background: #DDD;
+	}
+</style>
 <body>
+	<div id="devices">
+	</div>
 </body>
 </html>	
