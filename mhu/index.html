@@ -9,13 +9,13 @@
 <script src="../lib/handlebars-v2.0.0.js"></script>
 <script>
 var theRack = AA.newObj(['Rack',
-	['Osc', {t: 'sawtooth'}],
-	['Osc', {t: 'sawtooth'}],
-	['Osc', {t: 'square'}],
+	['Osc', {type: 'sawtooth'}],
+	['Osc', {type: 'sawtooth'}],
+	['Osc', {type: 'square'}],
 	['Amp'],
 	['Amp'],
-	['Filter', {q: 15}],
-	['Filter', {q: 15}],
+	['Filter', {Q: 15}],
+	['Filter', {Q: 15}],
 	//['Filter', {q: 10}],
 	['Env', {a:0.3, d:0.5, s:0.4, r:0.8}],
 	['Env', {a:0, d:0.5, s:0.8, r:0.2}],
@@ -23,7 +23,7 @@ var theRack = AA.newObj(['Rack',
 	['Env', {a:5, d:0, s:1, r:1}],
 	['Mono'],
 	['Const'],
-	['Keyboard', {p: 0.05}],
+	['Keyboard', {pt: 0.05}],
 	{
 		'O1>F1': 0.2,
 		'O2>F1': 0.2,
@@ -75,6 +75,7 @@ var keysToNotes = {
 	79: 75,
 	48: 76,
 	80: 77,
+	219: 78, 187: 79, 221: 80,
 	
 	90: 48,
 	83: 49,
@@ -95,9 +96,8 @@ var keysToNotes = {
 	191: 64,
 };
 $(window).on('keydown', function(e) {
-	//console.log('keydown', e);
 	if (keysDown[e.keyCode]) return;
-	console.log('down', e.keyCode);
+	//console.log('down', e.keyCode);
 	keysDown[e.keyCode] = 1;
 	var n = keysToNotes[e.keyCode];
 	if (n) {
@@ -131,6 +131,10 @@ $(function() {
 		return new Handlebars.SafeString(hbTemplates[name](this));
 	});
 
+	Handlebars.registerHelper('callByCls', function(pref) {
+		return new Handlebars.SafeString(hbTemplates[pref + this._cls](this));
+	});
+
 	Handlebars.registerHelper('clog', function(what) {
 		console.log(what);
 		return '';
@@ -138,83 +142,410 @@ $(function() {
 	Handlebars.registerHelper('callEach', function(list, name) {
 		res = [];
 		for (var i in list) {
-			console.log(list[i]);
 			res.push(hbTemplates[name](list[i]));
 		}
-		console.log(res);
 		return new Handlebars.SafeString(res.join(''));
 	});
 	Handlebars.registerHelper('connTpl', function(mtx, d0, o0, d1, i1) {
-		console.log(mtx, d0, o0, d1, i1);
-		
-		return new Handlebars.SafeString(hbTemplates['conn' + mtx.kind](mtx.getConnector(d0 + '.' + o0, d1 + '.' + i1)));
+		return new Handlebars.SafeString(hbTemplates['conn' + mtx.kind]({
+			conn: mtx.getConnector(d0 + '.' + o0, d1 + '.' + i1),
+			mtx: mtx,
+			from: d0 + '.' + o0,
+			to: d1 + '.' + i1,
+		}));
+	});
+	Handlebars.registerHelper('ifeq', function(a, b, options) {
+		return (a == b) ? options.fn(this) : '';
 	});
 	Handlebars.registerHelper('round', function(v, n) {
-		return new Handlebars.SafeString((Math.round(v*100)/100).toString().replace('-', '&ndash;'));
+		return new Handlebars.SafeString(txtRound(v));
+	});
+	Handlebars.registerHelper('devName', function(name, pn) {
+		var m = name.match(/^([A-Za-z]+)(\d+)$/);
+		var sup = ''; sub = pn || '';
+		if (m) {
+			name = m[1];
+			sup = m[2];
+			//name = new Handlebars.SafeString('<span class="devName">' + m[1] + '<sup class="devIndex">' + m[2] + '</sup></span>');
+		}
+		return new Handlebars.SafeString(hbTemplates.devName({name: name, sub: sub, sup: sup}));
 	});
 
-	$('#devices').html(hbTemplates.aaRack(theRack));
+	drawTheRack();
 });
 
+function txtRound(v) {
+	return (Math.round(v*100)/100).toString().replace('-', '&ndash;');
+}
 
+function setByCode(code, v) {
+	theRack.setByCode(code, v);
+	var $av = $('#theRack .analogValue[data-code="' + code + '"]').find('.value');
+	$av.html(txtRound(v));
+	if (v) $av.removeClass('zero');
+	else $av.addClass('zero');
+	//$('#theRack .selectValue[data-code="' + code + '"]').find('.value').html(txtRound(v));
+}
+
+function drawTheRack() {
+	$rack = $('#theRack');
+	$rack.html(hbTemplates.aaRack(theRack));
+	setMC($rack.find('.analogValue')
+		.click(function() {
+			var code = $(this).data('code');
+			var p = theRack.getSetterByCode(code);
+			if (p) {
+				var v = p._get();
+				if (!v) {
+					setByCode(code, 1);
+				}
+				else if (Math.abs(v - 1) < 0.00001) {
+					setByCode(code, 0);
+				}
+			}
+		})
+		.dblclick(function() {
+			var code = $(this).data('code');
+			var p = theRack.getSetterByCode(code);
+			if (p) {
+				var v = p._get();
+				if (v) {
+					setByCode(code, 0);
+				}
+			}
+		}),
+		function down(e, d) {
+			var code = $(this).data('code');
+			//console.log('down', code, e);
+			d.code = code;
+			d.x0 = e.pageX;
+			d.y0 = e.pageY;
+			d.p = theRack.getSetterByCode(code);
+			if (d.p) {
+				d.v0 = d.p._get();
+			}
+			$(this).addClass('changing');
+		},
+		function move(e, d) {
+			//console.log('move', $(this).data('code'), d);
+			if (d.v0) {
+				dx = e.pageX - d.x0;
+				dy = d.y0 - e.pageY;
+				var v = d.v0 + Math.round(dx/5)*0.01 + Math.round(dy/5)*0.1;
+				setByCode(d.code, v);
+			}
+		},
+		function up(e, d) {
+			//console.log('up', $(this).data('code'));
+			$(this).removeClass('changing');
+		}
+	);
+	$rack.find('.selectValue').on('change', function() {
+		var $this = $(this);
+		var code = $this.data('code');
+		var v = $this.val();
+		console.log('change', code, v);
+		setByCode(code, v);
+	});
+	$rack.find('.boolValue').on('change', function() {
+		var $this = $(this);
+		var code = $this.data('code');
+		var v = this.checked ? 1 : 0;
+		console.log('change', code, v);
+		setByCode(code, v);
+	});
+}
+
+function removeDevice(name) {
+	theRack.removeDevice(theRack.getDevice(name));
+	drawTheRack();
+}
+
+function cloneDevice(name) {
+	theRack.addDevice(theRack.getDevice(name).clone());
+	drawTheRack();
+}
+
+function setMC($elem, mDown, mMove, mUp) {
+	$elem.each(function() {
+		var elem = this;
+		var $this = $(this);
+		var data = {};
+		$this.on('mousedown', function(event) {
+			var move = function(event) {
+				if (mMove) mMove.call(elem, event, data);
+				return false;
+			};
+			var up = function(event) {
+				if (mUp) mUp.call(elem, event, data);
+				$(window).off('mousemove', move);
+				$(window).off('mouseup', up);
+				return false;
+			};
+			$(window).on('mousemove', move);
+			$(window).on('mouseup', up);
+			if (mDown) mDown.call(elem, event, data);
+			return false;
+		});
+	});
+}
+
+function connAnalogMouseDown(event) {
+	var elem = this;
+	//console.log(elem);
+
+	return false;
+}
 </script>
 <script type="text/x-hb-template" id="aaRack">
+	<div class="devices">
 	{{#each devList}}
 		{{call 'aaDevice'}}
 	{{/each}}
+	<div class="clear" />
+	</div>
+	<div class="matrices">
 	{{#matrixAnalog}}
 		{{call 'aaMatrix'}}
 	{{/matrixAnalog}}
 	{{#matrixGate}}
 		{{call 'aaMatrix'}}
 	{{/matrixGate}}
-</script>
-<script type="text/x-hb-template" id="aaDevice">
-	<div>
-	{{name}}: {{_cls}}
-	{{#each listParam}}
-		{{call 'aaParam'}}
-	{{/each}}
+	<div class="clear" />
 	</div>
 </script>
-<script type="text/x-hb-template" id="aaParam">
-	{{name}}={{_value}}
-</script>
-<script type="text/x-hb-template" id="aaMatrix">
-	<h2>{{kind}} {{_cls}}</h2>
-	<table class="aaMatrix">
-		<tr>
-			<th></th>
-			{{#each inList}}<th>{{device.name}}<sub>{{name}}</sub></th>{{/each}}
-		</tr>
-		{{#each outList}}
-		<tr>
-			<th>{{device.name}}<sub>{{name}}</sub></th>
-			{{#each ../inList}}<td align="center">{{ connTpl ../.. ../device.name ../name device.name name }}</td>{{/each}}
-		</tr>
+<script type="text/x-hb-template" id="aaDevice">
+<div class="aaDevice">
+	<table>
+	<tr>
+		<th class="par devHead {{_cls}}">{{devName name ''}}</th>
+		{{#each listParam}}
+			<th class="par aaParam {{_cls}}">{{name}}</th>
 		{{/each}}
+	</tr>
+	<tr>
+		<th class="par">
+			<span class="clone btn" onclick="cloneDevice('{{name}}')">+</span>
+			<span class="remove btn" onclick="removeDevice('{{name}}')">&ndash;</span>
+		</th>
+		{{#each listParam}}
+			<td class="par aaParam {{_cls}}">{{callByCls 'aaValueOf'}}</td>
+		{{/each}}
+	</tr>
 	</table>
+</div>
+</script>
+<script type="text/x-hb-template" id="aaParamValue">
+	{{_value}}
+</script>
+
+<script type="text/x-hb-template" id="aaValueOfParamFloat">
+	<div class="paramFloat analogValue" data-code="p:{{device.name}}.{{name}}">
+		<span class="value">{{call 'valueAnalog'}}</span>
+	</div>
+</script>
+
+<script type="text/x-hb-template" id="aaValueOfParamSelect">
+	<select class="selectValue" data-code="p:{{device.name}}.{{name}}">
+		{{#values}}
+		<option value="{{this}}"{{#ifeq this ../_value}} selected="selected"{{/ifeq}}>{{this}}
+		{{/values}}
+	</select>
+</script>
+
+<script type="text/x-hb-template" id="aaMatrix">
+	<div class="aaMatrix">
+		<h2>{{kind}} {{_cls}}</h2>
+		<table>
+			<tr class="conn">
+				<th class="conn"></th>
+				{{#each inList}}<th class="conn {{_cls}}">{{devName device.name name}}</th>{{/each}}
+			</tr>
+			{{#each outList}}
+			<tr class="conn">
+				<th class="conn {{_cls}}">{{devName device.name name}}</th>
+				{{#each ../inList}}<td class="conn" align="center">{{ connTpl ../.. ../device.name ../name device.name name }}</td>{{/each}}
+				<th class="conn {{_cls}}">{{devName device.name name}}</th>
+			</tr>
+			{{/each}}
+			<tr class="conn">
+				<th class="conn"></th>
+				{{#each inList}}<th class="conn {{_cls}}">{{devName device.name name}}</th>{{/each}}
+			</tr>
+		</table>
+	</div>
 </script>
 <script type="text/x-hb-template" id="inTH">
 	<th>{{name}}:{{_cls}}</th>
 </script>
 <script type="text/x-hb-template" id="connAnalog">
-	{{#if _value}}{{round _value}}{{/if}}
+	<div class="conn analogValue" data-code="a:{{from}}>{{to}}">
+		<span class="value{{#unless conn._value}} zero{{/unless}}">{{#conn}}{{call 'valueAnalog'}}{{/conn}}</span>
+	</div>
+</script>
+<script type="text/x-hb-template" id="valueAnalog">
+	{{round _value}}
 </script>
 <script type="text/x-hb-template" id="connGate">
-	{{#if _value}}*{{/if}}
+	<input class="gate boolValue" data-code="g:{{from}}>{{to}}" type="checkbox"{{#if conn._value}}checked="checked"{{/if}}></input>
+</script>
+<script type="text/x-hb-template" id="devName">
+	<table class="devName">
+		<tr>
+			<td width="50%" rowspan="2">&nbsp;</td>
+			<td rowspan="2">{{name}}</td>
+			<td class="sup">{{sup}}</td>
+			<td width="50%" rowspan="2">&nbsp;</td>
+		</tr>
+			<td class="sub">{{#if sub}}{{sub}}{{else}}&nbsp;{{/if}}</td>
+		<tr>
+		</tr>
+	</table>
 </script>
 </head>
 <style>
 	.hbTemplate, .hbPartial {
 		display: none;
 	}
-	.aaMatrix tr:nth-child(2n+1) {
+	.aaMatrix tr.conn:nth-child(2n) {
 		background: #DDD;
+	}
+	.aaMatrix td.conn {
+		width: 32px;
+	}
+	div.aaDevice {
+		float: left;
+		border: 1px solid #444;
+		margin: 4px;
+		padding: 0px;
+	}
+	div.aaDevice > table {
+		margin: 0px;
+		border-spacing: 0;
+		border-collapse: collapse;
+	}
+	div.aaDevice td.par, div.aaDevice th.par {
+		margin: 2px;
+		padding: 0px;
+		width: 32px;
+		height: 28px;
+		vertical-align: center;
+	}
+	div.clear {
+		clear: both;
+	}
+	div.aaMatrix {
+		float: left;
+		border: 1px solid #444;
+		margin: 4px;
+	}
+	div.aaMatrix h2 {
+		background: #444;
+		color: white;
+		padding: 4px;
+		margin: 0px;
+	}
+	th.devHead {
+		background: #444;
+		color: white;
+		padding-left: 4px;
+		padding-right: 4px;
+		padding-top: 4px;
+		margin: 0px;
+	}
+
+	table.devName {
+		color: inherit;
+		padding: 0px;
+		margin: 0px;
+		border-spacing: 0;
+		border-collapse: collapse;
+		width: 100%;
+	}
+	table.devName td {
+		padding: 0px;
+		margin: 0px;
+	}
+	td.sup, td.sub {
+		font-size: 12px;
+	}
+
+	td.aaParam {
+		text-align: center;
+		width: 32px;
+	}
+	span.btn {
+		display: block;
+		float: left;
+		cursor: pointer;
+		background: #CCC;
+		border-radius: 2px;
+		width: 14px;
+		height: 14px;
+		margin-left: 1px;
+		margin-right: 1px;
+		margin-top: 0px;
+		font-size: 12px;
+	}
+	div.conn.analogValue {
+		width: 28px;
+		height: 28px;
+		border: 1px solid gray;
+		border-radius: 15px;
+		overflow: visible;
+		font-size: 12px;
+		vertical-align: center;
+		text-align: center;
+		position: relative;
+		z-index: 1;
+	}
+	div.conn.analogValue.changing {
+		background: red;
+		opacity: 0.5;
+	}
+	div.conn.analogValue .value {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		margin-left: -25%;
+		margin-top: -25%;
+	}
+	div.conn.analogValue .value.zero {
+		opacity: 0.1;
+	}
+
+	div.paramFloat.analogValue {
+		width: 28px;
+		height: 28px;
+		border: 1px solid gray;
+		border-radius: 15px;
+		overflow: visible;
+		font-size: 12px;
+		vertical-align: center;
+		text-align: center;
+		position: relative;
+		z-index: 1;
+	}
+	div.paramFloat.analogValue.changing {
+		background: red;
+		opacity: 0.5;
+	}
+	div.paramFloat.analogValue .value {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		margin-left: -25%;
+		margin-top: -25%;
+	}
+	th.InputCV, th.OutputCV {
+		color: #600;
+	}
+	th.InputAudio, th.OutputAudio {
+		color: #060;
 	}
 </style>
 <body>
-	<div id="devices">
+	<div id="theRack">
 	</div>
 </body>
-</html>	
+</html>
