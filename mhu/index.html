@@ -24,6 +24,7 @@ var theRack = AA.newObj(['Rack',
 	['Mono'],
 	['Const'],
 	['Keyboard', {pt: 0.05}],
+	['Scope'],
 	{
 		'O1>F1': 0.2,
 		'O2>F1': 0.2,
@@ -50,6 +51,7 @@ var theRack = AA.newObj(['Rack',
 		'C1>O3.n':-24,
 		'C1>F1.n':+24,
 		'C1>F2.n':+24,
+		'O1>S1':1,
 		'g:K1>E1':1,
 		'g:K1>E2':1,
 		'g:K1>E3':1,
@@ -172,6 +174,8 @@ $(function() {
 	});
 
 	drawTheRack();
+	
+	animTick();
 });
 
 function txtRound(v) {
@@ -296,6 +300,44 @@ function connAnalogMouseDown(event) {
 
 	return false;
 }
+
+var scopeBuffer;
+
+function drawScopes() {
+	var canvas = $('#cnvScopes')[0];
+	var paper = canvas.getContext('2d');
+	if (paper) {
+		paper.clearRect(0, 0, canvas.width, canvas.height);
+		for (var sn in AA.scopes) {
+			var scope = AA.scopes[sn];
+			scopeBuffer = scopeBuffer || scope.createByteBuffer();
+			var data = scopeBuffer;
+			scope.getByteScope(data);
+			paper.beginPath();
+			var i0 = 0;
+			for (var di = 1; di < data.length; di++) {
+				if (data[di - 1] < 128 && data[di] >= 128) {
+					i0 = di;
+					break;
+				}
+			}
+			paper.moveTo(0, 255 - data[i0]);
+			for (var ix = 1; ix < canvas.width * 2; ix++) {
+				paper.lineTo(ix / 2, 255 - data[ix + i0]);
+			}
+			paper.stroke();
+		}
+	}
+}
+
+var rqAnim = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+
+if (rqAnim) {
+	function animTick() {
+		rqAnim(animTick);
+		drawScopes();
+	}
+}
 </script>
 <script type="text/x-hb-template" id="aaRack">
 	<div class="devices">
@@ -311,6 +353,7 @@ function connAnalogMouseDown(event) {
 	{{#matrixGate}}
 		{{call 'aaMatrix'}}
 	{{/matrixGate}}
+	<canvas id="cnvScopes" class="aaScopes" width="512" height="256" />
 	<div class="clear" />
 	</div>
 </script>
@@ -418,6 +461,7 @@ function connAnalogMouseDown(event) {
 		border: 1px solid #444;
 		margin: 4px;
 		padding: 0px;
+		height: 60px;
 	}
 	div.aaDevice > table {
 		margin: 0px;
@@ -542,6 +586,10 @@ function connAnalogMouseDown(event) {
 	}
 	th.InputAudio, th.OutputAudio {
 		color: #060;
+	}
+	canvas.aaScopes {
+		border: 1px solid #444;
+		float: left;
 	}
 </style>
 <body>
