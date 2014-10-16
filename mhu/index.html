@@ -8,7 +8,10 @@
 <script src="../lib/aa.js"></script>
 <script src="../lib/handlebars-v2.0.0.js"></script>
 <script>
-var theRack = AA.newObj(['Rack',
+var theAppName = 'MHU-1';
+
+var theRack = null;
+var defRack = ['Rack',
 	['Osc', {type: 'sawtooth'}],
 	['Osc', {type: 'sawtooth'}],
 	['Osc', {type: 'square'}],
@@ -22,6 +25,7 @@ var theRack = AA.newObj(['Rack',
 	['Env', {min:-1, max:1, a:0.2, d:0.2, s:0.5, r:1}],
 	['Env', {a:5, d:0, s:1, r:1}],
 	['Const'],
+	['Const', {v: 24}],
 	['Keyboard', {pt: 0.05}],
 	['Scope'],
 	['Panner'],
@@ -59,7 +63,7 @@ var theRack = AA.newObj(['Rack',
 		// 'g:K1>E3':1,
 		// 'g:K1>E4':1,
 	}
-]);
+];
 var keysDown = {};
 var keysToNotes = {
 	81: 60,
@@ -189,10 +193,21 @@ $(function() {
 		}
 		return new Handlebars.SafeString(hbTemplates.devName({name: name, sub: sub, sup: sup}));
 	});
+	
+	var rack = defRack;
+	var str = localStorage.getItem(theAppName + '.theRack');
+	if (str) {
+		rack = JSON.parse(str);
+	}
+	theRack = AA.newObj(rack);
 
 	drawTheRack();
 	
 	animTick();
+	
+	setInterval(function autoSave() {
+		saveAppState();
+	}, 2000);
 });
 
 function txtRound(v) {
@@ -298,7 +313,7 @@ function drawTheRack() {
 				if (analogText == '-') analogText = '-1';
 				if (analogText.match(/^\./)) analogText = '0' + analogText;
 				var v = parseFloat(analogText, 10);
-				console.log('up', analogText, v);
+				//console.log('up', analogText, v);
 				if (!isNaN(v)) {
 					setByCode(d.code, v);
 					analogChanged = true;
@@ -404,10 +419,15 @@ if (rqAnim) {
 		drawScopes();
 	}
 }
+
+function saveAppState() {
+	localStorage.setItem(theAppName + '.theRack', JSON.stringify(theRack.getJSON()));
+}
+
 </script>
 <script type="text/x-hb-template" id="aaRack">
 	<div class="devices">
-	{{#each devList}}
+	{{#each devSort}}
 		{{call 'aaDevice'}}
 	{{/each}}
 	<div class="clear" />
@@ -424,20 +444,20 @@ if (rqAnim) {
 	</div>
 </script>
 <script type="text/x-hb-template" id="aaDevice">
-<div class="aaDevice">
+<div class="aaDevice" data-code="{{code}}">
 	<table>
 	<tr>
-		<th class="par devHead {{_cls}}">{{devName name}}</th>
-		{{#each listParam}}
+		<th class="par devHead {{_cls}}">{{devName dev.name}}</th>
+		{{#each dev.listParam}}
 			<th class="par aaParam {{_cls}}">{{name}}</th>
 		{{/each}}
 	</tr>
 	<tr>
 		<th class="par">
-			<span class="clone btn" onclick="cloneDevice('{{name}}')">+</span>
-			<span class="remove btn" onclick="removeDevice('{{name}}')">&ndash;</span>
+			<span class="clone btn" onclick="cloneDevice('{{code}}')">+</span>
+			<span class="remove btn" onclick="removeDevice('{{code}}')">&ndash;</span>
 		</th>
-		{{#each listParam}}
+		{{#each dev.listParam}}
 			<td class="par aaParam {{_cls}}">{{callByCls 'aaValueOf'}}</td>
 		{{/each}}
 	</tr>
