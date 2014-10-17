@@ -64,6 +64,27 @@ var defRack = ['Rack',
 		// 'g:K1>E4':1,
 	}
 ];
+
+var devPresets = [
+	{_cls: 'Osc', name: 'sin', params: {type: 'sine'}},
+	{_cls: 'Osc', name: 'saw', params: {type: 'sawtooth'}},
+	{_cls: 'Osc', name: 'tri', params: {type: 'triangle'}},
+	{_cls: 'Osc', name: 'sqr', params: {type: 'square'}},
+	{_cls: 'Amp', name: 'amp'},
+	{_cls: 'Filter', name: 'flt'},
+	{_cls: 'Env', name: 'envAmp', params: {a:0.3, d:0.5, s:0.4, r:0.8}},
+	{_cls: 'Env', name: 'envFlt', params: {min:-1, max:1, a:0.2, d:0.2, s:0, r:1}},
+	{_cls: 'Const', name: '1'},
+	{_cls: 'Const', name: '12', params: {v: 12}},
+	{_cls: 'Keyboard', name: 'kbd', params: {pt: 0.05}},
+	{_cls: 'Scope', name: 'scp'},
+	{_cls: 'Master', name: 'out', params: {v: 0.3}},
+];
+
+var defPresets = {
+	daBass1: ["Rack",["Osc","O1",{"type":"sawtooth"}],["Osc","O2",{"type":"sawtooth"}],["Osc","O3",{"type":"square"}],["Osc","O4",{"type":"sawtooth"}],["Osc","O5",{"type":"sawtooth"}],["Osc","O6",{"type":"sawtooth"}],["Osc","O7",{"type":"sawtooth"}],["Env","E1",{"a":0.3,"d":0.5,"s":0.9,"r":0.8,"min":0,"max":1}],["Env","E2",{"a":0.01,"d":0.5,"s":1,"r":1,"min":0,"max":1}],["Env","E3",{"a":1,"d":2,"s":0,"r":1,"min":-2,"max":2}],["Env","E4",{"a":5,"d":0,"s":1,"r":1,"min":0,"max":1}],["Filter","F1",{"Q":15,"s":"12db"}],["Filter","F2",{"Q":5.54,"s":"12db"}],["Amp","A1"],["Amp","A2"],["Const","C1",{"v":1}],["Const","C2",{"v":12}],["Keyboard","K1",{"pt":0.05}],["Panner","P1"],["Master","M1",{"v":0.3}],["Scope","S1"],{"a:O1.o>E1.i":1,"a:O2.o>E1.i":1,"a:O3.o>E1.i":1,"a:O4.o>E1.i":1,"a:O5.o>E1.i":1,"a:O6.o>E1.i":1,"a:E3.o>F1.n":3,"a:F1.o>E2.i":1,"a:E1.o>F2.i":1,"a:E3.o>F2.n":2.59,"a:F2.o>A2.i":1,"a:C1.o>O1.n":0.05,"a:C1.o>O2.n":-0.05,"a:C1.o>O4.n":-0.1,"a:C1.o>O5.n":0.1,"a:C1.o>O6.n":0.15,"a:C1.o>O7.n":-0.15,"a:C1.o>E4.i":1,"a:C1.o>A2.g":0.4,"a:C2.o>O1.n":-1,"a:C2.o>O2.n":-1,"a:C2.o>O3.n":-2,"a:C2.o>O4.n":-1,"a:C2.o>O5.n":-1,"a:C2.o>O6.n":-1,"a:C2.o>O7.n":-1,"a:C2.o>E3.i":1,"a:K1.o>O1.n":1,"a:K1.o>O2.n":1,"a:K1.o>O3.n":1,"a:K1.o>O4.n":1,"a:K1.o>O5.n":1,"a:K1.o>O6.n":1,"a:K1.o>O7.n":1,"a:E2.o>M1.m":1,"a:F2.o>M1.m":1,"a:A2.o>S1.i":1,"g:K1.g>E1.g":1,"g:K1.g>E2.g":1,"g:K1.g>E3.g":1,"g:K1.g>E4.g":1}]
+};
+
 var keysDown = {};
 var keysToNotes = {
 	81: 60,
@@ -76,14 +97,14 @@ var keysToNotes = {
 	84: 67,
 	54: 68,
 	89: 69,
-	55: 71,
-	85: 72,
-	73: 73,
-	57: 74,
-	79: 75,
-	48: 76,
-	80: 77,
-	219: 78, 187: 79, 221: 80,
+	55: 70,
+	85: 71,
+	73: 72,
+	57: 73,
+	79: 74,
+	48: 75,
+	80: 76,
+	219: 77, 187: 78, 221: 79,
 	
 	90: 48,
 	83: 49,
@@ -208,6 +229,8 @@ $(function() {
 	setInterval(function autoSave() {
 		saveAppState();
 	}, 2000);
+	
+	$('#theDevPresets').html(hbTemplates.devPresets(devPresets));
 });
 
 function txtRound(v) {
@@ -351,6 +374,12 @@ function cloneDevice(name) {
 	drawTheRack();
 }
 
+function addDeviceFromPreset(i) {
+	var dp = devPresets[i];
+	theRack.addDevice([dp._cls, dp.params || {}]);
+	drawTheRack();
+}
+
 function setMC($elem, mDown, mMove, mUp) {
 	$elem.each(function() {
 		var elem = this;
@@ -424,6 +453,21 @@ function saveAppState() {
 	localStorage.setItem(theAppName + '.theRack', JSON.stringify(theRack.getJSON()));
 }
 
+</script>
+<script type="text/x-hb-template" id="devPresets">
+	<div class="devPresets">
+	{{#each this}}
+		<table>
+		<tr>
+			<th class="par">
+				<span class="clone btn" onclick="addDeviceFromPreset({{@index}})">+</span>
+			</th>
+			<th class="devPresetName {{_cls}}">{{name}}</th>
+		</tr>
+		</table>
+	</div>
+	{{/each}}
+	</div>
 </script>
 <script type="text/x-hb-template" id="aaRack">
 	<div class="devices">
@@ -730,7 +774,16 @@ function saveAppState() {
 	}
 </style>
 <body>
-	<div id="theRack">
-	</div>
+	<table width="100%">
+		<tr>
+			<td width="100%">
+				<div id="theRack">
+				</div>
+			</td>
+			<td valign="top">
+				<div id="theDevPresets">
+				</div>
+			</td>
+		</tr>
 </body>
 </html>
