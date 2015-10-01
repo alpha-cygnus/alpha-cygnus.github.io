@@ -298,7 +298,62 @@
 		}
 	}
 	
+	function showField() {
+		$('td.cell').html('&nbsp;');
+		for (let i in theField) {
+			$(`#cell_${i}`).html(`<b>${theField[i]}</b>`);
+		}
+	}
+	
+	$(function() {
+		let $divField = $('#field');
+		let $tbl = $('<table>').appendTo($divField);
+		for (var iy = 0; iy < FH; iy++) {
+			let $tr = $('<tr>').appendTo($tbl);
+			for (var ix = 0; ix < FW; ix++) {
+				let loc = ix + FW*iy;
+				let $td = $(`<td id="cell_${loc}" class="cell">`)
+					.click(function() {
+						$('.selected').removeClass('selected');
+						$(this).addClass('selected');
+					})
+					.appendTo($tr).html('&nbsp;');
+			}
+		}
+		showField();
+	})
+	$(document).on('keypress', function(k) {
+		console.log(k);
+		var $td = $('.cell.selected');
+		if ($td.length > 0) {
+			var td = $td[0];
+			var loc = td.id.split('_')[1];
+			var c = String.fromCharCode(k.charCode).toUpperCase();
+			if (c === ' ') {
+				delete theField[loc];
+			} else {
+				theField[loc] = c;
+			}
+			showField();
+		}
+	})
 </script>
+<style>
+#field td {
+	width: 20px;
+	height: 20px;
+	border: 1px solid;
+	padding: 4px;
+	text-align: center;
+}
+#field td:hover {
+	background: yellow;
+}
+#field td.selected, #field td.selected:hover {
+	background: red;
+}
+</style>
 <body>
+	<div id="field" />
 </body>
 </html>
