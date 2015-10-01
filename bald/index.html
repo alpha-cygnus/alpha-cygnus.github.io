@@ -1,0 +1,304 @@
+<html>
+<head>
+<meta charset="utf-8"> 
+<title>ballld</title>
+<script src="../lib/jquery-2.1.1.js"></script>
+<script id="word_rus" src="word_rus.txt" type="text/plain"></script>
+<script>
+	"use strict";
+	var WORDS = [];
+	$.get('word_rus.txt', function(data) {
+		window.WORDS = data.split(/\s+/).map(w => w.toUpperCase());
+		init();
+		
+	});
+	class WI {
+		constructor(k) {
+			this.i = {};
+			this.k = k;
+			this.leaf = true;
+			this.count = 0;
+		}
+		put(k) {
+			var res = this.i[k];
+			if (!res) {
+				this.i[k] = res = new WI(k);
+				this.leaf = false;
+				this.count++;
+			}
+			return res;
+		}
+		*[Symbol.iterator]() {
+			for (let k in this.i) {
+				yield this.i[k];
+			}
+		}
+		*rnd() {
+			let ks = Object.keys(this.i).sort((a,b) => Math.random()*2 - 1);
+			for (let k of ks) {
+				yield this.i[k];
+			}
+		}
+		a() {
+			return Object.keys(this.i);
+		}
+	};
+	var theWI = new WI();
+	function init() {
+		for (let w of WORDS) {
+			let wi = theWI;
+			for (let c of w) {
+				if (c == 'Ё') c = 'Е';
+				wi = wi.put(c);
+			}
+			wi.put('');
+		}
+		console.log(theWI);
+	}
+	function gen_word(wi) {
+		wi = wi || theWI;
+		let a = wi.a();
+		if (a.length <= 0) return '';
+		let c = a[Math.floor(Math.random()*a.length)];
+		return c + gen_word(wi.put(c));
+	}
+	function * ggw(wi) {
+		wi = wi || theWI;
+		let wis = [...wi];
+		let sub = wis[Math.floor(Math.random()*wi.count)];
+		yield sub.k;
+		if (sub.leaf) return true;
+		yield * ggw(sub);
+	}
+	function * find_words(wi, fld) {
+		wi = wi || theWI;
+		fld = fld;
+	}
+	
+	
+	function * range(from, to, step) {
+		step = step || 1;
+		for (let i = from; (typeof to == 'undefined' ? true : i < to); i += step) {
+			yield i;
+		}
+	}
+	function * take(count, iterable) {
+		let i = 0;
+		for (let item of iterable) {
+			if (i < count) {
+				yield item;
+			}
+			i++;
+			if (i >= count) break;
+		}
+	}
+	function * skip(count, iterable) {
+		let i = 0;
+		for (let item of iterable) {
+			if (i >= count) {
+				yield item;
+			}
+			i++;
+		}
+	}
+	function * iterate(iterable) {
+		for (let item of iterable) {
+			yield item;
+		}
+	}
+	function * zip(itera, iterb) {
+		iterb = iterate(iterb);
+		for (let ia of itera) {
+			let nxtb = iterb.next();
+			if (nxtb.done) {
+				return [ia, nxtb.value];
+			}
+			yield [ia, nxtb.value];
+		}
+	}
+	function * filter(func, iterable) {
+		for (let item of iterable) {
+			if (func(item)) {
+				yield item;
+			}
+		}
+	}
+	function * map(func, iterable) {
+		for (let item of iterable) {
+			yield func(item);
+		}
+	}
+	
+	class StringAccum {
+		constructor(value) {
+			this.value = value || '';
+		}
+		next(v) {
+			if (v == "") {
+				return { done: true, value: this.value }
+			} else {
+				return { value: new StringAccum(this.value + v) }
+			}
+		}
+	}
+	
+	function * gen_words(wi, accum) {
+		wi = wi || theWI;
+		accum = accum || new StringAccum();
+		for (let sub of wi.rnd()) {
+			let nxt = accum.next(sub.k);
+			if (nxt.done) {
+				yield nxt.value;
+			} else {
+				yield * gen_words(sub, nxt.value);
+			}
+		}
+	}
+	
+	class TestDirector {
+		constructor(prev, wi) {
+			this.accum = '';
+			if (prev) {
+				this.accum = prev.accum + wi.k;
+			}
+		}
+		*dirs() {
+			yield {
+				filter: () => true,
+				move: (wi) => {
+					if (wi.k === '') {
+						return {
+							reached: true,
+							result: this.accum,
+						}
+					} else {
+						return {
+							next: new TestDirector(this, wi),
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	function * gen_words_dir(director, wi) {
+		director = director || new TestDirector();
+		wi = wi || theWI;
+		let dirs = [...director.dirs()];
+		for (let dir of dirs) {
+			let rnds = [...wi.rnd()];
+			let filtered = rnds.filter(dir.filter);
+			for (let sub of filtered) {
+				let dest = dir.move(sub);
+				if (dest.reached) {
+					if (dest.result) yield dest.result;
+				} else {
+					yield * gen_words_dir(dest.next, sub);
+				}
+			}
+		}
+	}
+
+	var FW = 5;
+	var FH = 5;
+	
+	var theField = {10: 'Л', 11: 'О', 12: 'Й', 13: 'О', 14: 'Л'};
+	
+	class FieldDirector {
+		constructor(prev, wi, dir) {
+			if (prev) {
+				this.field = Object.create(prev.field);
+				this.locked = Object.create(prev.locked);
+				this.filled = prev.filled;
+				this.loc = dir.loc;
+				this.path = prev.path.concat([dir.loc]);
+				this.locked[dir.loc] = true;
+				if (!this.field[dir.loc]) {
+					this.filled = 1;
+					this.field[dir.loc] = wi.k;
+					for (let loc of range(0, FH*FW)) {
+						if (!this.field[loc]) this.locked[loc] = true; // lock all empty
+					}
+				}
+				this.accum = prev.accum + wi.k;
+			} else {
+				this.field = theField;
+				this.locked = {};
+				this.loc = -1;
+				this.accum = '';
+				this.path = [];
+			}
+		}
+		avail(wi, loc) {
+			if (this.locked[loc]) return false;
+			if (this.field[loc]) {
+				return this.field[loc] == wi.k;
+			}
+			return true;
+		}
+		makeDir(loc) {
+			let director = this;
+			return {
+				director,
+				loc,
+				filter(wi) {
+					if (wi.k == '') return false;
+					return director.avail(wi, loc);
+				},
+				move(wi) {
+					//if (wi.k == '') return { reached: true, result: director.filled ? director : null }
+					return {
+						next: new FieldDirector(director, wi, this)
+					}
+				}
+			}
+		}
+		makeEndDir(loc) {
+			let director = this;
+			return {
+				director,
+				loc,
+				filter(wi) {
+					if (wi.k == '') return true;
+					return false;
+				},
+				move(wi) {
+					//if (wi.k == '')
+					return { reached: true, result: director.filled ? director : null }
+					// return {
+					// 	next: new FieldDirector(director, wi, this)
+					// }
+				}
+			}
+		}
+		*dirs() {
+			let director = this;
+			if (director.loc < 0) {
+				for (let loc of range(0, FH*FW)) {
+					yield director.makeDir(loc);
+				}
+				return;
+			}
+			let lx = director.loc % FW;
+			let ly = (director.loc - lx)/FW;
+			
+			for (let dxy of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+				let dx = dxy[0]; let dy = dxy[1];
+				let nlx = lx + dx;
+				let nly = ly + dy;
+				if (nlx < 0) continue;
+				if (nlx >= FW) continue;
+				if (nly < 0) continue;
+				if (nly >= FH) continue;
+				let loc = nlx + nly*FW;
+				if (director.locked[loc]) continue;
+				yield director.makeDir(loc);
+			}
+			yield director.makeEndDir(director.loc);
+		}
+	}
+	
+</script>
+<body>
+</body>
+</html>
