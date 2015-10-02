@@ -202,7 +202,7 @@
 	var FW = 5;
 	var FH = 5;
 	
-	var theField = {10: 'Л', 11: 'О', 12: 'Й', 13: 'О', 14: 'Л'};
+	var theField = {10: 'Б', 11: 'А', 12: 'Л', 13: 'Д', 14: 'А'};
 	
 	class FieldDirector {
 		constructor(prev, wi, dir) {
@@ -298,9 +298,10 @@
 		}
 	}
 	
-	function showField() {
+	function showField(field) {
+		field = field || theField;
 		$('td.cell').html('&nbsp;');
-		for (let i in theField) {
+		for (let i in field) {
 			$(`#cell_${i}`).html(`<b>${theField[i]}</b>`);
 		}
 	}
@@ -313,18 +314,68 @@
 			for (var ix = 0; ix < FW; ix++) {
 				let loc = ix + FW*iy;
 				let $td = $(`<td id="cell_${loc}" class="cell">`)
-					.click(function() {
-						$('.selected').removeClass('selected');
-						$(this).addClass('selected');
+					// .click(function() {
+					// 	$('.selected').removeClass('selected');
+					// 	$(this).addClass('selected');
+					// })
+					.hover(function() {
+						$(this).addClass('hover');
+					}, function() {
+						$(this).removeClass('hover');
 					})
 					.appendTo($tr).html('&nbsp;');
 			}
 		}
 		showField();
+		$('#btnFind').click(function() {
+			var results = [...
+				map(f=>[f.accum, ...f.path].join(','),
+					filter(f=>f.accum.length>0,
+						gen_words_dir(new FieldDirector())
+					)
+				)
+			].sort((b,a)=>a.split(',').length - b.split(',').length);
+			let $list = $('<ul>').appendTo($('#results').empty());
+			for (let res of results) {
+				let $li = $('<li class="res">').html(res.split(',')[0]).data('res', res).appendTo($list);
+				$li
+					.click(function() {
+						let txt = $(this).data('res');
+						let res = $(this).data('res').split(',');
+						let word = res[0];
+						let locs = res.slice(1);
+						for (let cl of zip(word, locs)) {
+							let c = cl[0];
+							let loc = cl[1];
+							theField[loc] = c;
+						}
+						$('td.cell').removeClass('hl');
+						showField();
+						$('#results').empty();
+					})
+					.hover(function() {
+						let res = $(this).data('res').split(',');
+						let word = res[0];
+						let locs = res.slice(1);
+						for (let cl of zip(word, locs)) {
+							let c = cl[0];
+							let loc = cl[1];
+							let $cell = $(`#cell_${loc}`);
+							$cell.addClass('hl');
+							if (!theField[loc]) {
+								$cell.html(`<i>${c}</i>`);
+							}
+						}
+					}, function() {
+						$('td.cell').removeClass('hl');
+						showField();
+					})
+			}
+		});
 	})
 	$(document).on('keypress', function(k) {
 		console.log(k);
-		var $td = $('.cell.selected');
+		var $td = $('.cell.hover');
 		if ($td.length > 0) {
 			var td = $td[0];
 			var loc = td.id.split('_')[1];
@@ -346,14 +397,34 @@
 	padding: 4px;
 	text-align: center;
 }
-#field td:hover {
+#field td.hover {
 	background: yellow;
 }
-#field td.selected, #field td.selected:hover {
+#field td.selected, #field td.selected.hover {
 	background: red;
+}
+#field td.hl, #field td.hl.hover {
+	background: yellow;
+}
+#results {
+	height: 300px;
+	overflow-y: auto;
+}
+li.res:hover {
+	background: yellow;
 }
 </style>
 <body>
-	<div id="field" />
+	<table>
+		<tr>
+			<td valign="top">
+				<div id="field" />
+			</td>
+			<td valign="top">
+				<input type="button" id="btnFind" value="Find 'em"/>
+				<div id="results" />
+			</td>
+		</tr>
+	</table>
 </body>
 </html>
