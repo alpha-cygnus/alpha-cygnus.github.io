@@ -1,3 +1,5 @@
+#-- basic
+
 Osc {
 	AIN freq, detune
 	AOUT main
@@ -7,31 +9,26 @@ Env {
 	AIN(1) input
 	AOUT main
 	PIN trigger
-	PIN(0.1) attack
-	PIN(0.2) decay
-	PIN(0.5) sustain
-	PIN(1) release
+	PIN attack, decay, sustain, release
+	@init attack = 0.1, decay = 0.2, sustain = 0.5, release = 1
 }
 
 Gain {
 	AIN in, gain
 	AOUT out
+	@init gain=1
 }
 
 Delay {
 	AIN in
 	AOUT out
 	AIN time
+	@init time = 0.3
 }
 
 MainOut {
 	AIN in
 	AIN volume
-}
-
-Pot {
-	POUT value
-	PSTR caption
 }
 
 P2A {
@@ -43,6 +40,75 @@ A2P {
 	AIN in
 	POUT out
 	PIN rate
+}
+
+Keyboard {
+	MIDIOUT out
+}
+
+Notes2CV {
+	MIDIIN in
+	AOUT cv
+	PIN priority # min, max, first, last
+}
+
+Notes2Arpeggio {
+	MIDIIN in
+	PIN trigger
+	AOUT cv
+}
+
+Notes2Trigger {
+	MIDIIN in
+	POUT trigger
+	PIN mode # first, retrig
+}
+
+CC2CV {
+	MIDIIN in
+	PIN cc
+	AOUT cv
+}
+
+PW2CV { #pitch wheel
+	MIDIN in
+	AOUT cv
+}
+
+# -- UI
+Pot {
+	POUT value
+	@init caption
+}
+
+Slider {
+	POUT value
+	@init pos
+}
+
+DropDown {
+	POUT value
+	@init values
+}
+
+UIKeyboard {
+	MIDIOUT out
+}
+
+Scope {
+	AIN in0, in1, in2, in3
+}
+
+# -- Automation
+LFO {
+	PIN freq
+	PIN form # sine, triangle, pulse
+	PIN skew
+	POUT out
+}
+
+Sequence {
+	PIN trigger
 }
 
 # -----------------------------
