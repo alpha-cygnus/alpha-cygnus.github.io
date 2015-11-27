@@ -1,0 +1,47 @@
+Osc {
+	{ var o = $context.createOscillator(); o.start(); return o; } osc
+	IN freq -> [frequency]osc
+	IN detune -> [detune]osc
+	IN octave -(12)> [detune]osc
+	osc -> OUT main
+	IN type -> [type]osc
+}
+
+Env {
+	{} env
+	IN input -> env
+	env -> OUT output
+	IN attack -> [attack]env
+	IN decay -> [decay]env
+	IN sustain -> [sustain]env
+	IN release -> [release]env
+}
+
+Gain {
+	{ var g = $context.createGain(); return g; } g
+	IN -> g -> OUT
+	IN gain -> [gain]g
+}
+
+Delay {
+	{ return $context.createDelay(); } delay
+	IN -> delay -> OUT
+	IN time -> [delayTime]delay
+}
+
+MainOut {
+	{ return $context.destination; } dest
+	IN -(g)-> dest
+	IN volume -> g
+}
+
+Echo {
+	IN in -> Delay d -(gwet)-> OUT out
+	in -(gdry)-> out
+	IN dry -> gdry
+	IN wet -> gwet
+}
+
+Pot {
+	
+}

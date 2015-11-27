@@ -1,0 +1,55 @@
+Osc {
+	AIN freq, detune
+	AOUT main
+}
+
+Env {
+	AIN(1) input
+	AOUT main
+	PIN trigger
+	PIN(0.1) attack
+	PIN(0.2) decay
+	PIN(0.5) sustain
+	PIN(1) release
+}
+
+Gain {
+	AIN in, gain
+	AOUT out
+}
+
+Delay {
+	AIN in
+	AOUT out
+	AIN time
+}
+
+MainOut {
+	AIN in
+	AIN volume
+}
+
+Pot {
+	POUT value
+	PSTR caption
+}
+
+P2A {
+	PIN in
+	AOUT out
+}
+
+A2P {
+	AIN in
+	POUT out
+	PIN rate
+}
+
+# -----------------------------
+
+Echo {
+	AIN in -> Delay d -> Gain gwet -> AOUT out
+	in -> Gain gdry -> out
+	AIN dry -> [gain]gdry
+	AIN wet -> [gain]gwet
+}
