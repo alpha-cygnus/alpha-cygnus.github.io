@@ -101,6 +101,7 @@ Scope {
 
 # -- Automation
 LFO {
+	PIN trigger
 	PIN freq
 	PIN form # sine, triangle, pulse
 	PIN skew
@@ -109,6 +110,12 @@ LFO {
 
 Sequence {
 	PIN trigger
+	POUT value
+}
+
+Curve {
+	PIN trigger
+	AOUT out
 }
 
 # -----------------------------
