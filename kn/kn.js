@@ -156,6 +156,7 @@ class PINOUT extends INOUT {
 	plug(obs) {
 		let id = _getObjId(obs);
 		this.pool.plug(obs.map(v => ({v, id})));
+		return this;
 	}
 	get out() {
 		return this.outs;
@@ -182,6 +183,7 @@ class POUT extends PINOUT {
 		this.plug(stream);
 		state.stream = stream;
 		obj[field + 'State'] = state;
+		return this;
 	}
 }
 
@@ -189,6 +191,7 @@ class PIN extends PINOUT {
 	consume(onValue, onTick) {
 		this.out.onValue(onValue);
 		if (onTick) _fabrique.onConsume(onTick);
+		return this;
 	}
 }
 
@@ -285,9 +288,12 @@ class PINLogger {
 }
 
 class AINOUT extends INOUT {
-	constructor() {
+	constructor(def) {
 		super();
 		this.gain = Tone.context.createGain();
+		if (typeof def != 'undefined') {
+			this.gain.gain.value = def;
+		}
 	}
 	plug(out) {
 		out.connect(this.gain);
@@ -298,11 +304,28 @@ class AINOUT extends INOUT {
 }
 
 class AOUT extends AINOUT {
-	
+	constructor(def) {
+		super(def);
+	}
 }
 
 class AIN extends AINOUT {
-	
+	constructor(def) {
+		super(1);
+		if (def) {
+			this.cg = Tone.context.createGain();
+			Tone.getConstant().connect(this.cg);
+			this.cg.gain.value = def;
+			this.cg.connect(this.gain);
+		}
+	}
+	plug(out) {
+		if (this.cg) {
+			this.cg.disconnect();
+			this.cg = null;
+		}
+		out.connect(this.gain);
+	}
 }
 
 const M2NModes = ['max', 'min', 'last', 'first'];
@@ -361,6 +384,7 @@ class Note2CV {
 		this.inp = new PIN();
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
+		this.pgain.value = 0;
 		this.constant = Tone.getConstant();
 		this.constant.connect(this.out.gain);
 
@@ -386,6 +410,7 @@ class P2A {
 		this.inp = new PIN();
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
+		this.pgain.value = 0;
 		this.constant = Tone.getConstant();
 		this.constant.connect(this.out.gain);
 
@@ -397,6 +422,54 @@ class P2A {
 				this.pgain.setValueAtTime(this.value, t);
 			}
 		);
+	}
+}
+
+class Env {
+	constructor(a, d, s, r, mn, mx) {
+		this.trigger = new PIN();
+		this.a = a || 0.1;
+		this.d = d || 0.5;
+		this.s = s || 0.5;
+		this.r = r || 1;
+		this.mn = mn || 0;
+		this.mx = mx || 1;
+		// this.attack = new PIN(this.a).consume(v => this.a = v);
+		// this.decay = new PIN(this.d).consume(v => this.d = v);
+		// this.sustain = new PIN(this.s).consume(v => this.s = v);
+		// this.release = new PIN(this.r).consume(v => this.r = v);
+		// this.min = new PIN(this.mn).consume(v => this.mn = v);
+		// this.max = new PIN(this.mx).consume(v => this.mx = v);
+		this.inp = new AIN(1);
+		this.out = new AOUT();
+		this.inp.out.connect(this.out.gain);
+		this.pgain = this.out.gain.gain;
+		this.pgain.value = 0;
+
+		this.last = 0;
+		this.trigger.consume(
+			v => {
+				this.value = v;
+			},
+			t => {
+				if (this.value > 0.5 && this.last < 0.5) {
+					this.doAttack(t);
+				}
+				else if (this.value < 0.5 && this.last > 0.5) {
+					this.doRelease(t);
+				}
+				this.last = this.value;
+			}
+		);
+	}
+	doAttack(time) {
+		this.pgain.cancelScheduledValues(time);
+		this.pgain.setTargetAtTime(this.mx, time, this.a / 4);
+		this.pgain.setTargetAtTime(this.s, time + this.a, this.d / 4);
+	}
+	doRelease(time) {
+		this.pgain.cancelScheduledValues(time);
+		this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
 	}
 }
 
