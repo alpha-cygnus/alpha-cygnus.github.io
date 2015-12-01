@@ -1,9 +1,30 @@
-function PIN (def) {
-	
+function getObjId(obj) {
+
+}
+
+function PIN(def) {
+	var pool = Kefir.pool();
+	this.plug = (obs) => {
+		pool.plug(obs.map(v => {id: getObjId(obs), v: v}));
+	}
+	this.last = { v: def };
+	this.out = pool
+		.scan((acc, next) => { acc[next.id] = next.v; return acc; }, {})
+		.map(acc => {
+			var v = 0;
+			var t;
+			for (var id in acc) {
+				v += acc[id].v;
+				t = acc[id].t;
+			}
+			var this.last = {t: t, v: v};
+			return this.last;
+		})
+		.toProperty(() => this.last);
 }
 
 
-function PConn(a, b, w) {
+function PConn(a, b) {
 	b.plug(a);
 }
 

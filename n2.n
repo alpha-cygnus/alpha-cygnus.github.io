@@ -75,6 +75,20 @@ PW2CV { #pitch wheel
 	AOUT cv
 }
 
+SnH {
+	PIN trigger
+	AIN in
+	POUT value
+}
+
+Clock {
+	POUT ticker
+}
+
+Clock(50) _clock
+Keyboard _keyboard
+MainOut _out
+
 # -- UI
 Pot {
 	POUT value
@@ -98,6 +112,7 @@ UIKeyboard {
 Scope {
 	AIN in0, in1, in2, in3
 }
+
 
 # -- Automation
 LFO {
@@ -126,3 +141,5 @@ Echo {
 	AIN dry -> [gain]gdry
 	AIN wet -> [gain]gwet
 }
+
+
