@@ -13,23 +13,28 @@ $(() => {
 	var m2n = new Midi2Note();
 	var n2c = new Note2CV();
 	var m2t = new Note2Trigger();
-	var p2a = new P2A();
+	//var p2a = new P2A();
+	var env = new Env();
 
 	var sin = Tone.context.createOscillator();
+	sin.type = 'square';
 	var g = Tone.context.createGain();
 	
 	kbd.out.connect(m2n.inp);
 	kbd.out.connect(m2t.inp);
 	m2n.out.connect(n2c.inp);
-	m2t.out.connect(p2a.inp);
+	//m2t.out.connect(p2a.inp);
+	m2t.out.connect(env.trigger);
 
-	g.gain.value = 0;
-	g.connect(Tone.context.destination);
+	// g.gain.value = 0;
+	// g.connect(Tone.context.destination);
 	
 	n2c.out.out.connect(sin.detune);
-	p2a.out.out.connect(g.gain);
+	//p2a.out.out.connect(g.gain);
+	//env.out.out.connect(g.gain);
 
-	sin.connect(g);
+	env.inp.plug(sin);
+	env.out.out.connect(Tone.context.destination);
 	sin.start();
 	
 	var pl = new PINLogger();
