@@ -386,6 +386,7 @@ class P2A {
 		this.inp = new PIN();
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
+		this.pgain.value = 0;
 		this.constant = Tone.getConstant();
 		this.constant.connect(this.out.gain);
 
