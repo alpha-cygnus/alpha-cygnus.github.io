@@ -165,13 +165,14 @@ class PINOUT extends INOUT {
 }
 
 class POUT extends PINOUT {
-	produceFromField(obj, field) {
+	produceFromField(obj, field, onBeforeProduce) {
 		var state = {
 			last: undefined
 		};
 		this[field + 'Stream'];
 		var stream = Kefir.stream(emitter => {
-			var fun = () => {
+			var fun = (t) => {
+				if (onBeforeProduce) onBeforeProduce(t);
 				if (obj[field] !== state.last) {
 					emitter.emit(obj[field]);
 					state.last = obj[field];
@@ -188,6 +189,11 @@ class POUT extends PINOUT {
 }
 
 class PIN extends PINOUT {
+	toProp(obj, pn) {
+		this.out.onValue(v => {
+			obj[pn] = v;
+		});
+	}
 	consume(onValue, onTick) {
 		this.out.onValue(onValue);
 		if (onTick) _fabrique.onConsume(onTick);
@@ -265,17 +271,19 @@ class PINLogger {
 		this.inp = new PIN();
 		this.value = 0;
 		this.shown = false;
-		this.inp.consume(v => {
-			this.value = v;
-			this.shown = false;
-			this.logged = false;
-		},
-		t => {
-			if (!this.logged) {
-				console.log('PINLogger', this.value, Math.round((t - Tone.context.currentTime)*1000));
-				this.logged = true;
+		this.inp.consume(
+			v => {
+				this.value = v;
+				this.shown = false;
+				this.logged = false;
+			},
+			t => {
+				if (!this.logged) {
+					console.log('PINLogger', this.value, Math.round((t - Tone.context.currentTime)*1000));
+					this.logged = true;
+				}
 			}
-		});
+		);
 	}
 	attachUI(elem) {
 		_fabrique.onConsume(t => {
@@ -307,6 +315,10 @@ class AOUT extends AINOUT {
 	constructor(def) {
 		super(def);
 	}
+	bind(node) {
+		node.connect(this.gain);
+		return this;
+	}
 }
 
 class AIN extends AINOUT {
@@ -325,13 +337,48 @@ class AIN extends AINOUT {
 			this.cg = null;
 		}
 		out.connect(this.gain);
+		return this;
+	}
+	bind(node) {
+		this.gain.connect(node);
+		return this;
+	}
+}
+
+class Basis {
+	isTriggered(fn, onFunc, offFunc) {
+		fn = fn || 'trigger';
+		this[fn] = new PIN();
+		var state = {
+			on: 0,
+			wasOn: 0,
+		};
+		this[fn + 'State'] = state;
+		this[fn].consume(
+			v => {
+				state.on = v;
+			},
+			t => {
+				if (state.on > 0.5 && state.wasOn < 0.5) {
+					onFunc(t);
+				}
+				else if (state.on < 0.5 && state.wasOn > 0.5) {
+					offFunc(t);
+				}
+				state.wasOn = state.on;
+			}
+		)
+	}
+	isConsumer(fun) {
+		_fabrique.onConsume(fun);
 	}
 }
 
 const M2NModes = ['max', 'min', 'last', 'first'];
 
-class Midi2Note {
+class Midi2Note extends Basis {
 	constructor(mode) {
+		super();
 		this.smode = M2NModes[mode];
 		this.inp = new MIDIIN();
 		this.out = new POUT();
@@ -425,9 +472,9 @@ class P2A {
 	}
 }
 
-class Env {
+class Env extends Basis {
 	constructor(a, d, s, r, mn, mx) {
-		this.trigger = new PIN();
+		super();
 		this.a = a || 0.1;
 		this.d = d || 0.5;
 		this.s = s || 0.5;
@@ -445,22 +492,25 @@ class Env {
 		this.inp.out.connect(this.out.gain);
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
-
-		this.last = 0;
-		this.trigger.consume(
-			v => {
-				this.value = v;
-			},
-			t => {
-				if (this.value > 0.5 && this.last < 0.5) {
-					this.doAttack(t);
-				}
-				else if (this.value < 0.5 && this.last > 0.5) {
-					this.doRelease(t);
-				}
-				this.last = this.value;
-			}
-		);
+		
+		// this.trigger = new PIN();
+		
+		// this.last = 0;
+		// this.trigger.consume(
+		// 	v => {
+		// 		this.value = v;
+		// 	},
+		// 	t => {
+		// 		if (this.value > 0.5 && this.last < 0.5) {
+		// 			this.doAttack(t);
+		// 		}
+		// 		else if (this.value < 0.5 && this.last > 0.5) {
+		// 			this.doRelease(t);
+		// 		}
+		// 		this.last = this.value;
+		// 	}
+		// );
+		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
 	}
 	doAttack(time) {
 		this.pgain.cancelScheduledValues(time);
@@ -473,3 +523,122 @@ class Env {
 	}
 }
 
+const OSCTypes = ['sine', 'square', 'sawtooth', 'triangle'];
+
+class Osc {
+	constructor(type) {
+		//this.trigger = new PIN(1);
+		this.stype = OSCTypes[type || 0];
+		this.osc = Tone.context.createOscillator();
+		this.osc.type = this.stype;
+		this.out = new AOUT().bind(this.osc);
+		this.freq = new AIN().bind(this.osc.frequency);
+		this.detune = new AIN().bind(this.osc.detune);
+		
+		this.osc.start();
+
+		// this.on = 0;
+		// this.wasOn = 0;
+		// this.trigger.consume(
+		// 	v => {
+		// 		this.on = v;
+		// 	},
+		// 	t => {
+		// 		if (this.on > 0.5 && this.wasOn < 0.5) {
+		// 			this.triggerOn(t);
+		// 		}
+		// 		else if (this.on < 0.5 && this.wasOn > 0.5) {
+		// 			this.triggerOff(t);
+		// 		}
+		// 	}
+		// )
+	}
+}
+
+class Dest {
+	constructor() {
+		this.inp = new AIN().bind(Tone.context.destination);
+		this._volume = this.inp.gain.gain;
+	}
+}
+
+class Gain {
+	constructor(def) {
+		this.g = Tone.context.createGain();
+		this.g.gain.value = 0;
+		this.inp = new AIN().bind(this.g);
+		this.gain = new AIN(def).bind(this.g.gain);
+		this.out = new AOUT().bind(this.g);
+	}
+}
+
+class Const {
+	constructor(v) {
+		this.c = Tone.getConstant();
+		this.g = Tone.context.createGain();
+		this.g.gain.value = v;
+		this.c.connect(this.g);
+		this.out = new AOUT().bind(this.g);
+	}
+}
+
+const FLTTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
+
+class Filter {
+	constructor(type) {
+		this.stype = FLTTypes[type || 0];
+		this.flt = Tone.context.createBiquadFilter();
+		this.flt.type = this.stype;
+		this.out = new AOUT().bind(this.flt);
+		this.inp = new AIN().bind(this.flt);
+		this.freq = new AIN(440).bind(this.flt.frequency);
+		this.detune = new AIN().bind(this.flt.detune);
+		this.q = new AIN().bind(this.flt.Q);
+	}
+}
+
+class Clock {
+	constructor() {
+		this.value = 0;
+		this.out = new POUT();
+		this.out.produceFromField(this, 'value', (t) => {
+			if (this.value < 0.5) this.value = 1;
+			else this.value = 0;
+		});
+	}
+}
+
+class Sequence extends Basis {
+	// x..x..x.
+	// 10010010
+	// 1,0,0,1,0,0,1,0
+	constructor(s) {
+		super();
+		if ($.isArray(s)) this.values = [];
+		else if (typeof s == 'string') {
+			if (s.match(/^-?\d+(.\d+)?(,-?\d+)+(.\d+)?$/)) {
+				this.values = s.split(',').map(ss => parseFloat(ss));
+			}
+			if (s.match(/^[x.01]+$/)) {
+				this.values = s.split('').map(ss => ss == 'x' || ss == '1' ? 1 : 0);
+			}
+		}
+		this.clock = new PIN();
+		this.out = new POUT();
+		this.out.plug(
+			this.clock.out
+				.scan((state, v) => {
+					if (state.on < 0.5 && v > 0.5) {
+						state.on = 1; state.step = (state.step + 1) % this.values.length;
+					}
+					else if (state.on > 0.5 && v < 0.5) {
+						state.on = 0;
+					}
+					return state;
+				}, {on: 0, step: -1})
+				.map(state => {
+					return this.values[state.step];
+				})
+		);
+	}
+}
