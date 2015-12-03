@@ -19,21 +19,22 @@ $(() => {
 	var dg = new Gain(0.12);
 	var flt = new Filter();
 	var clk = new Clock();
-	var seq = new Sequence('xxxx....x...x...xx..');
+	var seq = new Sequence('x.x.');
 	var nseq = new Sequence('0,4,7');
-	var div = new Sequence('xx..'); // div 6
+	var div = new Sequence('x.'); // div 6
 	
 	window.mainVolume = dest._volume;
 	
 	kbd.out.connect(m2n.inp);
 	kbd.out.connect(m2t.inp);
 	m2n.out.connect(n2c.inp);
-	seq.out.connect(nseq.clock);
+	clk.out.connect(nseq.clock);
 	nseq.out.connect(n2c.inp);
 	m2t.out.connect(env.trigger);
-	clk.out.connect(div.clock);
-	div.out.connect(seq.clock);
-	seq.out.connect(env.trigger);
+	//clk.out.connect(div.clock);
+	clk.out.connect(seq.clock);
+	//seq.out.connect(env.trigger);
+	m2t.out.connect(env.trigger);
 	
 	n2c.out.connect(osc.detune);
 	osc.out.connect(env.inp);
@@ -41,7 +42,7 @@ $(() => {
 	dg.out.connect(dest.inp);
 	
 	var pl = new PINLogger();
-	nseq.out.connect(pl.inp);
+	//nseq.out.connect(pl.inp);
 	pl.attachUI($('#PINLogger'));
 	//nt.stream.log();
 	var prevT = 0; //Tone.context.currentTime;
@@ -67,12 +68,149 @@ function StopItAll() {
 	window.stopped = 1;
 	window.mainVolume.value = 0;
 }
-	
+
 </script>
+<style>
+	.kbd {
+		border: 0px solid black;
+		-webkit-user-select: none;
+	}
+	.kbd div, .kbd span {
+		margin: 0;
+		padding: 0;
+	}
+	.kbd span {
+		display: inline-block
+	}
+	.kbd .k span.label {
+		margin-top: 80px;
+	}
+	.kbd .w span.label {
+		margin-top: 30px;
+	}
+	.kbd span.k {
+		vertical-align: top;
+	}
+	.kbd span.w {
+		vertical-align: top;
+	}
+	.kbd .w {
+		background-color: white;
+		transition: background-color 0.5s;
+	}
+	.kbd .w.is-down {
+		background-color: pink;
+		transition: background-color 0s;
+	}
+	.kbd .k.is-down {
+		background-color: blue;
+	}
+	.kbd .k {
+		background-color: black;
+		width: 24px;
+		border-bottom-left-radius: 4px;
+		border-bottom-right-radius: 4px;
+		text-align: center;
+		color: white;
+	}
+	.kbd .w.br {
+		border-right: 1px solid black;
+	}
+	.kbd .w.bl {
+		border-left: 1px solid black;
+	}
+	.kbd .w.up {
+		width: 24px; /* 12*2 - 2 */
+	}
+	.kbd .w.up.bl, .kbd .w.up.br {
+		width: 23px; /* 12*2 - 2 */
+	}
+	.kbd .w.up.bl.br {
+		width: 38px;
+	}
+	.kbd .w.up.w1 {
+		width: 22px; /* 11*2 - 2 */
+	}
+	.kbd .w1.up.bl, .kbd .w1.up.br {
+		width: 21px; /* 12*2 - 2 */
+	}
+	.kbd .w.down {
+		border-bottom: 1px solid black;
+		width: 38px; /* 20 * 2 - 2 */
+		border-bottom-left-radius: 4px;
+		border-bottom-right-radius: 4px;
+		text-align: center;
+	}
+	.kbd .up {
+		height: 100px;
+		border-top: 2px solid black;
+	}
+	.kbd .down {
+		height: 50px;
+	}
+	
+	#PANIC {
+		font-size: 48px;
+		float: right;
+	}
+</style>
 </head>
 <body>
 	<h1 onclick="console.log(1)">KaNa</h1>
-	<div id="PINLogger"></div>
-	<button onclick="StopItAll()">PANIC</button>
+	<!--div id="PINLogger"></div-->
+	<button onclick="StopItAll()" id="PANIC">PANIC</button>
+	<div class="kbd">
+		<div class="kbd-up">
+			<span 
+			data-note="48" class="w up bl">&nbsp;</span><span 
+			data-note="49" class="k up"><span class="label">s</span></span><span 
+			data-note="50" class="w up">&nbsp;</span><span 
+			data-note="51" class="k up"><span class="label">d</span></span><span
+			data-note="52" class="w up br">&nbsp;</span><span 
+			data-note="53" class="w up w1 bl">&nbsp;</span><span 
+			data-note="54" class="k up"><span class="label">g</span></span><span 
+			data-note="55" class="w up w1">&nbsp;</span><span 
+			data-note="56" class="k up"><span class="label">h</span></span><span 
+			data-note="57" class="w up w1">&nbsp;</span><span 
+			data-note="58" class="k up"><span class="label">j</span></span><span 
+			data-note="59" class="w up w1 br">&nbsp;</span><span 
+			data-note="60" class="w up bl">&nbsp;</span><span 
+			data-note="61" class="k up"><span class="label">2</span></span><span 
+			data-note="62" class="w up">&nbsp;</span><span 
+			data-note="63" class="k up"><span class="label">3</span></span><span
+			data-note="64" class="w up br">&nbsp;</span><span 
+			data-note="65" class="w up w1 bl">&nbsp;</span><span 
+			data-note="66" class="k up"><span class="label">5</span></span><span 
+			data-note="67" class="w up w1">&nbsp;</span><span 
+			data-note="68" class="k up"><span class="label">6</span></span><span 
+			data-note="69" class="w up w1">&nbsp;</span><span 
+			data-note="70" class="k up"><span class="label">7</span></span><span 
+			data-note="71" class="w up w1 br">&nbsp;</span><span 
+			data-note="72" class="w up bl">&nbsp;</span><span 
+			data-note="73" class="k up"><span class="label">9</span></span><span 
+			data-note="74" class="w up">&nbsp;</span><span 
+			data-note="75" class="k up"><span class="label">0</span></span><span
+			data-note="76" class="w up br">&nbsp;</span>
+		<div class="kbd-down">
+			<span
+			data-note="48" class="w down bl br"><span class="label">z</span></span><span 
+			data-note="50" class="w down bl br"><span class="label">x</span></span><span 
+			data-note="52" class="w down bl br"><span class="label">c</span></span><span 
+			data-note="53" class="w down bl br"><span class="label">v</span></span><span 
+			data-note="55" class="w down bl br"><span class="label">b</span></span><span 
+			data-note="57" class="w down bl br"><span class="label">n</span></span><span 
+			data-note="59" class="w down bl br"><span class="label">m</span></span><span
+			data-note="60" class="w down bl br"><span class="label">q</span></span><span 
+			data-note="62" class="w down bl br"><span class="label">w</span></span><span 
+			data-note="64" class="w down bl br"><span class="label">e</span></span><span 
+			data-note="65" class="w down bl br"><span class="label">r</span></span><span 
+			data-note="67" class="w down bl br"><span class="label">t</span></span><span 
+			data-note="69" class="w down bl br"><span class="label">y</span></span><span 
+			data-note="71" class="w down bl br"><span class="label">u</span></span><span
+			data-note="72" class="w down bl br"><span class="label">i</span></span><span 
+			data-note="74" class="w down bl br"><span class="label">o</span></span><span 
+			data-note="76" class="w down bl br"><span class="label">p</span></span>
+		</div>
+	</div>
 </body>
 </html>

@@ -57,10 +57,26 @@ const _getObjId = (function() {
 })();
 
 $(function() {
-	var kbdFilter = e => !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
-	let kdns = Kefir.fromEvents(window, 'keydown').filter(kbdFilter).map(e => ({code: e.keyCode, down: true}));
-	let kups = Kefir.fromEvents(window, 'keyup').filter(kbdFilter).map(e => ({code: e.keyCode, down: false}));
-	window.keyNoteStream = Kefir.merge([kdns, kups]);
+	var keyFilter = e => !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
+	var kdns = Kefir.fromEvents(window, 'keydown').filter(keyFilter).map(e => ({note: keysToNotes[e.keyCode], down: true}));
+	var kups = Kefir.fromEvents(window, 'keyup').filter(keyFilter).map(e => ({note: keysToNotes[e.keyCode], down: false}));
+	var uiKbdDown = Kefir.fromEvents($('.kbd span[data-note]'), 'mousedown').map(e => {
+		//$('.kbd span[data-note=' + note + ']').addClass('is-down');
+		return {note: $(e.target).data('note'), down: true};
+	});
+	var uiKbdUp = Kefir.fromEvents($('.kbd span[data-note]'), 'mouseup').map(e => {
+		//$('.kbd span[data-note=' + note + ']').removeClass('is-down');
+		return {note: $(e.target).data('note'), down: false};
+	});
+	window.keyNoteStream = Kefir.merge([kdns, kups, uiKbdUp, uiKbdDown]);
+	window.keyNoteStream.onValue(v => {
+		if (v.down) {
+			$('.kbd span[data-note=' + v.note + ']').addClass('is-down');
+		} else {
+			$('.kbd span[data-note=' + v.note + ']').removeClass('is-down');
+		}
+	})
+	window.keyNoteStream.log();
 });
 
 class Keyboard {
@@ -69,15 +85,10 @@ class Keyboard {
 		this.octave = 0;
 		var noteOns = {};
 		this.noteOns = noteOns;
-		window.keyNoteStream.scan((state, v) => {
-			if (note === +1) this.octave++;
-			else if (note === -1) this.octave--;
-			return this;
-		}, this);
 		
 		var midis = window.keyNoteStream
 			.filter(v => {
-				var note = keysToNotes[v.code];
+				var note = v.note;
 				if (v.down && noteOns[note]) return false;
 				if (note > 1) return true;
 				if (!v.down) {
@@ -88,7 +99,7 @@ class Keyboard {
 				}
 			})
 			.map(v => {
-				var note = keysToNotes[v.code];
+				var note = v.note;
 				if (v.down) noteOns[note] = 1;
 				else delete noteOns[note];
 				return {
