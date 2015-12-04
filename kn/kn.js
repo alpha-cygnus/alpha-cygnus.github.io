@@ -60,14 +60,22 @@ $(function() {
 	var keyFilter = e => !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
 	var kdns = Kefir.fromEvents(window, 'keydown').filter(keyFilter).map(e => ({note: keysToNotes[e.keyCode], down: true}));
 	var kups = Kefir.fromEvents(window, 'keyup').filter(keyFilter).map(e => ({note: keysToNotes[e.keyCode], down: false}));
+	var notePressed = null;
 	var uiKbdDown = Kefir.fromEvents($('.kbd span[data-note]'), 'mousedown').map(e => {
-		//$('.kbd span[data-note=' + note + ']').addClass('is-down');
-		return {note: $(e.target).data('note'), down: true};
+		notePressed = $(e.target).data('note');
+		return {note: notePressed, down: true};
 	});
-	var uiKbdUp = Kefir.fromEvents($('.kbd span[data-note]'), 'mouseup').map(e => {
-		//$('.kbd span[data-note=' + note + ']').removeClass('is-down');
-		return {note: $(e.target).data('note'), down: false};
-	});
+	// var uiKbdUp = Kefir.fromEvents($('.kbd span[data-note]'), 'mouseup').map(e => {
+	// 	return {note: notePressed, down: false};
+	// });
+	var uiKbdUp = Kefir.fromEvents(document, 'mouseup').map(e => {
+		if (notePressed) {
+			var res = {note: notePressed, down: false};
+			notePressed = false;
+			return res;
+		}
+	}).filter(e => e);
+	//uiKbdUp.log();
 	window.keyNoteStream = Kefir.merge([kdns, kups, uiKbdUp, uiKbdDown]);
 	window.keyNoteStream.onValue(v => {
 		if (v.down) {
@@ -76,7 +84,7 @@ $(function() {
 			$('.kbd span[data-note=' + v.note + ']').removeClass('is-down');
 		}
 	})
-	window.keyNoteStream.log();
+	//window.keyNoteStream.log();
 });
 
 class Keyboard {

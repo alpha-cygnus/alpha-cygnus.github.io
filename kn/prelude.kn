@@ -1,0 +1,147 @@
+#-- basic
+
+Osc {
+	AIN freq, detune
+	AOUT main
+}
+
+Env {
+	AIN(1) input
+	AOUT main
+	PIN trigger
+	PIN attack, decay, sustain, release
+	#@init attack = 0.1, decay = 0.2, sustain = 0.5, release = 1
+}
+
+Gain {
+	AIN in, gain
+	AOUT out
+	#@init gain=1
+}
+
+Delay {
+	AIN in
+	AOUT out
+	AIN time
+	#@init time = 0.3
+}
+
+MainOut {
+	AIN in
+	AIN volume
+}
+
+P2A {
+	PIN in
+	AOUT out
+}
+
+A2P {
+	AIN in
+	POUT out
+	PIN rate
+}
+
+Keyboard {
+	MIDIOUT out
+}
+
+Notes2CV {
+	MIDIIN in
+	AOUT cv
+	PIN priority # min, max, first, last
+}
+
+Notes2Arpeggio {
+	MIDIIN in
+	PIN trigger
+	AOUT cv
+	PIN octaves
+	PIN mode # up, down, updown, downup, random
+}
+
+Notes2Trigger {
+	MIDIIN in
+	POUT trigger
+	PIN mode # first, retrig
+}
+
+CC2CV {
+	MIDIIN in
+	PIN cc
+	AOUT cv
+}
+
+PW2CV { #pitch wheel
+	MIDIN in
+	AOUT cv
+}
+
+SnH {
+	PIN trigger
+	AIN in
+	POUT value
+}
+
+Clock {
+	POUT ticker
+}
+
+Clock(50) _clock
+Keyboard _keyboard
+MainOut _out
+
+# -- UI
+Pot {
+	POUT value
+	#@init caption
+}
+
+Slider {
+	POUT value
+	#@init pos
+}
+
+DropDown {
+	POUT value
+	#@init values
+}
+
+UIKeyboard {
+	MIDIOUT out
+}
+
+Scope {
+	AIN in0, in1, in2, in3
+}
+
+
+# -- Automation
+LFO {
+	PIN trigger
+	PIN freq
+	PIN form # sine, triangle, pulse
+	PIN skew
+	POUT out
+}
+
+Sequence {
+	PIN trigger
+	POUT value
+}
+
+Curve {
+	PIN trigger
+	AOUT out
+}
+
+# -----------------------------
+
+Echo {
+	AIN in -> Delay d -> Gain gwet -> AOUT out
+	in -> Gain gdry -> out
+	AIN dry -> [gain]gdry
+	AIN wet -> [gain]gwet
+}
+
+

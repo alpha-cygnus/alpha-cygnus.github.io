@@ -4,10 +4,32 @@
 <script src="../lib/jquery-2.1.1.js"></script>
 <script src="../lib/Tone.js"></script>
 <script src="../lib/kefir.js"></script>
+<script src="../lib/peg-0.9.0.js"></script>
 <script src="kn.js"></script>
+<script>
+</script>
 <script>
 "use strict";
 $(() => {
+	Kefir.zip([
+		Kefir.fromPromise($.get('kn.pegjs')),
+		Kefir.fromPromise($.get('prelude.kn')),
+	]).onValue(data => {
+		var grammar = data[0];
+		var prelude = data[1];
+		console.log('Loaded:', grammar.length, prelude.length);
+		var parser = PEG.buildParser(grammar);
+		try {
+			var parsedPrelude = parser.parse(prelude);
+		} catch(e) {
+			console.log(e);
+			console.log('Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message);
+		}
+		console.log(JSON.stringify(parsedPrelude[0], null));
+	});
+
+
+
 	//window.keyNoteStream.log('kns');
 	var kbd = new Keyboard();
 	var m2n = new Midi2Note();
@@ -81,6 +103,9 @@ function StopItAll() {
 	}
 	.kbd span {
 		display: inline-block
+	}
+	.kbd span.label {
+		pointer-events: none;
 	}
 	.kbd .k span.label {
 		margin-top: 80px;
@@ -212,5 +237,7 @@ function StopItAll() {
 			data-note="76" class="w down bl br"><span class="label">p</span></span>
 		</div>
 	</div>
+	<input type="range" min="-3" max="5" step="1" value="1" />
+	<input type="number" />
 </body>
 </html>
