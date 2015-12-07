@@ -14,9 +14,11 @@ $(() => {
 	Kefir.zip([
 		Kefir.fromPromise($.get('kn.pegjs')),
 		Kefir.fromPromise($.get('prelude.kn')),
+		Kefir.fromPromise($.get('overture.kn')),
 	]).onValue(data => {
 		var grammar = data[0];
 		var prelude = data[1];
+		var overture = data[2];
 		console.log('Loaded:', grammar.length, prelude.length);
 		var parser = PEG.buildParser(grammar);
 		try {
@@ -26,6 +28,28 @@ $(() => {
 			console.log('Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message);
 		}
 		console.log(JSON.stringify(parsedPrelude[0], null));
+		for (var c in knClasses) {
+			if (c === knMainClass) continue;
+			var cls = knClasses[c];
+			cls.__internal = true;
+		}
+		try {
+			var parsedOverture = parser.parse(overture);
+		} catch(e) {
+			console.log(e);
+			console.log('Error parsing overture at', e.location.start.line + ':' + e.location.start.column + ':', e.message);
+		}
+		for (var c in knClasses) {
+			var cls = knClasses[c];
+			if (cls.__internal) continue;
+			console.log('// ' + c);
+			var src = knCompile(cls);
+			console.log(src);
+			var cc = eval(src);
+			console.log(cc);
+			window[c] = cc;
+		}
+
 	});
 
 

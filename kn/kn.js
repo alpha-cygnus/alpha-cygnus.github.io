@@ -591,6 +591,16 @@ class Gain {
 	}
 }
 
+class Delay {
+	constructor(def) {
+		this.d = Tone.context.createDelay();
+		this.d.delayTime.value = 0;
+		this.inp = new AIN().bind(this.d);
+		this.time = new AIN(def).bind(this.d.delayTime);
+		this.out = new AOUT().bind(this.d);
+	}
+}
+
 class Const {
 	constructor(v) {
 		this.c = Tone.getConstant();
@@ -660,4 +670,46 @@ class Sequence extends Basis {
 				})
 		);
 	}
+}
+
+class KNBase extends Basis {
+
+}
+
+var knClasses = {}
+
+var knNewClass = function newCls(name) {
+	var c = { name: name, nodes: {}, links: {} };
+	knClasses[name] = c;
+	return c;
+}
+
+const knMainClass = '__main';
+knNewClass(knMainClass);
+
+function knCompile(cls) {
+	var res = [`class ${cls.name} extends KNBase {`];
+	res.push('\tconstructor() {');
+	res.push('\t\tsuper();');
+	for (var nn in cls.nodes) {
+		var t = cls.nodes[nn];
+		var ps = t.params;
+		res.push(`\t\tthis.${nn} = new ${t.type}(${ps.join(', ')});`);
+		if (t.name) {
+			res.push(`\t\tthis.${nn}.name = '${t.name}';`);
+		}
+		if (t.title) {
+			res.push(`\t\tthis.${nn}.title = ${t.title};`);
+		}
+		for (var na in t.opts) {
+			res.push(`\t\tthis.${nn}.${na} = ${t.opts[na]};`);
+		}
+	}
+	for (var ln in cls.links) {
+		var li = cls.links[ln];
+		res.push(`\t\tthis.${li.n0}.${li.e0}.connect(this.${li.n1}.${li.e1});`);
+	}
+	res.push('\t}');
+	res.push('}');
+	return res.join('\n');
 }
