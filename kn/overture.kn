@@ -1,19 +1,28 @@
-Clock(50) _clock
-Keyboard _keyboard
-MainOut _out
-
-# -----------------------------
-
 Echo {
-	AIN inp "input" -> Delay d -> Gain gwet -> AOUT out
-	inp -> Gain gdry -> out
+	AIN inp -> Delay d -> Gain gwet -> inp -> Gain gdry -> AOUT out
 	AIN(0.5) dry -> [gain]gdry
 	AIN(0.5) wet -> [gain]gwet
-	AIN(0.5) delay -> d.time
+	AIN(0.5) time -> [time]d
 }
 
+TestSynth {
+	MIDIIN inp -> Midi2Trigger trig, Midi2Note(2) note
+	note -> Note2CV ->[detune] Osc(2) o1, o2, o3 -> Filter flt -> Env(0.01, 0.3, 0.5, 1) ampEnv -> AOUT out
+	Env(0.8, 0.3, 3000, 0.5, 30, 10000) fltEnv -> [freq]flt
+	trig ->[trigger] ampEnv, fltEnv
+	15 ->[detune] o1
+	-15 ->[detune] o2
+	
+}
 
-Seq(Ab A# A-1 A-3)
-Seq(x..x.x.x.)
-Seq('01010101')
+MainOut {
+	AIN inp -> Dest dest, AOUT out
+}
+
+Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> Pan pan -> MainOut theMainOut
+
+0.3 -> [freq]Osc panLfo -> Gain(0.5) ->[pan]pan
+theKeyboard -> Midi2Trigger ->[trigger] panLfo
+
+#{| v < 0 ? v : 0 }
 
