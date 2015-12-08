@@ -1,12 +1,3 @@
-Echo0 {
-	AIN inp -> Delay d -> Gain gwet -> AOUT out
-	inp -> Gain gdry -> out
-	out -> Gain gfb -> inp
-	AIN(0.5) dry -> [gain]gdry
-	AIN(0.5) wet -> [gain]gwet
-	AIN(0.5) time -> [time]d
-	AIN(0.3) fb -> [gain]gfb
-}
 
 Echo {
 	AIN inp -> Delay d -> Gain gwet -> inp -> Gain gdry -> AOUT out
@@ -17,11 +8,11 @@ Echo {
 
 TestSynth {
 	MIDIIN inp -> Midi2Trigger trig, Midi2Note(2) note
-	note -> Note2CV ->[detune] Osc(1) o1, o2, o3 -> Filter flt -> Env(0.01, 0.3, 0.5, 0.5) ampEnv -> AOUT out
-	Env(0.03, 0.3, 3000, 1, 300, 10000) fltEnv -> [freq]flt
+	note -> Note2CV ->[detune] Osc(2) o1, o2, o3 -> Filter flt -> Env(0.01, 0.3, 0.5, 1) ampEnv -> AOUT out
+	Env(0.8, 0.3, 3000, 0.5, 30, 10000) fltEnv -> [freq]flt
 	trig ->[trigger] ampEnv, fltEnv
-	5 ->[detune] o1
-	-5 ->[detune] o2
+	15 ->[detune] o1
+	-15 ->[detune] o2
 	
 }
 
@@ -31,4 +22,8 @@ MainOut {
 
 Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> Pan pan -> MainOut theMainOut
 
-0.5 -> [freq]Osc panLfo ->[pan]pan
+0.3 -> [freq]Osc panLfo -> Gain(0.5) ->[pan]pan
+theKeyboard -> Midi2Trigger ->[trigger] panLfo
+
+#{| v < 0 ? v : 0 }
+

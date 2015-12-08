@@ -91,7 +91,7 @@ $(function() {
 class Basis {
 	isTriggered(fn, onFunc, offFunc) {
 		fn = fn || 'trigger';
-		this[fn] = new PIN();
+		if (!this[fn]) this[fn] = new PIN();
 		var state = {
 			on: 0,
 			wasOn: 0,
@@ -204,8 +204,13 @@ class PINOUT extends INOUT {
 				return state;
 			}, {})
 			.map(state => {
-				var v = 0;
-				for (var id in state) v += state[id];
+				var v = def;
+				var first = 1;
+				for (var id in state) {
+					if (first) v = 0;
+					first = 0;
+					v += state[id];
+				}
 				this.value = v;
 				return v;
 			})
@@ -596,12 +601,12 @@ class Env extends Basis {
 		this.r = r || 1;
 		this.mn = mn || 0;
 		this.mx = mx || 1;
-		// this.attack = new PIN(this.a).consume(v => this.a = v);
-		// this.decay = new PIN(this.d).consume(v => this.d = v);
-		// this.sustain = new PIN(this.s).consume(v => this.s = v);
-		// this.release = new PIN(this.r).consume(v => this.r = v);
-		// this.min = new PIN(this.mn).consume(v => this.mn = v);
-		// this.max = new PIN(this.mx).consume(v => this.mx = v);
+		this.attack = new PIN(this.a).onValue(v => this.a = v);
+		this.decay = new PIN(this.d).onValue(v => this.d = v);
+		this.sustain = new PIN(this.s).onValue(v => this.s = v);
+		this.release = new PIN(this.r).onValue(v => this.r = v);
+		this.min = new PIN(this.mn).onValue(v => this.mn = v);
+		this.max = new PIN(this.mx).onValue(v => this.mx = v);
 		this.inp = new AIN(1);
 		this.out = new AOUT();
 		this.inp.gain.connect(this.out.gain);
@@ -626,15 +631,20 @@ const OSCTypes = ['sine', 'square', 'sawtooth', 'triangle'];
 class Osc extends Basis {
 	constructor(type) {
 		super();
-		//this.trigger = new PIN(1);
+		this.trigger = new PIN(1);
 		this.stype = OSCTypes[type || 0];
 		this.osc = null;
 		this.out = new AOUT();
 		this.freq = new AIN(440);
 		this.detune = new AIN();
 		this.makeOsc();
+		this.isTriggered('trigger', t => {
+			this.killOsc(t);
+			this.makeOsc(t);
+		}, t => t);
+		
 	}
-	makeOsc() {
+	makeOsc(t) {
 		if (this.osc) return this.osc;
 		this.osc = Tone.context.createOscillator();
 		this.osc.type = this.stype;
@@ -645,7 +655,7 @@ class Osc extends Basis {
 		this.osc.start();
 		return this.osc;
 	}
-	killOsc() {
+	killOsc(t) {
 		if (!this.osc) return this.osc;
 		this.osc.stop();
 		this.out.unbind(this.osc);
