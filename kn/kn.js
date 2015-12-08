@@ -123,14 +123,14 @@ class Keyboard {
 }
 
 class INOUT {
-	plug(obs) {
-		throw 'Define plug!';
+	get inp() {
+		return this;
 	}
 	get out() {
-		throw 'Define out!';
+		return this;
 	}
-	connect(inout) {
-		inout.plug(this.out);
+	connectTo(inout) {
+		throw 'Define connectTo';
 	}
 }
 
@@ -142,7 +142,13 @@ class MIDIINOUT extends INOUT {
 	plug(obs) {
 		this.pool.plug(obs);
 	}
-	get out() {
+	connectTo(inout) {
+		inout.plug(this.stream);
+	}
+	onValue(onVal) {
+		this.stream.onValue(onVal);
+	}
+	get stream() {
 		return this.pool;
 	}
 }
@@ -155,6 +161,7 @@ class MIDIIN extends MIDIINOUT {
 	
 }
 
+// P(arametric/rocessing) IN/OUT
 class PINOUT extends INOUT {
 	constructor(def) {
 		super();
@@ -178,10 +185,12 @@ class PINOUT extends INOUT {
 		this.pool.plug(obs.map(v => ({v, id})));
 		return this;
 	}
-	get out() {
+	connectTo(inout) {
+		inout.plug(this.stream);
+	}
+	get stream() {
 		return this.outs;
 	}
-	
 }
 
 class POUT extends PINOUT {
@@ -214,107 +223,17 @@ class PIN extends PINOUT {
 			obj[pn] = v;
 		});
 	}
-	consume(onValue, onTick) {
-		this.out.onValue(onValue);
-		if (onTick) _fabrique.onConsume(onTick);
-		return this;
+	onValue(onVal) {
+		this.outs.onValue(onVal);
 	}
+	// consume(onVal, onTick) {
+	// 	this.onValue(onVal);
+	// 	if (onTick) _fabrique.onConsume(onTick);
+	// 	return this;
+	// }
 }
 
-const _fabrique = (function() {
-	var producers = {};
-	function onProduce(fun) {
-		let id = _getObjId(fun);
-		producers[id] = fun;
-		console.log('on producer', id);
-	}
-	function offProduce(fun) {
-		let id = _getObjId(fun);
-		delete producers[id];
-		console.log('off producer', id);
-	}
-	var consumers = {};
-	function onConsume(fun) {
-		let id = _getObjId(fun);
-		consumers[id] = fun;
-	}
-	function offConsume(fun) {
-		let id = _getObjId(fun);
-		delete consumers[id];
-	}
-	function doProduce(t) {
-		for (let id in producers) {
-			producers[id](t);
-		}
-	}
-	function doConsume(t) {
-		for (let id in consumers) {
-			consumers[id](t);
-		}
-	}
-	function doTick(t) {
-		//console.log('t', t);
-		doProduce(t);
-		doConsume(t);
-	}
-	return {
-		onProduce, offProduce,
-		onConsume, offConsume,
-		doProduce,
-		doConsume,
-		doTick,
-	}
-})();
-
-class Note2Trigger {
-	constructor() {
-		this.inp = new MIDIIN();
-		this.out = new POUT();
-		this.noteSet = {};
-		this.value = 0;
-		this.inp.out.onValue(v => {
-			if (v.t === 'on') {
-				this.noteSet[v.n] = 1;
-			}
-			if (v.t === 'off') {
-				delete this.noteSet[v.n];
-			}
-			this.value = Object.keys(this.noteSet).length > 0 ? 1 : 0;
-			//console.log(this.noteSet, this.value);
-		});
-		this.out.produceFromField(this, 'value');
-	}
-}
-
-class PINLogger {
-	constructor() {
-		this.inp = new PIN();
-		this.value = 0;
-		this.shown = false;
-		this.inp.consume(
-			v => {
-				this.value = v;
-				this.shown = false;
-				this.logged = false;
-			},
-			t => {
-				if (!this.logged) {
-					console.log('PINLogger', this.value, Math.round((t - Tone.context.currentTime)*1000));
-					this.logged = true;
-				}
-			}
-		);
-	}
-	attachUI(elem) {
-		_fabrique.onConsume(t => {
-			if (!this.shown) {
-				$(elem).text(this.value);
-				this.shown = true;
-			}
-		})
-	}
-}
-
+// Audio in/out
 class AINOUT extends INOUT {
 	constructor(def) {
 		super();
@@ -326,8 +245,8 @@ class AINOUT extends INOUT {
 	plug(out) {
 		out.connect(this.gain);
 	}
-	get out() {
-		return this.gain;
+	connectTo(inout) {
+		inout.plug(this.gain);
 	}
 }
 
@@ -337,6 +256,10 @@ class AOUT extends AINOUT {
 	}
 	bind(node) {
 		node.connect(this.gain);
+		return this;
+	}
+	unbind(node) {
+		node.disconnect(this.gain);
 		return this;
 	}
 }
@@ -363,7 +286,96 @@ class AIN extends AINOUT {
 		this.gain.connect(node);
 		return this;
 	}
+	unbind(node) {
+		this.gain.disconnect(node);
+		return this;
+	}
 }
+
+class Fabrique {
+	constructor() {
+		this.producers = {};
+		this.consumers = {};
+		this.intId = null;
+		this.bpm = 120;
+		this.ppqn = 48;
+		this.calcTps();
+	}
+	onProduce(fun) {
+		let id = _getObjId(fun);
+		this.producers[id] = fun;
+		//console.log('on producer', id);
+	}
+	offProduce(fun) {
+		let id = _getObjId(fun);
+		delete this.producers[id];
+		//console.log('off producer', id);
+	}
+	onConsume(fun) {
+		let id = _getObjId(fun);
+		this.consumers[id] = fun;
+	}
+	offConsume(fun) {
+		let id = _getObjId(fun);
+		delete this.consumers[id];
+	}
+	doProduce(t) {
+		for (let id in this.producers) {
+			this.producers[id](t);
+		}
+	}
+	doConsume(t) {
+		for (let id in this.consumers) {
+			this.consumers[id](t);
+		}
+	}
+	doTick(t) {
+		//console.log('t', t);
+		this.doProduce(t);
+		this.doConsume(t);
+	}
+	calcTps() {
+		this.tps = this.bpm*this.ppqn/60;
+		if (this.tps <= 0) this.tps = 1;
+		if (this.tps > 200) this.tps = 200;
+		return this.tps;
+	}
+	setBpm(bpm) {
+		this.bpm = bpm;
+		this.calcTps();
+	}
+	setPpqn(ppqn) {
+		this.ppqn = ppqn;
+		this.calcTps();
+	}
+	start(bpm, ppqn) {
+		if (bpm) this.setBpm(bpm);
+		if (ppqn) this.setPpqn(ppqn);
+		if (this.intId) stop();
+		var prevT = 0;
+		var cT = 4;
+		this.intId = setInterval(() => {
+			var dT = 1/this.tps;
+			if (window.stopped) return;
+			var curT = Tone.context.currentTime;
+			var cnt = 0;
+			if (curT >= prevT + dT) {
+				if (prevT > 0) console.warn('TICKS WERE SKIPPED');
+				prevT = curT; // realign
+			}
+			while (prevT < curT + cT*dT) {
+				prevT += dT;
+				this.doTick(prevT);
+			};
+		}, 15);
+	}
+	stop() {
+		if (this.intId) clearInterval(this.intId);
+		this.intId = null;
+	}
+};
+
+const _fabrique = new Fabrique();
 
 class Basis {
 	isTriggered(fn, onFunc, offFunc) {
@@ -374,32 +386,56 @@ class Basis {
 			wasOn: 0,
 		};
 		this[fn + 'State'] = state;
-		this[fn].consume(
-			v => {
-				state.on = v;
-			},
-			t => {
-				if (state.on > 0.5 && state.wasOn < 0.5) {
-					onFunc(t);
-				}
-				else if (state.on < 0.5 && state.wasOn > 0.5) {
-					offFunc(t);
-				}
-				state.wasOn = state.on;
+		this[fn].onValue(v => {
+			state.on = v;
+		});
+		this.isConsumer(t => {
+			if (state.on > 0.5 && state.wasOn < 0.5) {
+				onFunc(t);
 			}
-		)
+			else if (state.on < 0.5 && state.wasOn > 0.5) {
+				offFunc(t);
+			}
+			state.wasOn = state.on;
+		});
 	}
 	isConsumer(fun) {
 		_fabrique.onConsume(fun);
 	}
 }
 
-const M2NModes = ['max', 'min', 'last', 'first'];
+class PINLogger extends Basis {
+	constructor() {
+		super();
+		this.inp = new PIN();
+		this.value = 0;
+		this.shown = false;
+		this.inp.onValue(v => {
+			this.value = v;
+			this.shown = false;
+			this.logged = false;
+		});
+		this.isConsumer(t => {
+			if (!this.logged) {
+				console.log('PINLogger', this.value, Math.round((t - Tone.context.currentTime)*1000));
+				this.logged = true;
+			}
+		});
+	}
+	attachUI(elem) {
+		this.isConsumer(t => {
+			if (!this.shown) {
+				$(elem).text(this.value);
+				this.shown = true;
+			}
+		})
+	}
+}
 
-class Midi2Note extends Basis {
+
+class Midi2NotesBasis extends Basis { // abstract
 	constructor(mode) {
 		super();
-		this.smode = M2NModes[mode];
 		this.inp = new MIDIIN();
 		this.out = new POUT();
 
@@ -407,7 +443,7 @@ class Midi2Note extends Basis {
 		this.noteList = {};
 		this.nc = 0;
 		this.value = 0;
-		this.inp.out.onValue(v => {
+		this.inp.onValue(v => {
 			if (v.t === 'on') {
 				if (this.noteSet[v.n]) return;
 				this.nc++;
@@ -422,6 +458,64 @@ class Midi2Note extends Basis {
 			this.value = this.getValue();
 		});
 		this.out.produceFromField(this, 'value');
+	}
+	getValue() {
+		throw "Define getValue";
+	}
+}
+
+class Midi2Trigger extends Midi2NotesBasis {
+	constructor() {
+		super();
+		// this.inp = new MIDIIN();
+		// this.out = new POUT();
+		// this.noteSet = {};
+		// this.value = 0;
+		// this.inp.out.onValue(v => {
+		// 	if (v.t === 'on') {
+		// 		this.noteSet[v.n] = 1;
+		// 	}
+		// 	if (v.t === 'off') {
+		// 		delete this.noteSet[v.n];
+		// 	}
+		// 	this.value = Object.keys(this.noteSet).length > 0 ? 1 : 0;
+		// 	//console.log(this.noteSet, this.value);
+		// });
+		// this.out.produceFromField(this, 'value');
+	}
+	getValue() {
+		return Object.keys(this.noteSet).length > 0 ? 1 : 0;
+	}
+}
+
+const M2NModes = ['max', 'min', 'last', 'first'];
+
+class Midi2Note extends Midi2NotesBasis {
+	constructor(mode) {
+		super();
+		this.smode = M2NModes[mode];
+		// this.inp = new MIDIIN();
+		// this.out = new POUT();
+
+		// this.noteSet = {};
+		// this.noteList = {};
+		// this.nc = 0;
+		// this.value = 0;
+		// this.inp.out.onValue(v => {
+		// 	if (v.t === 'on') {
+		// 		if (this.noteSet[v.n]) return;
+		// 		this.nc++;
+		// 		this.noteSet[v.n] = this.nc;
+		// 		this.noteList[this.nc] = v.n;
+		// 	}
+		// 	if (v.t === 'off') {
+		// 		var nc = this.noteSet[v.n];
+		// 		delete this.noteSet[v.n];
+		// 		delete this.noteList[nc];
+		// 	}
+		// 	this.value = this.getValue();
+		// });
+		// this.out.produceFromField(this, 'value');
 	}
 	getEffectives() {
 		switch(this.smode) {
@@ -445,8 +539,9 @@ class Midi2Note extends Basis {
 
 const N2VModes = ['detune', 'freq'];
 
-class Note2CV {
+class Note2CV extends Basis {
 	constructor(mode) {
+		super();
 		this.smode = N2VModes[mode];
 		this.inp = new PIN();
 		this.out = new AOUT();
@@ -455,14 +550,12 @@ class Note2CV {
 		this.constant = Tone.getConstant();
 		this.constant.connect(this.out.gain);
 
-		this.inp.consume(
-			n => {
-				this.value = this.getValue(n);
-			},
-			t => {
-				this.pgain.setValueAtTime(this.value, t);
-			}
-		);
+		this.inp.onValue(n => {
+			this.value = this.getValue(n);
+		});
+		this.isConsumer(t => {
+			this.pgain.setValueAtTime(this.value, t);
+		});
 	}
 	getValue(n) {
 		switch(this.smode) {
@@ -472,7 +565,7 @@ class Note2CV {
 	}
 }
 
-class P2A {
+class P2A extends Basis {
 	constructor(mode) {
 		this.inp = new PIN();
 		this.out = new AOUT();
@@ -481,14 +574,12 @@ class P2A {
 		this.constant = Tone.getConstant();
 		this.constant.connect(this.out.gain);
 
-		this.inp.consume(
-			v => {
-				this.value = v;
-			},
-			t => {
-				this.pgain.setValueAtTime(this.value, t);
-			}
-		);
+		this.inp.onValue(v => {
+			this.value = v;
+		});
+		this.isConsumer(t => {
+			this.pgain.setValueAtTime(this.value, t);
+		});
 	}
 }
 
@@ -509,27 +600,10 @@ class Env extends Basis {
 		// this.max = new PIN(this.mx).consume(v => this.mx = v);
 		this.inp = new AIN(1);
 		this.out = new AOUT();
-		this.inp.out.connect(this.out.gain);
+		this.inp.gain.connect(this.out.gain);
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
 		
-		// this.trigger = new PIN();
-		
-		// this.last = 0;
-		// this.trigger.consume(
-		// 	v => {
-		// 		this.value = v;
-		// 	},
-		// 	t => {
-		// 		if (this.value > 0.5 && this.last < 0.5) {
-		// 			this.doAttack(t);
-		// 		}
-		// 		else if (this.value < 0.5 && this.last > 0.5) {
-		// 			this.doRelease(t);
-		// 		}
-		// 		this.last = this.value;
-		// 	}
-		// );
 		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
 	}
 	doAttack(time) {
@@ -545,33 +619,35 @@ class Env extends Basis {
 
 const OSCTypes = ['sine', 'square', 'sawtooth', 'triangle'];
 
-class Osc {
+class Osc extends Basis {
 	constructor(type) {
+		super();
 		//this.trigger = new PIN(1);
 		this.stype = OSCTypes[type || 0];
+		this.osc = null;
+		this.out = new AOUT();
+		this.freq = new AIN();
+		this.detune = new AIN();
+		this.makeOsc();
+	}
+	makeOsc() {
+		if (this.osc) return this.osc;
 		this.osc = Tone.context.createOscillator();
 		this.osc.type = this.stype;
-		this.out = new AOUT().bind(this.osc);
-		this.freq = new AIN().bind(this.osc.frequency);
-		this.detune = new AIN().bind(this.osc.detune);
-		
 		this.osc.start();
-
-		// this.on = 0;
-		// this.wasOn = 0;
-		// this.trigger.consume(
-		// 	v => {
-		// 		this.on = v;
-		// 	},
-		// 	t => {
-		// 		if (this.on > 0.5 && this.wasOn < 0.5) {
-		// 			this.triggerOn(t);
-		// 		}
-		// 		else if (this.on < 0.5 && this.wasOn > 0.5) {
-		// 			this.triggerOff(t);
-		// 		}
-		// 	}
-		// )
+		this.out.bind(this.osc);
+		this.freq.bind(this.osc.frequency);
+		this.detune.bind(this.osc.detune);
+		return this.osc;
+	}
+	killOsc() {
+		if (!this.osc) return this.osc;
+		this.osc.stop();
+		this.out.unbind(this.osc);
+		this.freq.unbind(this.osc.frequency);
+		this.detune.unbind(this.osc.detune);
+		this.osc = null;
+		return this.osc;
 	}
 }
 
@@ -656,7 +732,7 @@ class Sequence extends Basis {
 		this.clock = new PIN();
 		this.out = new POUT();
 		this.out.plug(
-			this.clock.out
+			this.clock.stream
 				.scan((state, v) => {
 					if (state.on < 0.5 && v > 0.5) {
 						state.on = 1; state.step = (state.step + 1) % this.values.length;
@@ -708,7 +784,7 @@ function knCompile(cls) {
 	}
 	for (var ln in cls.links) {
 		var li = cls.links[ln];
-		res.push(`\t\tthis.${li.n0}.${li.e0}.connect(this.${li.n1}.${li.e1});`);
+		res.push(`\t\tthis.${li.n0}.${li.e0}.connectTo(this.${li.n1}.${li.e1});`);
 	}
 	res.push('\t}');
 	res.push('}');

@@ -106,7 +106,13 @@ Type
 		}
 		return res
 	} / 
-	num
+	n:num {
+		return {
+			type: 'Const',
+			params: [n],
+			opts: {},
+		}
+	}
 
 params = POPEN head:param tail:(COMMA? p:param { return p })* PCLOSE { return [head].concat(tail) }
 

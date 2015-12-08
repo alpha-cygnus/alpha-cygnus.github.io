@@ -27,7 +27,7 @@ $(() => {
 			console.log(e);
 			console.log('Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message);
 		}
-		console.log(JSON.stringify(parsedPrelude[0], null));
+		//console.log(JSON.stringify(parsedPrelude[0], null));
 		for (var c in knClasses) {
 			if (c === knMainClass) continue;
 			var cls = knClasses[c];
@@ -49,69 +49,73 @@ $(() => {
 			console.log(cc);
 			window[c] = cc;
 		}
-
+		new window[knMainClass]();
+		_fabrique.start();
 	});
 
 
 
 	//window.keyNoteStream.log('kns');
-	var kbd = new Keyboard();
-	var m2n = new Midi2Note();
-	var n2c = new Note2CV();
-	var m2t = new Note2Trigger();
-	var env = new Env(0.01);
-	var dest = new Dest();
-	var osc = new Osc(1);
-	var dg = new Gain(0.12);
-	var flt = new Filter();
-	var clk = new Clock();
-	var seq = new Sequence('x.x.');
-	var nseq = new Sequence('0,4,7');
-	var div = new Sequence('x.'); // div 6
+	// var kbd = new Keyboard();
+	// var m2n = new Midi2Note();
+	// var n2c = new Note2CV();
+	// var m2t = new Midi2Trigger();
+	// var env = new Env(0.01);
+	// var dest = new Dest();
+	// var osc = new Osc(1);
+	// var dg = new Gain(0.12);
+	// var flt = new Filter();
+	// var clk = new Clock();
+	// var seq = new Sequence('x.x.');
+	// var nseq = new Sequence('0,4,7');
+	// var div = new Sequence('x.'); // div 6
 	
-	window.mainVolume = dest._volume;
+	// window.mainVolume = dest._volume;
 	
-	kbd.out.connect(m2n.inp);
-	kbd.out.connect(m2t.inp);
-	m2n.out.connect(n2c.inp);
-	clk.out.connect(nseq.clock);
-	nseq.out.connect(n2c.inp);
-	m2t.out.connect(env.trigger);
-	//clk.out.connect(div.clock);
-	clk.out.connect(seq.clock);
-	//seq.out.connect(env.trigger);
-	m2t.out.connect(env.trigger);
+	// kbd.out.connectTo(m2n.inp);
+	// kbd.out.connectTo(m2t.inp);
+	// m2n.out.connectTo(n2c.inp);
+	// clk.out.connectTo(nseq.clock);
+	// nseq.out.connectTo(n2c.inp);
+	// m2t.out.connectTo(env.trigger);
+	// //clk.out.connectTo(div.clock);
+	// clk.out.connectTo(seq.clock);
+	// //seq.out.connectTo(env.trigger);
+	// m2t.out.connectTo(env.trigger);
 	
-	n2c.out.connect(osc.detune);
-	osc.out.connect(env.inp);
-	env.out.connect(dg.inp);
-	dg.out.connect(dest.inp);
+	// n2c.out.connectTo(osc.detune);
+	// osc.out.connectTo(env.inp);
+	// env.out.connectTo(dg.inp);
+	// dg.out.connectTo(dest.inp);
 	
-	var pl = new PINLogger();
-	//nseq.out.connect(pl.inp);
-	pl.attachUI($('#PINLogger'));
+	// var pl = new PINLogger();
+	// //nseq.out.connectTo(pl.inp);
+	// pl.attachUI($('#PINLogger'));
+
 	//nt.stream.log();
-	var prevT = 0; //Tone.context.currentTime;
-	var dT = 1/100;
-	var cT = 4;
-	window.stopped = 0;
-	setInterval(() => {
-		if (window.stopped) return;
-		var curT = Tone.context.currentTime;
-		var cnt = 0;
-		if (curT >= prevT + dT) {
-			if (prevT > 0) console.warn('TICKS WERE SKIPPED');
-			prevT = curT; // realign
-		}
-		while (prevT < curT + cT*dT) {
-			prevT += dT;
-			_fabrique.doTick(prevT);
-		};
-	}, 15);
+	// var prevT = 0; //Tone.context.currentTime;
+	// var dT = 1/100;
+	// var cT = 4;
+	// window.stopped = 0;
+	// setInterval(() => {
+	// 	if (window.stopped) return;
+	// 	var curT = Tone.context.currentTime;
+	// 	var cnt = 0;
+	// 	if (curT >= prevT + dT) {
+	// 		if (prevT > 0) console.warn('TICKS WERE SKIPPED');
+	// 		prevT = curT; // realign
+	// 	}
+	// 	while (prevT < curT + cT*dT) {
+	// 		prevT += dT;
+	// 		_fabrique.doTick(prevT);
+	// 	};
+	// }, 15);
+	
 })
 
 function StopItAll() {
-	window.stopped = 1;
+	//window.stopped = 1;
+	_fabrique.stop();
 	window.mainVolume.value = 0;
 }
 
@@ -208,7 +212,7 @@ function StopItAll() {
 	<h1 onclick="console.log(1)">KaNa</h1>
 	<!--div id="PINLogger"></div-->
 	<button onclick="StopItAll()" id="PANIC">PANIC</button>
-	<div class="kbd">
+	<div class="kbd" style="display:none">
 		<div class="kbd-up">
 			<span 
 			data-note="48" class="w up bl">&nbsp;</span><span 
