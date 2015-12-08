@@ -88,8 +88,39 @@ $(function() {
 	//window.keyNoteStream.log();
 });
 
-class Keyboard {
+class Basis {
+	isTriggered(fn, onFunc, offFunc) {
+		fn = fn || 'trigger';
+		this[fn] = new PIN();
+		var state = {
+			on: 0,
+			wasOn: 0,
+		};
+		this[fn + 'State'] = state;
+		this[fn].onValue(v => {
+			state.on = v;
+		});
+		this.isConsumer(t => {
+			if (state.on > 0.5 && state.wasOn < 0.5) {
+				onFunc(t);
+			}
+			else if (state.on < 0.5 && state.wasOn > 0.5) {
+				offFunc(t);
+			}
+			state.wasOn = state.on;
+		});
+	}
+	isConsumer(fun) {
+		_fabrique.onConsume(fun);
+	}
+	getConstant() {
+		return Tone.Signal._constant;
+	}
+}
+
+class Keyboard extends Basis {
 	constructor() {
+		super();
 		this.out = new MIDIOUT();
 		this.octave = 0;
 		var noteOns = {};
@@ -122,7 +153,7 @@ class Keyboard {
 	}
 }
 
-class INOUT {
+class INOUT extends Basis {
 	get inp() {
 		return this;
 	}
@@ -269,7 +300,7 @@ class AIN extends AINOUT {
 		super(1);
 		if (def) {
 			this.cg = Tone.context.createGain();
-			Tone.getConstant().connect(this.cg);
+			this.getConstant().connect(this.cg);
 			this.cg.gain.value = def;
 			this.cg.connect(this.gain);
 		}
@@ -376,33 +407,6 @@ class Fabrique {
 };
 
 const _fabrique = new Fabrique();
-
-class Basis {
-	isTriggered(fn, onFunc, offFunc) {
-		fn = fn || 'trigger';
-		this[fn] = new PIN();
-		var state = {
-			on: 0,
-			wasOn: 0,
-		};
-		this[fn + 'State'] = state;
-		this[fn].onValue(v => {
-			state.on = v;
-		});
-		this.isConsumer(t => {
-			if (state.on > 0.5 && state.wasOn < 0.5) {
-				onFunc(t);
-			}
-			else if (state.on < 0.5 && state.wasOn > 0.5) {
-				offFunc(t);
-			}
-			state.wasOn = state.on;
-		});
-	}
-	isConsumer(fun) {
-		_fabrique.onConsume(fun);
-	}
-}
 
 class PINLogger extends Basis {
 	constructor() {
@@ -547,7 +551,7 @@ class Note2CV extends Basis {
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
-		this.constant = Tone.getConstant();
+		this.constant = this.getConstant();
 		this.constant.connect(this.out.gain);
 
 		this.inp.onValue(n => {
@@ -571,7 +575,7 @@ class P2A extends Basis {
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
-		this.constant = Tone.getConstant();
+		this.constant = this.getConstant();
 		this.constant.connect(this.out.gain);
 
 		this.inp.onValue(v => {
@@ -689,9 +693,10 @@ class Pan {
 	}
 }
 
-class Const {
+class Const extends Basis {
 	constructor(v) {
-		this.c = Tone.getConstant();
+		super();
+		this.c = this.getConstant();
 		this.g = Tone.context.createGain();
 		this.g.gain.value = v;
 		this.c.connect(this.g);
@@ -701,8 +706,9 @@ class Const {
 
 const FLTTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
 
-class Filter {
+class Filter extends Basis {
 	constructor(type) {
+		super();
 		this.stype = FLTTypes[type || 0];
 		this.flt = Tone.context.createBiquadFilter();
 		this.flt.type = this.stype;
@@ -714,8 +720,9 @@ class Filter {
 	}
 }
 
-class Clock {
+class Clock extends Basis {
 	constructor() {
+		super();
 		this.value = 0;
 		this.out = new POUT();
 		this.out.produceFromField(this, 'value', (t) => {
