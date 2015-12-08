@@ -74,7 +74,8 @@ $(function() {
 			notePressed = false;
 			return res;
 		}
-	}).filter(e => e);
+	})
+	.filter(e => e);
 	//uiKbdUp.log();
 	window.keyNoteStream = Kefir.merge([kdns, kups, uiKbdUp, uiKbdDown]);
 	window.keyNoteStream.onValue(v => {
