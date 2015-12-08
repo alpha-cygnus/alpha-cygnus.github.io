@@ -29,4 +29,6 @@ MainOut {
 	AIN inp -> Dest dest, AOUT out
 }
 
-Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> MainOut theMainOut
+Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> Pan pan -> MainOut theMainOut
+
+0.5 -> [freq]Osc panLfo ->[pan]pan

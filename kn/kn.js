@@ -626,7 +626,7 @@ class Osc extends Basis {
 		this.stype = OSCTypes[type || 0];
 		this.osc = null;
 		this.out = new AOUT();
-		this.freq = new AIN();
+		this.freq = new AIN(440);
 		this.detune = new AIN();
 		this.makeOsc();
 	}
@@ -634,10 +634,11 @@ class Osc extends Basis {
 		if (this.osc) return this.osc;
 		this.osc = Tone.context.createOscillator();
 		this.osc.type = this.stype;
-		this.osc.start();
+		this.osc.frequency.value = 0;
 		this.out.bind(this.osc);
 		this.freq.bind(this.osc.frequency);
 		this.detune.bind(this.osc.detune);
+		this.osc.start();
 		return this.osc;
 	}
 	killOsc() {
@@ -675,6 +676,16 @@ class Delay {
 		this.inp = new AIN().bind(this.d);
 		this.time = new AIN(def).bind(this.d.delayTime);
 		this.out = new AOUT().bind(this.d);
+	}
+}
+
+class Pan {
+	constructor(def) {
+		this.p = Tone.context.createStereoPanner();
+		this.p.pan.value = 0;
+		this.inp = new AIN().bind(this.p);
+		this.pan = new AIN(def).bind(this.p.pan);
+		this.out = new AOUT().bind(this.p);
 	}
 }
 
