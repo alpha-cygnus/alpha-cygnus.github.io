@@ -1,0 +1,19 @@
+Clock(50) _clock
+Keyboard _keyboard
+MainOut _out
+
+# -----------------------------
+
+Echo {
+	AIN inp "input" -> Delay d -> Gain gwet -> AOUT out
+	inp -> Gain gdry -> out
+	AIN(0.5) dry -> [gain]gdry
+	AIN(0.5) wet -> [gain]gwet
+	AIN(0.5) delay -> d.time
+}
+
+
+Seq(Ab A# A-1 A-3)
+Seq(x..x.x.x.)
+Seq('01010101')
+
