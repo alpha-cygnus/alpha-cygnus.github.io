@@ -87,10 +87,6 @@ Clock {
 	POUT ticker
 }
 
-Clock(50) _clock
-Keyboard _keyboard
-MainOut _out
-
 # -- UI
 Pot {
 	POUT value
@@ -105,10 +101,6 @@ Slider {
 DropDown {
 	POUT value
 	#@init values
-}
-
-UIKeyboard {
-	MIDIOUT out
 }
 
 Scope {
@@ -134,14 +126,4 @@ Curve {
 	PIN trigger
 	AOUT out
 }
-
-# -----------------------------
-
-Echo {
-	AIN in -> Delay d -> Gain gwet -> AOUT out
-	in -> Gain gdry -> out
-	AIN dry -> [gain]gdry
-	AIN wet -> [gain]gwet
-}
-
 
