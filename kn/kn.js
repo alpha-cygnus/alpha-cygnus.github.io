@@ -118,41 +118,6 @@ class Basis {
 	}
 }
 
-class Keyboard extends Basis {
-	constructor() {
-		super();
-		this.out = new MIDIOUT();
-		this.octave = 0;
-		var noteOns = {};
-		this.noteOns = noteOns;
-		
-		var midis = window.keyNoteStream
-			.filter(v => {
-				var note = v.note;
-				if (v.down && noteOns[note]) return false;
-				if (note > 1) return true;
-				if (!v.down) {
-					if (note === +1) this.octave++;
-					else if (note === -1) this.octave--;
-					if (this.octave < -4) this.octave = -4;
-					if (this.octave > 5) this.octave = 5;
-				}
-			})
-			.map(v => {
-				var note = v.note;
-				if (v.down) noteOns[note] = 1;
-				else delete noteOns[note];
-				return {
-					t: v.down ? 'on' : 'off',
-					n: note + this.octave*12,
-					o: this.octave,
-					v: 127,
-				};
-			});
-		this.out.plug(midis);
-	}
-}
-
 class INOUT extends Basis {
 	get inp() {
 		return this;
@@ -185,7 +150,23 @@ class MIDIINOUT extends INOUT {
 }
 
 class MIDIOUT extends MIDIINOUT {
-	
+	produceFromBuffer(obj, field, onBeforeProduce) {
+		// this[field + 'Stream'];
+		var stream = Kefir.stream(emitter => {
+			var fun = (t) => {
+				if (onBeforeProduce) onBeforeProduce(t);
+				for (var v of obj[field]) {
+					emitter.emit(v);
+				}
+				obj[field] = [];
+			}
+			_fabrique.onProduce(fun);
+			return () => _fabrique.offProduce(fun);
+		});
+		this.plug(stream);
+		// obj[field + 'State'] = state;
+		return this;
+	}
 }
 
 class MIDIIN extends MIDIINOUT {
@@ -442,6 +423,49 @@ class PINLogger extends Basis {
 }
 
 
+class Keyboard extends Basis {
+	constructor() {
+		super();
+		this.out = new MIDIOUT();
+		this.octave = 0;
+		var noteOns = {};
+		this.noteOns = noteOns;
+		this.buffer = [];
+		var maxBuf = 100;
+		
+		var midis = window.keyNoteStream
+			.filter(v => {
+				var note = v.note;
+				if (v.down && noteOns[note]) return false;
+				if (note > 1) return true;
+				if (!v.down) {
+					if (note === +1) this.octave++;
+					else if (note === -1) this.octave--;
+					if (this.octave < -4) this.octave = -4;
+					if (this.octave > 5) this.octave = 5;
+				}
+			})
+			.map(v => {
+				var note = v.note;
+				if (v.down) noteOns[note] = 1;
+				else delete noteOns[note];
+				return {
+					t: v.down ? 'on' : 'off',
+					n: note + this.octave*12,
+					o: this.octave,
+					v: 127,
+				};
+			})
+			.onValue(v => {
+				this.buffer.push(v);
+				while (this.buffer.length > maxBuf) this.buffer.shift(); // sanity
+				console.log(this.buffer);
+			});
+		//this.out.plug(midis);
+		this.out.produceFromBuffer(this, 'buffer');
+	}
+}
+
 class Midi2NotesBasis extends Basis { // abstract
 	constructor(mode) {
 		super();
@@ -452,65 +476,7 @@ class Midi2NotesBasis extends Basis { // abstract
 		this.noteList = {};
 		this.nc = 0;
 		this.value = 0;
-		this.inp.onValue(v => {
-			if (v.t === 'on') {
-				if (this.noteSet[v.n]) return;
-				this.nc++;
-				this.noteSet[v.n] = this.nc;
-				this.noteList[this.nc] = v.n;
-			}
-			if (v.t === 'off') {
-				var nc = this.noteSet[v.n];
-				delete this.noteSet[v.n];
-				delete this.noteList[nc];
-			}
-			this.value = this.getValue();
-		});
-		this.out.produceFromField(this, 'value');
-	}
-	getValue() {
-		throw "Define getValue";
-	}
-}
-
-class Midi2Trigger extends Midi2NotesBasis {
-	constructor() {
-		super();
-		// this.inp = new MIDIIN();
-		// this.out = new POUT();
-		// this.noteSet = {};
-		// this.value = 0;
-		// this.inp.out.onValue(v => {
-		// 	if (v.t === 'on') {
-		// 		this.noteSet[v.n] = 1;
-		// 	}
-		// 	if (v.t === 'off') {
-		// 		delete this.noteSet[v.n];
-		// 	}
-		// 	this.value = Object.keys(this.noteSet).length > 0 ? 1 : 0;
-		// 	//console.log(this.noteSet, this.value);
-		// });
-		// this.out.produceFromField(this, 'value');
-	}
-	getValue() {
-		return Object.keys(this.noteSet).length > 0 ? 1 : 0;
-	}
-}
-
-const M2NModes = ['max', 'min', 'last', 'first'];
-
-class Midi2Note extends Midi2NotesBasis {
-	constructor(mode) {
-		super();
-		this.smode = M2NModes[mode];
-		// this.inp = new MIDIIN();
-		// this.out = new POUT();
-
-		// this.noteSet = {};
-		// this.noteList = {};
-		// this.nc = 0;
-		// this.value = 0;
-		// this.inp.out.onValue(v => {
+		// this.inp.onValue(v => {
 		// 	if (v.t === 'on') {
 		// 		if (this.noteSet[v.n]) return;
 		// 		this.nc++;
@@ -525,6 +491,46 @@ class Midi2Note extends Midi2NotesBasis {
 		// 	this.value = this.getValue();
 		// });
 		// this.out.produceFromField(this, 'value');
+		this.out.plug(
+			this.inp.stream.map(v => {
+				if (v.t === 'on') {
+					if (this.noteSet[v.n]) return;
+					this.nc++;
+					this.noteSet[v.n] = this.nc;
+					this.noteList[this.nc] = v.n;
+				}
+				if (v.t === 'off') {
+					var nc = this.noteSet[v.n];
+					delete this.noteSet[v.n];
+					delete this.noteList[nc];
+				}
+				this.value = this.getValue();
+				return this.value;
+			})
+			.toProperty(() => this.value)
+			.log(this.name || 'midi2note')
+		)
+	}
+	getValue() {
+		throw "Define getValue";
+	}
+}
+
+class Midi2Trigger extends Midi2NotesBasis {
+	constructor() {
+		super();
+	}
+	getValue() {
+		return Object.keys(this.noteSet).length > 0 ? 1 : 0;
+	}
+}
+
+const M2NModes = ['max', 'min', 'last', 'first'];
+
+class Midi2Note extends Midi2NotesBasis {
+	constructor(mode) {
+		super();
+		this.smode = M2NModes[mode];
 	}
 	getEffectives() {
 		switch(this.smode) {
@@ -558,11 +564,15 @@ class Note2CV extends Basis {
 		this.pgain.value = 0;
 		this.constant = this.getConstant();
 		this.constant.connect(this.out.gain);
-
+		
+		this.value = 0;
 		this.inp.onValue(n => {
+			if (!n) return;
 			this.value = this.getValue(n);
+			//console.log(this.name || 'Note2CV', n, this.value);
 		});
 		this.isConsumer(t => {
+			//console.log(this.name || 'Note2CV', this.value, t);
 			this.pgain.setValueAtTime(this.value, t);
 		});
 	}
@@ -576,6 +586,7 @@ class Note2CV extends Basis {
 
 class P2A extends Basis {
 	constructor(mode) {
+		super();
 		this.inp = new PIN();
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
@@ -585,9 +596,17 @@ class P2A extends Basis {
 
 		this.inp.onValue(v => {
 			this.value = v;
+			console.log(this.name || 'P2A', this.value, v);
 		});
+		this.last = undefined;
 		this.isConsumer(t => {
-			this.pgain.setValueAtTime(this.value, t);
+			if (this.value === undefined) return;
+			if (isNaN(this.value)) return;
+			if (this.last != this.value) {
+				//console.log(this.name || 'P2A', this.value, t);
+				this.pgain.setValueAtTime(this.value, t);
+			}
+			this.last = this.value;
 		});
 	}
 }
@@ -616,11 +635,13 @@ class Env extends Basis {
 		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
 	}
 	doAttack(time) {
+		console.log(this.name || '', 'env on', time, this.mx);
 		this.pgain.cancelScheduledValues(time);
 		this.pgain.setTargetAtTime(this.mx, time, this.a / 4);
 		this.pgain.setTargetAtTime(this.s, time + this.a, this.d / 4);
 	}
 	doRelease(time) {
+		console.log(this.name || '', 'env off', time, this.mn);
 		this.pgain.cancelScheduledValues(time);
 		this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
 	}
@@ -668,8 +689,12 @@ class Osc extends Basis {
 
 class Dest {
 	constructor() {
-		this.inp = new AIN().bind(Tone.context.destination);
-		this._volume = this.inp.gain.gain;
+		this.inp = new AIN(); //.bind(Tone.context.destination);
+		this.gain = window.mainGain || Tone.context.createGain();
+		window.mainGain = this.gain;
+		window.mainVolume = this.gain.gain;
+		this.inp.gain.connect(this.gain);
+		this.gain.connect(Tone.context.destination);
 	}
 }
 

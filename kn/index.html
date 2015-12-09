@@ -20,37 +20,50 @@ $(() => {
 		var prelude = data[1];
 		var overture = data[2];
 		console.log('Loaded:', grammar.length, prelude.length);
-		var parser = PEG.buildParser(grammar);
 		try {
-			var parsedPrelude = parser.parse(prelude);
-		} catch(e) {
-			console.log(e);
-			console.log('Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message);
+			try {
+				var parser = PEG.buildParser(grammar);
+			} catch(e) {
+				console.log(e);
+				//var msg = 'Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message;
+				throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			}
+			try {
+				var parsedPrelude = parser.parse(prelude);
+			} catch(e) {
+				console.log(e);
+				//var msg = 'Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message;
+				throw `Error parsing prelude at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			}
+			//console.log(JSON.stringify(parsedPrelude[0], null));
+			for (var c in knClasses) {
+				if (c === knMainClass) continue;
+				var cls = knClasses[c];
+				cls.__internal = true;
+			}
+			try {
+				var parsedOverture = parser.parse(overture);
+			} catch(e) {
+				console.log(e);
+				throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			}
+			for (var c in knClasses) {
+				var cls = knClasses[c];
+				if (cls.__internal) continue;
+				console.log('// ' + c);
+				var src = knCompile(cls);
+				console.log(src);
+				var cc = eval(src);
+				console.log(cc);
+				window[c] = cc;
+			}
+			new window[knMainClass]();
+			_fabrique.start();
 		}
-		//console.log(JSON.stringify(parsedPrelude[0], null));
-		for (var c in knClasses) {
-			if (c === knMainClass) continue;
-			var cls = knClasses[c];
-			cls.__internal = true;
+		catch (msg) {
+			$('#error').html($('#error').html() + msg + '<br />');
+			console.error(msg);
 		}
-		try {
-			var parsedOverture = parser.parse(overture);
-		} catch(e) {
-			console.log(e);
-			console.log('Error parsing overture at', e.location.start.line + ':' + e.location.start.column + ':', e.message);
-		}
-		for (var c in knClasses) {
-			var cls = knClasses[c];
-			if (cls.__internal) continue;
-			console.log('// ' + c);
-			var src = knCompile(cls);
-			console.log(src);
-			var cc = eval(src);
-			console.log(cc);
-			window[c] = cc;
-		}
-		new window[knMainClass]();
-		_fabrique.start();
 	});
 
 
@@ -121,6 +134,10 @@ function StopItAll() {
 
 </script>
 <style>
+	div#error {
+		font-size: larger;
+		color: red;
+	}
 	.kbd {
 		border: 0px solid black;
 		-webkit-user-select: none;
@@ -212,6 +229,7 @@ function StopItAll() {
 	<h1 onclick="console.log(1)">KaNa</h1>
 	<!--div id="PINLogger"></div-->
 	<button onclick="StopItAll()" id="PANIC">PANIC</button>
+	<div id="error"></div>
 	<div class="kbd" style="display:block">
 		<div class="kbd-up">
 			<span 

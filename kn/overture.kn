@@ -13,12 +13,19 @@ TestSynth {
 	trig ->[trigger] ampEnv, fltEnv
 	15 ->[detune] o1
 	-15 ->[detune] o2
-	
 }
 
 MainOut {
 	AIN inp -> Dest dest, AOUT out
 }
+
+Osc osc -> Gain(0.0) g -> MainOut
+
+#Keyboard -> Midi2Trigger trig, Midi2Note(2) note
+#trig -> P2A -> [gain]g
+#note -> Note2CV -> [detune]osc
+
+#Keyboard -> TestSynth -> Gain(0.1) -> MainOut
 
 Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> Pan pan -> MainOut theMainOut
 
