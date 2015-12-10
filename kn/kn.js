@@ -866,15 +866,17 @@ function knCompile(cls) {
 }
 
 function knCompileProc(proc, res) {
-	var body = proc.body;
+	var body = proc.body || '';
 	if (body.match(/return/)) body = `{ ${body} }`;
 	for (var n of Object.getOwnPropertyNames(Math)) {
 		if (body.indexOf(n) < 0) continue;
 		res.push(`\t\tvar ${n} = Math.${n};`);
 	}
 	var pns = [];
+	var i = 0;
 	for (var p of proc.params) {
 		var agr = p.agr || '+';
+		if (!p.name) p.name = '$' + ++i;
 		var af = {
 			'+': ['a + b', 0],
 			'*': ['a * b', 1],
@@ -884,6 +886,7 @@ function knCompileProc(proc, res) {
 		var def = p.def || af[1];
 		res.push(`\t\tthis.${p.name} = new PIN(${def}, (a, b) => ${af[0]}, ${af[1]})`);
 	}
+	if (!body) body = proc.params.map(p => p.name).join(' + ');
 	res.push('\t\tthis.out = new POUT();')
 	res.push(`\t\tthis.out.plug(Kefir.combine([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], (${proc.params.map(p => p.name).join(', ')}) => ${body}))`);
 	return res.join('\n');

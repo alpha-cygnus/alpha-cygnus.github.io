@@ -152,7 +152,7 @@ Type
 
 processing = COPEN params:proc_params body:(PIPE b:proc_body {return b})? CCLOSE { return {params, body}; }
 proc_params = h:proc_param t:(COMMA p:proc_param {return p})* { return [h].concat(t); }
-proc_param = agr:AGR? name:id def:(EQ v:num {return v})? { return {agr, name, def}; }
+proc_param = agr:AGR? name:id? def:(EQ v:num {return v})? { return {agr, name, def}; }
 proc_body = CODE
 
 params = POPEN 

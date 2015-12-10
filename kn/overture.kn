@@ -47,6 +47,7 @@ Osc osc -> Gain(0.0) g -> MainOut
 Keyboard theKeyboard -> TestSynth ts -> PingPong -> Gain(0.1) -> MainOut theMainOut
 
 {*v = 1 | v < 0 ? v : 0 }
+{*}
 
 #0.3 -> [freq]Osc panLfo -> Gain(0.5) ->[pan]pan
 #theKeyboard -> Midi2Trigger ->[trigger] panLfo
