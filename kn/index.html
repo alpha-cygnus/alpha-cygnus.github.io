@@ -20,12 +20,13 @@ $(() => {
 		var prelude = data[1];
 		var overture = data[2];
 		console.log('Loaded:', grammar.length, prelude.length);
+		//var parserSource = PEG.buildParser(grammar, {output: 'source'});
+		//console.log(parserSource);
 		try {
 			try {
 				var parser = PEG.buildParser(grammar);
 			} catch(e) {
 				console.log(e);
-				//var msg = 'Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message;
 				throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
 			}
 			try {
@@ -50,20 +51,20 @@ $(() => {
 			for (var c in knClasses) {
 				var cls = knClasses[c];
 				if (cls.__internal) continue;
-				console.log('// ' + c);
+				//console.log('// ' + c);
 				var src = knCompile(cls);
 				console.log(src);
 				var cc = eval(src);
 				console.log(cc);
 				window[c] = cc;
 			}
-			new window[knMainClass]();
-			_fabrique.start();
 		}
 		catch (msg) {
 			$('#error').html($('#error').html() + msg + '<br />');
 			console.error(msg);
 		}
+		new window[knMainClass]();
+		_fabrique.start();
 	});
 
 

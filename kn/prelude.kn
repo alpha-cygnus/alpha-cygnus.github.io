@@ -1,6 +1,7 @@
 #-- basic
 
 Osc {
+	@enum SINE, SIN = 0, SQUARE, SAW, TRI
 	AIN freq, detune
 	AOUT main
 }
@@ -46,24 +47,37 @@ Keyboard {
 	MIDIOUT out
 }
 
-Notes2CV {
-	MIDIIN in
-	AOUT cv
-	PIN priority # min, max, first, last
+Note2CV {
+	MIDIIN inp
+	AOUT out
 }
 
 Notes2Arpeggio {
-	MIDIIN in
-	PIN trigger
+	MIDIIN inp
+	PIN clock
 	AOUT cv
 	PIN octaves
 	PIN mode # up, down, updown, downup, random
 }
 
-Notes2Trigger {
-	MIDIIN in
-	POUT trigger
-	PIN mode # first, retrig
+Midi2Trigger {
+	MIDIIN inp
+	POUT out
+}
+
+Midi2Note {
+	@enum MAX, MIN, LAST, FIRST
+	MIDIIN inp
+	POUT out
+	PIN priority # min, max, first, last
+}
+
+Filter {
+	@enum LOWPASS, HIGHPASS, BANDPASS, LOWSHELF, HIGHSHELF, PEAKING, NOTCH, ALLPASS
+		, LP = 0, HP, BP, LS, HS
+	AIN inp
+	AOUT out
+	PIN type
 }
 
 CC2CV {
@@ -73,7 +87,7 @@ CC2CV {
 }
 
 PW2CV { #pitch wheel
-	MIDIN in
+	MIDIIN in
 	AOUT cv
 }
 
@@ -85,6 +99,18 @@ SnH {
 
 Clock {
 	POUT ticker
+}
+
+Dest {
+	AIN inp
+	AIN volume
+	AOUT out
+}
+
+Pan {
+	AIN inp
+	AIN pan
+	AOUT out
 }
 
 # -- UI

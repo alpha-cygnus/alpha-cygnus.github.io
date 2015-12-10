@@ -175,8 +175,10 @@ class MIDIIN extends MIDIINOUT {
 
 // P(arametric/rocessing) IN/OUT
 class PINOUT extends INOUT {
-	constructor(def) {
+	constructor(def, agrFun, agrInit) {
 		super();
+		agrFun = agrFun || ((a, b) => a + b);
+		agrInit = agrInit || 0;
 		this.pool = Kefir.pool();
 		this.value = def || 0;
 		this.outs = this.pool
@@ -188,9 +190,10 @@ class PINOUT extends INOUT {
 				var v = def;
 				var first = 1;
 				for (var id in state) {
-					if (first) v = 0;
+					if (first) v = agrInit;
 					first = 0;
-					v += state[id];
+					//v += state[id];
+					v = agrFun(v, state[id]);
 				}
 				this.value = v;
 				return v;
@@ -632,6 +635,7 @@ class Env extends Basis {
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
 		
+		this.doRelease(Tone.context.currentTime);
 		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
 	}
 	doAttack(time) {
@@ -807,39 +811,80 @@ class KNBase extends Basis {
 }
 
 var knClasses = {}
+var knProcCount = 0;
 
 var knNewClass = function newCls(name) {
-	var c = { name: name, nodes: {}, links: {} };
+	var c = { name: name, nodes: {}, links: {}, uses: {} };
 	knClasses[name] = c;
+	return c;
+}
+
+var knNewProc = function newProc(proc) {
+	var name = `Proc_${++knProcCount}`;
+	var c = knClasses[name] = {name, proc};
 	return c;
 }
 
 const knMainClass = '__main';
 knNewClass(knMainClass);
+knNewClass('AIN');
+knNewClass('AOUT');
+knNewClass('PIN');
+knNewClass('POUT');
+knNewClass('MIDIIN');
+knNewClass('MIDIOUT');
 
 function knCompile(cls) {
 	var res = [`class ${cls.name} extends KNBase {`];
 	res.push('\tconstructor() {');
 	res.push('\t\tsuper();');
-	for (var nn in cls.nodes) {
-		var t = cls.nodes[nn];
-		var ps = t.params;
-		res.push(`\t\tthis.${nn} = new ${t.type}(${ps.join(', ')});`);
-		if (t.name) {
-			res.push(`\t\tthis.${nn}.name = '${t.name}';`);
+	if (cls.proc) {
+		knCompileProc(cls.proc, res);
+	} else {
+		for (var nn in cls.nodes) {
+			var t = cls.nodes[nn];
+			var ps = t.params;
+			res.push(`\t\tthis.${nn} = new ${t.type}(${ps.join(', ')});`);
+			if (t.name) {
+				res.push(`\t\tthis.${nn}.name = '${t.name}';`);
+			}
+			if (t.title) {
+				res.push(`\t\tthis.${nn}.title = ${t.title};`);
+			}
+			for (var na in t.opts) {
+				res.push(`\t\tthis.${nn}.${na} = ${t.opts[na]};`);
+			}
 		}
-		if (t.title) {
-			res.push(`\t\tthis.${nn}.title = ${t.title};`);
+		for (var ln in cls.links) {
+			var li = cls.links[ln];
+			res.push(`\t\tthis.${li.n0}.${li.e0}.connectTo(this.${li.n1}.${li.e1});`);
 		}
-		for (var na in t.opts) {
-			res.push(`\t\tthis.${nn}.${na} = ${t.opts[na]};`);
-		}
-	}
-	for (var ln in cls.links) {
-		var li = cls.links[ln];
-		res.push(`\t\tthis.${li.n0}.${li.e0}.connectTo(this.${li.n1}.${li.e1});`);
 	}
 	res.push('\t}');
 	res.push('}');
+	return res.join('\n');
+}
+
+function knCompileProc(proc, res) {
+	var body = proc.body;
+	if (body.match(/return/)) body = `{ ${body} }`;
+	for (var n of Object.getOwnPropertyNames(Math)) {
+		if (body.indexOf(n) < 0) continue;
+		res.push(`\t\tvar ${n} = Math.${n};`);
+	}
+	var pns = [];
+	for (var p of proc.params) {
+		var agr = p.agr || '+';
+		var af = {
+			'+': ['a + b', 0],
+			'*': ['a * b', 1],
+			'_': ['min(a, b)', 100000],
+			'^': ['max(a, b)', -100000],
+		}[agr];
+		var def = p.def || af[1];
+		res.push(`\t\tthis.${p.name} = new PIN(${def}, (a, b) => ${af[0]}, ${af[1]})`);
+	}
+	res.push('\t\tthis.out = new POUT();')
+	res.push(`\t\tthis.out.plug(Kefir.combine([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], (${proc.params.map(p => p.name).join(', ')}) => ${body}))`);
 	return res.join('\n');
 }

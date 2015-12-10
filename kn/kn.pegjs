@@ -4,6 +4,7 @@
 	var _ct = null;
 	var _cp = null;
 	var _ci = 0;
+	var _cvi = 0;
 	var newCls = window.knNewClass;
 	function noteToInt(n) {
 		var m;
@@ -16,6 +17,23 @@
 		}
 		return i;
 	}
+	function fillParams(res, ps) {
+		var params = [];
+		var opts = {};
+		var i = 0;
+		for (let p of (ps || [])) {
+			let n = p.n;
+			if (n) opts[n] = p.v;
+			else {
+				if ($.isArray(p.v)) {
+					params.push.apply(params, p.v);
+				} else params.push(p.v);
+			}
+		}
+		res.params = params;
+		res.opts = opts;
+		return res;
+	}
 }
 
 S = ss:statement* { return [classes, ss]; }
@@ -26,7 +44,17 @@ cls
 	= name:Id COPEN &{
 		_cc = newCls(name);
 		return true;
-	} chains:chains CCLOSE { return ["Class", { name: name, chains: chains }] }
+	} 
+	values:values? &{ _cc.values = values || {}; return true; }
+	chains:chains CCLOSE { return ["Class", { name, chains, values }] }
+
+values = ENUM &{ _cvi = 0; return true; } head:v_val tail:(COMMA v:v_val { return v; })* {
+	return [head].concat(tail).reduce((res, v) => (res[v.name] = v.val, res), {});
+}
+v_val = name:Id val:(EQ v:INT {return v})? { 
+	if (val !== null) _cvi = val;
+	return {name, val: _cvi++ }; 
+}
 
 chains = head:chain tail:(SEMI? c:chain { return c} )* { return [head].concat(tail); }
 
@@ -70,17 +98,21 @@ decl
 	= type:Type id:id? title:title? {
 		_ct = type;
 		var wasId = id;
-		if (!id) id = '__' + (++_ci);
+		var ci = _cc.uses[_ct.type] || 0;
+		if (!id) id = '_' + _ct.type + '_' + (++ci);
+		_cc.uses[_ct.type] = ci;
 		if (_cc.nodes[id]) error(id + " is already defined");
 		_cc.nodes[id] = Object.create(_ct);
 		if (wasId) _cc.nodes[id].name = id;
 		if (title) _cc.nodes[id].title = title;
 		return id;
 	}
-	/ id:id title:title? {
+	/ id:id ps:params? title:title? {
 		if (_ct) {
 			if (_cc.nodes[id]) error(id + " is already defined");
-			_cc.nodes[id] = Object.create(_ct);
+			var t = Object.create(_ct);
+			if (ps) fillParams(t, ps);
+			_cc.nodes[id] = t;
 			_cc.nodes[id].name = id;
 			if (title) _cc.nodes[id].title = title;
 			return id;
@@ -90,22 +122,15 @@ decl
 	}
 
 Type
-	= n:Id ps:params? {
-		var params = []; //{};
-		var opts = {};
-		var res = {type: n, params, opts};
-		var i = 0;
-		for (let p of (ps || [])) {
-			let n = p.n;
-			if (n) opts[n] = p.v;
-			else {
-				if ($.isArray(p.v)) {
-					params.push.apply(params, p.v);
-				} else params.push(p.v);
-			}
-		}
-		return res
-	} / 
+	= type:Id &{
+		if (!knClasses[type]) error(`Type ${type} is not defined!`);
+		_ct = {type};
+		return true;
+	}
+	ps:params? {
+		return fillParams(_ct, ps);
+	}
+	/ 
 	n:num {
 		return {
 			type: 'Const',
@@ -113,18 +138,67 @@ Type
 			opts: {},
 		}
 	}
+	/
+	p:processing {
+		console.log(p);
+		// var cp = compileProc(p);
+		// console.log(cp);
+		return {
+			type: knNewProc(p).name,
+			params: [],
+			opts: {},
+		}
+	}
 
-params = POPEN head:param tail:(COMMA? p:param { return p })* PCLOSE { return [head].concat(tail) }
+processing = COPEN params:proc_params body:(PIPE b:proc_body {return b})? CCLOSE { return {params, body}; }
+proc_params = h:proc_param t:(COMMA p:proc_param {return p})* { return [h].concat(t); }
+proc_param = agr:AGR? name:id def:(EQ v:num {return v})? { return {agr, name, def}; }
+proc_body = CODE
+
+params = POPEN 
+	& {if (!_ct) error("Can't change params after creation"); return true; }
+	head:param tail:(COMMA? p:param { return p })* PCLOSE { return [head].concat(tail) }
 
 param = n:(n:id (EQ/COLON) { return n})? v:pval { return {n:n, v: v} }
 
-pval = num / str / note / tseq
+pval 
+	= num
+	/ str
+	/// note
+	/ id:Id {
+		if (!_ct) error('No current type??');
+		var cls = knClasses[_ct.type];
+		var v = cls.values[id];
+		if (v === undefined) error(`${id} is not enumerated for ${_ct.type}!`);
+		return v;
+	}
+	/// tseq
 
 num = NUM
 str = STR
-note = NOTE
+note = n:NOTE { return noteToInt(n) }
 tseq = TSEQ
 title = STR2
+
+code = '{' code:CODE '}' { return code; };
+
+abc_melody = abc_sep? abc_point (abc_sep? abc_point)* abc_sep
+abc_point = abc_pitch / abc_chord / abc_in_dir / abc_legato
+abc_legato = '(' abc_sep ? abc_pitch (abc_sep? abc_pitch)* ')'
+abc_pitch = abc_accidental? abc_note abc_octave* abc_duration?
+abc_chord = '[' abc_pitch+ ']'
+abc_in_dir = '[' abc_dir ']'
+abc_sep = '|' / '||' / '[|' / '|]' / ':]' / ':|' / '|:' / '[:' / space
+abc_note = [a-g] / [A-G]
+abc_accidental = '_' '_'? / '^' '^'? / '='
+abc_octave = ',' / "'"
+abc_duration = abc_ratio
+abc_ratio = INT ('/' INT)? / '/' INT
+abc_dir
+	= 'L:' abc_ratio
+	/ 'K:' abc_key
+abc_key = abc_note ('#' / 'b')? ('m' / 'min' / 'maj' / 'mix')?
+
 
 //--"lexer"
 
@@ -133,13 +207,14 @@ comment = '#' [^\r\n]*
 ws "" = (space/comment)*
 COPEN = ws '{' ws
 CCLOSE = ws '}' ws
-UPPER = [A-Z] / '$'
-LOWER = [a-z] / '_'
+UPPER = [A-Z]
+LOWER = [a-z]
 LETTER = UPPER / LOWER
 DIGIT = [0-9]
-IDSYM = LETTER / DIGIT
+IDSYM = LETTER / DIGIT / '_'
 Id "Identifier" = ws id:$(UPPER IDSYM*) ws { return id; }
 id "ident" = ws id:$(LOWER IDSYM*) ws { return id; }
+INT "integer" = ws num:$('-'? DIGIT+) ws { return parseInt(num, 10); }
 NUM "number" = ws num:$('-'? DIGIT+ ('.' DIGIT+)?) ws { return parseFloat(num); }
 COLON = ws ':' ws
 SEMI = ws ';' ws
@@ -149,11 +224,15 @@ BCLOSE = ws ']' ws
 COMMA = ws ',' ws
 POPEN = ws '(' ws
 PCLOSE = ws ')' ws
+PIPE = ws '|' ws
 EQ = ws '=' ws
 STR "string" 
 	= ws "'" s:$([^']*) "'" ws { return "'" + s + "'"; }
 STR2 "string2" 
 	= ws '"' s:$([^"]*) '"' ws { return '"' + s + '"'; }
-NOTE = ws n:$([A-H] [#-b]? DIGIT?) { return noteToInt(n) }
+NOTE = ws n:$([A-H] [#-b]? DIGIT?) ws { return n }
 TSEQ = ws s:$([x.]+) ws { return s.split('').map(c => c == 'x' ? 1 : 0) }
+ENUM = ws '@enum' ws
+AGR = ws a:[*_^+] ws { return a }
 
+CODE = $(([^{}] / '{' CODE '}')*)
