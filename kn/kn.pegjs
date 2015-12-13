@@ -1,5 +1,5 @@
 {
-	var classes = window.knClasses;
+	var classes = window.knMeta;
 	var _cc = null;
 	var _ct = null;
 	var _cp = null;
@@ -16,23 +16,6 @@
 			i += 12*(m[3] || '5');
 		}
 		return i;
-	}
-	function fillParams(res, ps) {
-		var params = [];
-		var opts = {};
-		var i = 0;
-		for (let p of (ps || [])) {
-			let n = p.n;
-			if (n) opts[n] = p.v;
-			else {
-				if ($.isArray(p.v)) {
-					params.push.apply(params, p.v);
-				} else params.push(p.v);
-			}
-		}
-		res.params = params;
-		res.opts = opts;
-		return res;
 	}
 }
 
@@ -59,31 +42,50 @@ v_val = name:Id val:(EQ v:INT {return v})? {
 chains = head:chain tail:(SEMI? c:chain { return c} )* { return [head].concat(tail); }
 
 chain = head:point &{ _cp = head; return 1; } chain_tail?
-chain_tail = lnk:arrow p:point
-	&{
+chain_tail = (lnk:arrow p:point
+	{
 		let p0 = _cp;
 		let p1 = p;
-		var e0 = lnk.e0;
-		var e1 = lnk.e1;
-		var w = lnk.w;
-		if (typeof w == 'string') {
-			if (_cc.nodes[w]) error(w + " is already defined");
-		}
+		// var w = lnk.w;
+		// if (typeof w == 'string') {
+		// 	if (_cc.nodes[w]) error(`${w} + is already defined");
+		// }
 		for (let n0 of p0) {
 			for (let n1 of p1) {
-				let lid = lnk.back
-					? [n1, e1, e0, n0]
-					: [n0, e0, e1, n1]
-				;
-				_cc.links[lid.join(',')] = { n0, n1, e0, e1, w };
+				let c0 = knMeta[_cc.nodes[n0].type];
+				if (!c0) debugger;
+				let c1 = knMeta[_cc.nodes[n1].type];
+				if (!c1) debugger;
+				let e0 = lnk.e0;
+				let e1 = lnk.e1;
+				if (typeof e0 === 'number') e0 = c0.outList[e0];
+				if (typeof e1 === 'number') e1 = c1.inpList[e1];
+				let t0 = c0.nodes[e0] && c0.nodes[e0].outType;
+				let t1 = c1.nodes[e1] && c1.nodes[e1].inpType;
+				if (!t0) debugger;
+				if (!t0) error(`Output ${lnk.e0} is not defined for ${n0}:${c0.name} in ${_cc.name}`);
+				if (!t1) error(`Input ${lnk.e1} is not defined for ${n1}:${c1.name} in ${_cc.name}`);
+				if (t0 != t1) {
+					error(`Incompatible connection for ${n0}[${e0}](${t0})->[${e1}]${n1}(${t1}) in ${_cc.name}`);
+				}
+
+				// let lid = lnk.back
+				// 	? [n1, e1, e0, n0]
+				// 	: [n0, e0, e1, n1]
+				// ;
+				let lid = [n0, e0, e1, n1];
+
+				_cc.links[lid.join(',')] = { n0, n1, e0, e1, t: t0 };
 			}
 		}
 		_cp = p;
-		return 1;
-	} chain_tail?
+		return [lnk, p];
+	})
+	chain_tail?
 
 arrow
-	= e0:(end?) ws '-'+ w:weight? '-'* '>' ws e1:(end?) { return {e0: e0 || 'out', e1: e1 || 'inp', w: w || 1} }
+	= e0:(end?) ws '-'+ '>' ws e1:(end?) { return {e0: e0 || 0, e1: e1 || 0} }
+	//= e0:(end?) ws '-'+ w:weight? '-'* '>' ws e1:(end?) { return {e0: e0 || 0, e1: e1 || 0, w: w || 1} }
 	/// e0:(end?) ws '<' ('-' &[-(])* w:weight? '-'+ ws e1:(end?) { return {e0: e0 || 0, e1: e1 || 0, w: w || 1, back: true} }
 
 weight = '(' n:(num/id) ')' { return n }
@@ -96,26 +98,31 @@ node = decl
 
 decl
 	= type:Type id:id? title:title? {
+		if (id && _cc.nodes[id]) error(id + " is already defined");
 		_ct = type;
-		var wasId = id;
-		var ci = _cc.uses[_ct.type] || 0;
-		if (!id) id = '_' + _ct.type + '_' + (++ci);
-		_cc.uses[_ct.type] = ci;
-		if (_cc.nodes[id]) error(id + " is already defined");
-		_cc.nodes[id] = Object.create(_ct);
-		if (wasId) _cc.nodes[id].name = id;
-		if (title) _cc.nodes[id].title = title;
-		return id;
+		return _cc.addNode(_ct, id, title);
+		// var wasId = id;
+		// var ci = _cc.uses[_ct.type] || 0;
+		// if (!id) id = '_' + _ct.type + '_' + (++ci);
+		// _cc.uses[_ct.type] = ci;
+		// if (!_cc.nodes) debugger;
+		// _cc.nodes[id] = Object.create(_ct);
+		// if (wasId) _cc.nodes[id].name = id;
+		// if (title) _cc.nodes[id].title = title;
+		// return id;
 	}
-	/ id:id ps:params? title:title? {
+	/ id:id params:params? title:title? {
 		if (_ct) {
 			if (_cc.nodes[id]) error(id + " is already defined");
-			var t = Object.create(_ct);
-			if (ps) fillParams(t, ps);
-			_cc.nodes[id] = t;
-			_cc.nodes[id].name = id;
-			if (title) _cc.nodes[id].title = title;
-			return id;
+			// var t = Object.create(_ct);
+			// if (ps) fillParams(t, ps);
+			// t.name = id;
+			// if (title) t.title = title;
+			// _cc.nodes[id] = t;
+			// _cc.nodes[id].name = id;
+			// if (title) _cc.nodes[id].title = title;
+			return _cc.addNode(_ct, id, title, params);
+			// return id;
 		}
 		if (!_cc.nodes[id]) error(id + " is not defined");
 		return id;
@@ -123,12 +130,12 @@ decl
 
 Type
 	= type:Id &{
-		if (!knClasses[type]) error(`Type ${type} is not defined!`);
+		if (!knMeta[type]) error(`Type ${type} is not defined!`);
 		_ct = {type};
 		return true;
 	}
 	ps:params? {
-		return fillParams(_ct, ps);
+		return knFillParams(_ct, ps);
 	}
 	/ 
 	n:num {
@@ -167,7 +174,7 @@ pval
 	/// note
 	/ id:Id {
 		if (!_ct) error('No current type??');
-		var cls = knClasses[_ct.type];
+		var cls = knMeta[_ct.type];
 		var v = cls.values[id];
 		if (v === undefined) error(`${id} is not enumerated for ${_ct.type}!`);
 		return v;

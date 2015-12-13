@@ -5,9 +5,13 @@
 <script src="../lib/Tone.js"></script>
 <script src="../lib/kefir.js"></script>
 <script src="../lib/peg-0.9.0.js"></script>
-<script src="kn.js"></script>
-<script>
-</script>
+<script src="../lib/cytoscape.js"></script>
+<link href="../lib/vis.css" rel="stylesheet" type="text/css" />
+		<script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"></script>
+		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script>
+<script src="kncore.js"></script>
+<script src="knmeta.js"></script>
+<link href="main.css" rel="stylesheet" type="text/css" />
 <script>
 "use strict";
 $(() => {
@@ -22,212 +26,120 @@ $(() => {
 		console.log('Loaded:', grammar.length, prelude.length);
 		//var parserSource = PEG.buildParser(grammar, {output: 'source'});
 		//console.log(parserSource);
-		try {
-			try {
+		// try {
+			// try {
 				var parser = PEG.buildParser(grammar);
-			} catch(e) {
-				console.log(e);
-				throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			}
-			try {
+			// } catch(e) {
+			// 	console.log(e);
+			// 	throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			// }
+			// try {
 				var parsedPrelude = parser.parse(prelude);
-			} catch(e) {
-				console.log(e);
-				//var msg = 'Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message;
-				throw `Error parsing prelude at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			}
+			// } catch(e) {
+			// 	console.log(e);
+			// 	//var msg = 'Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message;
+			// 	throw `Error parsing prelude at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			// }
 			//console.log(JSON.stringify(parsedPrelude[0], null));
-			for (var c in knClasses) {
+			for (var c in knMeta) {
 				if (c === knMainClass) continue;
-				var cls = knClasses[c];
+				var cls = knMeta[c];
 				cls.__internal = true;
 			}
-			try {
+			// try {
 				var parsedOverture = parser.parse(overture);
-			} catch(e) {
-				console.log(e);
-				throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			}
-			for (var c in knClasses) {
-				var cls = knClasses[c];
+			// } catch(e) {
+			// 	console.log(e);
+			// 	throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			// }
+			for (var c in knMeta) {
+				var cls = knMeta[c];
 				if (cls.__internal) continue;
-				//console.log('// ' + c);
-				var src = knCompile(cls);
-				console.log(src);
-				var cc = eval(src);
-				console.log(cc);
-				window[c] = cc;
+				console.log('// ' + c);
+				cls.compile();
+				// var src = knCompile(cls);
+				// console.log(src);
+				// var cc = eval(src);
+				// console.log(cc);
+				// window[c] = cc;
 			}
-		}
-		catch (msg) {
-			$('#error').html($('#error').html() + msg + '<br />');
-			console.error(msg);
-		}
+		// }
+		// catch (msg) {
+		// 	$('#error').html($('#error').html() + msg + '<br />');
+		// 	console.error(msg);
+		// }
 		new window[knMainClass]();
 		_fabrique.start();
+		var klaz = 'TestSynth';
+		console.log(knMeta[klaz].getPlant());
+
+		var cy = cytoscape({
+			container: $('#vis-network'),
+			// elements: [
+			// 	{
+			// 		data: { id: 'n1', label: 'Source' }
+			// 	},
+			// 	{
+			// 		data: { id: 'n1.e1', label: 'e1', parent: 'n1' }
+			// 	},
+			// 	{
+			// 		data: { id: 'n1.e2', label: 'e2', parent: 'n1' }
+			// 	},
+			// 	{
+			// 		data: { id: 'n2', label: 'Targ' }
+			// 	},
+			// 	{
+			// 		data: { id: 'n2.e1', label: 'e1', parent: 'n2' }
+			// 	},
+			// 	{
+			// 		data: { id: 'n2.e2', label: 'e2', parent: 'n2' }
+			// 	},
+
+			// 	{
+			// 		data: { id: 'n1.e1->n2.e2', source: 'n1.e1', target: 'n2.e2' }
+			// 	},
+			// ],
+			elements: knMeta[klaz].getCyEles(),
+			layout: {
+				name: 'dagre',
+			},
+			style: [
+				{
+					selector: 'node',
+					style: {
+						'content': 'data(label)',
+						'text-opacity': 0.5,
+						'text-valign': 'center',
+						'text-halign': 'right',
+						'background-color': '#11479e'
+					}
+				},
+
+				{
+					selector: 'edge',
+					style: {
+						'width': 4,
+						'target-arrow-shape': 'triangle',
+						'line-color': '#9dbaea',
+						'target-arrow-color': '#9dbaea'
+					}
+				}
+			],
+		});
 	});
-
-
-
-	//window.keyNoteStream.log('kns');
-	// var kbd = new Keyboard();
-	// var m2n = new Midi2Note();
-	// var n2c = new Note2CV();
-	// var m2t = new Midi2Trigger();
-	// var env = new Env(0.01);
-	// var dest = new Dest();
-	// var osc = new Osc(1);
-	// var dg = new Gain(0.12);
-	// var flt = new Filter();
-	// var clk = new Clock();
-	// var seq = new Sequence('x.x.');
-	// var nseq = new Sequence('0,4,7');
-	// var div = new Sequence('x.'); // div 6
-	
-	// window.mainVolume = dest._volume;
-	
-	// kbd.out.connectTo(m2n.inp);
-	// kbd.out.connectTo(m2t.inp);
-	// m2n.out.connectTo(n2c.inp);
-	// clk.out.connectTo(nseq.clock);
-	// nseq.out.connectTo(n2c.inp);
-	// m2t.out.connectTo(env.trigger);
-	// //clk.out.connectTo(div.clock);
-	// clk.out.connectTo(seq.clock);
-	// //seq.out.connectTo(env.trigger);
-	// m2t.out.connectTo(env.trigger);
-	
-	// n2c.out.connectTo(osc.detune);
-	// osc.out.connectTo(env.inp);
-	// env.out.connectTo(dg.inp);
-	// dg.out.connectTo(dest.inp);
-	
-	// var pl = new PINLogger();
-	// //nseq.out.connectTo(pl.inp);
-	// pl.attachUI($('#PINLogger'));
-
-	//nt.stream.log();
-	// var prevT = 0; //Tone.context.currentTime;
-	// var dT = 1/100;
-	// var cT = 4;
-	// window.stopped = 0;
-	// setInterval(() => {
-	// 	if (window.stopped) return;
-	// 	var curT = Tone.context.currentTime;
-	// 	var cnt = 0;
-	// 	if (curT >= prevT + dT) {
-	// 		if (prevT > 0) console.warn('TICKS WERE SKIPPED');
-	// 		prevT = curT; // realign
-	// 	}
-	// 	while (prevT < curT + cT*dT) {
-	// 		prevT += dT;
-	// 		_fabrique.doTick(prevT);
-	// 	};
-	// }, 15);
 	
 })
 
 function StopItAll() {
-	//window.stopped = 1;
 	_fabrique.stop();
 	window.mainVolume.value = 0;
 }
 
 </script>
-<style>
-	div#error {
-		font-size: larger;
-		color: red;
-	}
-	.kbd {
-		border: 0px solid black;
-		-webkit-user-select: none;
-	}
-	.kbd div, .kbd span {
-		margin: 0;
-		padding: 0;
-	}
-	.kbd span {
-		display: inline-block
-	}
-	.kbd span.label {
-		pointer-events: none;
-	}
-	.kbd .k span.label {
-		margin-top: 80px;
-	}
-	.kbd .w span.label {
-		margin-top: 30px;
-	}
-	.kbd span.k {
-		vertical-align: top;
-	}
-	.kbd span.w {
-		vertical-align: top;
-	}
-	.kbd .w {
-		background-color: white;
-		transition: background-color 0.5s;
-	}
-	.kbd .w.is-down {
-		background-color: pink;
-		transition: background-color 0s;
-	}
-	.kbd .k.is-down {
-		background-color: blue;
-	}
-	.kbd .k {
-		background-color: black;
-		width: 24px;
-		border-bottom-left-radius: 4px;
-		border-bottom-right-radius: 4px;
-		text-align: center;
-		color: white;
-	}
-	.kbd .w.br {
-		border-right: 1px solid black;
-	}
-	.kbd .w.bl {
-		border-left: 1px solid black;
-	}
-	.kbd .w.up {
-		width: 24px; /* 12*2 - 2 */
-	}
-	.kbd .w.up.bl, .kbd .w.up.br {
-		width: 23px; /* 12*2 - 2 */
-	}
-	.kbd .w.up.bl.br {
-		width: 38px;
-	}
-	.kbd .w.up.w1 {
-		width: 22px; /* 11*2 - 2 */
-	}
-	.kbd .w1.up.bl, .kbd .w1.up.br {
-		width: 21px; /* 12*2 - 2 */
-	}
-	.kbd .w.down {
-		border-bottom: 1px solid black;
-		width: 38px; /* 20 * 2 - 2 */
-		border-bottom-left-radius: 4px;
-		border-bottom-right-radius: 4px;
-		text-align: center;
-	}
-	.kbd .up {
-		height: 100px;
-		border-top: 2px solid black;
-	}
-	.kbd .down {
-		height: 50px;
-	}
-	
-	#PANIC {
-		font-size: 48px;
-		float: right;
-	}
-</style>
 </head>
 <body>
 	<h1 onclick="console.log(1)">KaNa</h1>
+	<div id="vis-network"></div>
 	<!--div id="PINLogger"></div-->
 	<button onclick="StopItAll()" id="PANIC">PANIC</button>
 	<div id="error"></div>
@@ -284,7 +196,5 @@ function StopItAll() {
 			data-note="76" class="w down bl br"><span class="label">p</span></span>
 		</div>
 	</div>
-	<input type="range" min="-3" max="5" step="1" value="1" />
-	<input type="number" />
 </body>
 </html>

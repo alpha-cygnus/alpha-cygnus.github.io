@@ -31,11 +31,24 @@ TestSynth {
 	-2400 ->[detune] sub
 }
 
+TestSynth2 {
+	MIDIIN inp -> Midi2Trigger trig, Midi2Note(LAST) note
+	note -> Note2CV ->[detune] Osc(SAW) o1, o2, o3, o4, o5, Osc(SQUARE) sub
+	o1, o2, o3, o4, o5 -> Env(0.1, 0.3, 0.7, 1) ampEnv -> AOUT out
+	trig ->[trigger] ampEnv, Env(5, 0.1, 1, 0.3, 0, 1) -> Delay(0.3) sEnv
+	AIN(15) spread -> [gain]Gain gspread
+	sEnv -> gspread -> [detune] o2
+	sEnv -> gspread -> Gain(-1) ->[detune] o3
+	sEnv -> gspread -> Gain(2) -> [detune] o4
+	sEnv -> gspread -> Gain(-3) ->[detune] o5
+	-1200 ->[detune] sub
+}
+
 MainOut {
 	AIN inp -> Dest dest, AOUT out
 }
 
-Osc osc -> Gain(0.0) g -> MainOut
+#Osc osc -> Gain(0.0) g -> MainOut
 
 #Keyboard -> Midi2Trigger trig, Midi2Note(LAST) note
 #trig -> P2A -> [gain]g
@@ -44,10 +57,12 @@ Osc osc -> Gain(0.0) g -> MainOut
 #Keyboard -> TestSynth -> Gain(0.1) -> MainOut
 
 #Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> Pan pan -> MainOut theMainOut
-Keyboard theKeyboard -> TestSynth ts -> PingPong -> Gain(0.1) -> MainOut theMainOut
+Keyboard theKeyboard -> TestSynth2 ts 
+	-> PingPong 
+	-> Gain(0.1) -> MainOut theMainOut
 
-{*v = 1 | v < 0 ? v : 0 }
-{*}
+#{*v = 1 | v < 0 ? v : 0 }
+#{*}
 
 #0.3 -> [freq]Osc panLfo -> Gain(0.5) ->[pan]pan
 #theKeyboard -> Midi2Trigger ->[trigger] panLfo
