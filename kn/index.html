@@ -5,15 +5,29 @@
 <script src="../lib/Tone.js"></script>
 <script src="../lib/kefir.js"></script>
 <script src="../lib/peg-0.9.0.js"></script>
-<script src="../lib/cytoscape.js"></script>
+
+<script src="../lib/base64.js"></script>
+<script src="../lib/rawinflate.js"></script>
+<script src="../lib/rawdeflate.js"></script>
+<!--script src="../lib/cytoscape.js"></script>
 <link href="../lib/vis.css" rel="stylesheet" type="text/css" />
 		<script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"></script>
-		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script>
+		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script-->
 <script src="kncore.js"></script>
 <script src="knmeta.js"></script>
 <link href="main.css" rel="stylesheet" type="text/css" />
+<script src="simple64"></script>
+<script src="../lib/viz.js"></script>
 <script>
 "use strict";
+function compress(s) {
+	var zipped = RawDeflate.deflate(s, 9);	
+	return Simple64.encode(zipped);
+}
+function decompress(s) {
+	var zipped = Simple64.decode(s);
+	return RawDeflate.inflate(zipped);
+}
 $(() => {
 	Kefir.zip([
 		Kefir.fromPromise($.get('kn.pegjs')),
@@ -68,64 +82,20 @@ $(() => {
 		// 	$('#error').html($('#error').html() + msg + '<br />');
 		// 	console.error(msg);
 		// }
+		
+		var klaz = 'TestSynth2'; //knMainClass;
+		var ps = knMeta[klaz].getPlant();
+		$('#diaLink').attr('href', 'http://www.plantuml.com/plantuml/svg/' + compress(ps)).show();
+		
+		var src = knMeta[klaz].getDot();
+		console.log(src);
+		var res = Viz(src);
+		//'digraph g { n0[shape=record,label="{{<a>a|<b>b}|abracadabra|{c|d|f}}"]; n0:a -> a; n0:b -> b }');
+		//console.log(res);
+		$('#vis-network').html(res);
+
 		new window[knMainClass]();
 		_fabrique.start();
-		var klaz = 'TestSynth';
-		console.log(knMeta[klaz].getPlant());
-
-		var cy = cytoscape({
-			container: $('#vis-network'),
-			// elements: [
-			// 	{
-			// 		data: { id: 'n1', label: 'Source' }
-			// 	},
-			// 	{
-			// 		data: { id: 'n1.e1', label: 'e1', parent: 'n1' }
-			// 	},
-			// 	{
-			// 		data: { id: 'n1.e2', label: 'e2', parent: 'n1' }
-			// 	},
-			// 	{
-			// 		data: { id: 'n2', label: 'Targ' }
-			// 	},
-			// 	{
-			// 		data: { id: 'n2.e1', label: 'e1', parent: 'n2' }
-			// 	},
-			// 	{
-			// 		data: { id: 'n2.e2', label: 'e2', parent: 'n2' }
-			// 	},
-
-			// 	{
-			// 		data: { id: 'n1.e1->n2.e2', source: 'n1.e1', target: 'n2.e2' }
-			// 	},
-			// ],
-			elements: knMeta[klaz].getCyEles(),
-			layout: {
-				name: 'dagre',
-			},
-			style: [
-				{
-					selector: 'node',
-					style: {
-						'content': 'data(label)',
-						'text-opacity': 0.5,
-						'text-valign': 'center',
-						'text-halign': 'right',
-						'background-color': '#11479e'
-					}
-				},
-
-				{
-					selector: 'edge',
-					style: {
-						'width': 4,
-						'target-arrow-shape': 'triangle',
-						'line-color': '#9dbaea',
-						'target-arrow-color': '#9dbaea'
-					}
-				}
-			],
-		});
 	});
 	
 })
@@ -143,6 +113,7 @@ function StopItAll() {
 	<!--div id="PINLogger"></div-->
 	<button onclick="StopItAll()" id="PANIC">PANIC</button>
 	<div id="error"></div>
+	<a style:"display:none" target="_blank" id="diaLink" href="#">Diagram</a>
 	<div class="kbd" style="display:block">
 		<div class="kbd-up">
 			<span 

@@ -173,21 +173,60 @@ class KNClassMeta extends KNMeta {
 	}
 	getPlant() {
 		var res = ['@startuml'];
+		var links = [];
+		var used = {};
+		for (var ln in this.links) {
+			var li = this.links[ln];
+			//res.push(`${li.n0} "${li.e0}" --> "${li.e1}" ${li.n1}`);
+			var from = `${li.n0}.${li.e0}`;
+			var to = `${li.n1}.${li.e1}`;
+			// used[from] = 1;
+			// used[to] = 1;
+			if (li.e0 == knMeta[this.nodes[li.n0].type].outList[0]) from = '[' + li.n0 + ']';
+			else {
+				used[from] = 1;
+				from = `(${from})`;
+			}
+			if (li.e1 == knMeta[this.nodes[li.n1].type].inpList[0]) to = '[' + li.n1 + ']';
+			else {
+				used[to] = 1;
+				to = `(${to})`;
+			}
+			res.push(`${from} ---> ${to}`);
+		}
 		for (let nn in this.nodes) {
 			var n = this.nodes[nn];
 			var nc = knMeta[n.type];
-			res.push(`object ${nn} {`);
+			var label = n.title;
+			if (!label) {
+				if (n.type == 'Const') {
+					label = n.params.join(', ');
+				} else {
+					label = n.type;
+					if (n.params && n.params.length) {
+						label += '(' + n.params.join(', ') + ')';
+					}
+				}
+				if (n.name) label += ' ' + n.name;
+				if (n.inpType) label += ' <<' + n.inpType + '>>';
+				if (n.outType) label += ' <<' + n.outType + '>>';
+			}
+			res.push(`[${label}] as ${nn}`);
+			let e0 = nc.inpList[0];
 			for (let e of nc.inpList) {
-				res.push(`${nc.nodes[e].type} ${e}`);
+				//if (e == e0) continue;
+				if (!used[`${nn}.${e}`]) continue;
+				res.push(`(${e}) as (${nn}.${e})`);
+				res.push(`(${nn}.${e}) --* ${nn}`)
 			}
+			e0 = nc.outList[0];
 			for (let e of nc.outList) {
-				res.push(`${nc.nodes[e].type} ${e}`);
+				//if (e == e0) continue;
+				if (!used[`${nn}.${e}`]) continue;
+				res.push(`(${e}) as (${nn}.${e})`);
+				res.push(`${nn} --* (${nn}.${e})`)
 			}
-			res.push(`}`);
-		}
-		for (var ln in this.links) {
-			var li = this.links[ln];
-			res.push(`${li.n0} "${li.e0}" --> "${li.e1}" ${li.n1}`);
+			// res.push(`}`);
 		}
 		return res.join('\n');
 	}
@@ -227,6 +266,45 @@ class KNClassMeta extends KNMeta {
 			});
 		}
 		return res;
+	}
+	getDot() {
+		var res = [`digraph ${this.name} {`, 'node [width=0.1,height=0.1];', 'rankdir=LR;', 'size="20,20"'];
+		for (let nn in this.nodes) {
+			var n = this.nodes[nn];
+			var nc = knMeta[n.type];
+			var label = n.title;
+			if (!label) {
+				if (n.type == 'Const') {
+					label = n.params.join(', ');
+				} else {
+					label = n.type;
+					if (n.params && n.params.length) {
+						label += '(' + n.params.join(', ') + ')';
+					}
+				}
+				if (n.name) label += ' ' + n.name;
+				// if (n.inpType) label += ' <<' + n.inpType + '>>';
+				// if (n.outType) label += ' <<' + n.outType + '>>';
+			}
+			var s = '{{';
+			s += nc.inpList.map(e => `<${e}> ${e}`).join('|');
+			s += '}|' + label + '|{';
+			s += nc.outList.map(e => `<${e}> ${e}`).join('|');
+			s += '}}';
+			res.push(`n_${nn}[id="${nn}",shape=record,label="${s}"];`);
+		}
+		res.push('{ rank = source; ');
+		res.push(this.inpList.map(e => `n_${e}`).join(';'));
+		res.push('};');
+		res.push('{ rank = sink; ');
+		res.push(this.outList.map(e => `n_${e}`).join(';'));
+		res.push('};');
+		for (var ln in this.links) {
+			var li = this.links[ln];
+			res.push(`n_${li.n0}:${li.e0} -> n_${li.n1}:${li.e1};`);
+		}
+		res.push('}');
+		return res.join('\n');
 	}
 }
 
