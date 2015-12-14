@@ -743,6 +743,14 @@ class Const extends Basis {
 	}
 }
 
+class Noise {
+	constructor(def) {
+		this.n = new Tone.Noise();
+		this.n.start();
+		this.out = new AOUT().bind(this.n);
+	}
+}
+
 const FLTTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
 
 class Filter extends Basis {

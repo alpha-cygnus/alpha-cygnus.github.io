@@ -89,6 +89,10 @@ Pan {
 	AOUT out
 }
 
+Noise {
+	AOUT out
+}
+
 # -- UI
 Pot {
 	POUT value

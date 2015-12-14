@@ -83,16 +83,16 @@ $(() => {
 		// 	console.error(msg);
 		// }
 		
-		var klaz = 'TestSynth2'; //knMainClass;
+		var klaz = 'SpreadingLead'; //knMainClass;
 		var ps = knMeta[klaz].getPlant();
 		$('#diaLink').attr('href', 'http://www.plantuml.com/plantuml/svg/' + compress(ps)).show();
 		
 		var src = knMeta[klaz].getDot();
-		console.log(src);
-		var res = Viz(src);
+		//console.log(src);
+		//var res = Viz(src);
 		//'digraph g { n0[shape=record,label="{{<a>a|<b>b}|abracadabra|{c|d|f}}"]; n0:a -> a; n0:b -> b }');
 		//console.log(res);
-		$('#vis-network').html(res);
+		//$('#vis-network').html(res);
 
 		new window[knMainClass]();
 		_fabrique.start();

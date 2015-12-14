@@ -93,5 +93,5 @@ div#error {
 	height: 400px;
 	border: 1px solid lightgray;
 	overflow: scroll;
-	/* display: none; */
+	display: none;
 }

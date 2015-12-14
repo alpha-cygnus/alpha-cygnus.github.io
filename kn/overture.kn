@@ -6,6 +6,10 @@ Echo {
 	AIN(0.5) time -> [time]d
 }
 
+MainOut {
+	AIN inp -> Dest dest, AOUT out
+}
+
 PingPong {
 	AIN inp -> Gain gdecayIL -> Delay dl -> Gain gdecayLR -> Delay dr -> Gain gdecayRL -> dl
 	inp -> Gain gdry -> AOUT out
@@ -31,10 +35,10 @@ TestSynth {
 	-2400 ->[detune] sub
 }
 
-TestSynth2 {
+SpreadingLead {
 	MIDIIN inp -> Midi2Trigger trig, Midi2Note(LAST) note
 	note -> Note2CV ->[detune] Osc(SAW) o1, o2, o3, o4, o5, Osc(SQUARE) sub
-	o1, o2, o3, o4, o5 -> Env(0.1, 0.3, 0.7, 1) ampEnv -> AOUT out
+	o1, o2, o3, o4, o5 -> Env(0.1, 0.3, 0.7, 1) ampEnv -> Gain(0.2) -> AOUT out
 	trig ->[trigger] ampEnv, Env(5, 0.1, 1, 0.3, 0, 1) -> Delay(0.3) sEnv
 	AIN(15) spread -> [gain]Gain gspread
 	sEnv -> gspread -> [detune] o2
@@ -44,21 +48,43 @@ TestSynth2 {
 	-1200 ->[detune] sub
 }
 
-MainOut {
-	AIN inp -> Dest dest, AOUT out
+FM1 {
+	MIDIIN inp -> Midi2Trigger trig, Midi2Note(LAST) note
+	note -> Note2CV ->[detune] Osc(SINE) o1, o2(SINE)
+	o2 -> Gain(100) fmDetune ->[detune] o1
+	trig ->[trigger] Env(5, 0.1, 1, 0.3) -> Gain(500) ->[gain]fmDetune
+	100 ->[gain] fmDetune
+	-1800 ->[detune] o2
+	0.5 -> [freq]Osc ->Gain(100) ->[detune] o2
+	o1 -> Env(0.1, 0.3, 0.7, 1) amp -> AOUT out
+	trig ->[trigger] amp
 }
 
-#Osc osc -> Gain(0.0) g -> MainOut
+BD1 {
+	MIDIIN inp -> Midi2Trigger trig, Midi2Note(LAST) note
+	trig->[trigger] Env(0.001, 0.09, 0.05, 0.3) freqEnv, Env(0.001, 0.2, 0.8, 0.1) ampEnv
+	freqEnv -> Gain(1000) ->[freq] Osc(SINE) osc -> ampEnv -> Gain(0.5) -> AOUT out
+	note -> Note2CV ->[detune] osc
+}
 
-#Keyboard -> Midi2Trigger trig, Midi2Note(LAST) note
-#trig -> P2A -> [gain]g
-#note -> Note2CV -> [detune]osc
+HH1 {
+	MIDIIN inp -> Midi2Trigger trig, Midi2Note(LAST) note
+	trig->[trigger] Env(0.01, 0.5, 0.001, 0.1) ampEnv
+	Noise osc -> Filter(HP) flt 
+		-> ampEnv -> Gain(0.5) -> AOUT out
 
-#Keyboard -> TestSynth -> Gain(0.1) -> MainOut
+	note -> Note2CV ->[detune] flt
+	4800 ->[detune]flt
+}
 
 #Keyboard theKeyboard -> TestSynth ts -> Echo -> Gain(0.1) -> Pan pan -> MainOut theMainOut
-Keyboard theKeyboard -> TestSynth2 ts 
-	-> PingPong 
+
+Keyboard theKeyboard
+	#-> SpreadingLead ts 
+	#-> FM1 #, SpreadingLead
+	#-> BD1
+	-> HH1
+	#-> PingPong 
 	-> Gain(0.1) -> MainOut theMainOut
 
 #{*v = 1 | v < 0 ? v : 0 }
