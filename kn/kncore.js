@@ -614,7 +614,7 @@ class P2A extends Basis {
 	}
 }
 
-class Env extends Basis {
+class ADSR extends Basis {
 	constructor(a, d, s, r, mn, mx) {
 		super();
 		this.a = a || 0.1;
@@ -649,6 +649,10 @@ class Env extends Basis {
 		this.pgain.cancelScheduledValues(time);
 		this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
 	}
+}
+
+class Env extends ADSR { // old name
+
 }
 
 const OSCTypes = ['sine', 'square', 'sawtooth', 'triangle'];
@@ -739,7 +743,10 @@ class Const extends Basis {
 		this.g = Tone.context.createGain();
 		this.g.gain.value = v;
 		this.c.connect(this.g);
-		this.out = new AOUT().bind(this.g);
+		this.out = new AOUT(); //.bind(this.g);
+		this.inp = new AIN();
+		this.g.connect(this.out.gain);
+		this.inp.gain.connect(this.out.gain);
 	}
 }
 

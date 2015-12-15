@@ -92,6 +92,7 @@ class KNClassMeta extends KNMeta {
 		if (!id) id = '_' + t.type + '_' + (++ci);
 		this.uses[t.type] = ci;
 		this.nodes[id] = t;
+		t.id = id;
 		if (wasId) t.name = id;
 		if (title) t.title = title;
 		if (knMeta[t.type] && knMeta[t.type].inpType) this.addInp(t);
@@ -99,11 +100,11 @@ class KNClassMeta extends KNMeta {
 		return id;
 	}
 	addInp(inp) {
-		inp.inpIdx = this.inpList.push(inp.name) + 1;
+		inp.inpIdx = this.inpList.push(inp.id) - 1;
 		inp.inpType = knMeta[inp.type].inpType;
 	}
 	addOut(out) {
-		out.outIdx = this.outList.push(out.name) + 1;
+		out.outIdx = this.outList.push(out.id) - 1;
 		out.outType = knMeta[out.type].outType;
 	}
 	getVertices() {
@@ -313,6 +314,12 @@ class KNProcMeta extends KNClassMeta {
 		var name = `Proc_${++knProcCount}`;
 		super(name);
 		this.proc = proc;
+		var i = 0;
+		for (var p of proc.params) {
+			if (!p.name) p.name = '$' + ++i;
+			this.addNode({type: 'PIN'}, p.name);
+		}
+		this.addNode({type: 'POUT'}, 'out');
 	}
 	compileCons(res) {
 		var proc = this.proc;
@@ -323,10 +330,8 @@ class KNProcMeta extends KNClassMeta {
 			res.push(`\t\tvar ${n} = Math.${n};`);
 		}
 		var pns = [];
-		var i = 0;
 		for (var p of proc.params) {
 			var agr = p.agr || '+';
-			if (!p.name) p.name = '$' + ++i;
 			var af = {
 				'+': ['a + b', 0],
 				'*': ['a * b', 1],

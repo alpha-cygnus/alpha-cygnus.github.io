@@ -1,6 +1,7 @@
 #-- basic
 
 Const {
+	AIN inp
 	AOUT out
 }
 
@@ -11,7 +12,14 @@ Osc {
 }
 
 Env {
-	AIN(1) inp
+	AIN inp
+	AOUT out
+	PIN trigger
+	PIN attack, decay, sustain, release
+}
+
+ADSR {
+	AIN inp
 	AOUT out
 	PIN trigger
 	PIN attack, decay, sustain, release
@@ -29,7 +37,7 @@ Delay {
 }
 
 P2A {
-	PIN in
+	PIN inp
 	AOUT out
 }
 
@@ -51,8 +59,10 @@ Midi2Arpeggio {
 }
 
 Midi2Trigger {
+	@enum NORMAL, RETRIG
 	MIDIIN inp
 	POUT out
+	PIN mode
 }
 
 Midi2Note {

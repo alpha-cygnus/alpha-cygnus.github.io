@@ -58,7 +58,7 @@ SpreadingLead {
 
 FM1 {
 	MIDIIN inp -> Midi2Trigger trig, Midi2Note<LAST> note
-	note -> Note2Detune ->[detune] Osc<SINE> o1, o2<SINE>
+	note -> Note2Detune ->[detune] Osc<SINE> o1, o2
 	o2 -> *100 fmDetune ->[detune] o1
 	trig ->[trigger] ADSR<5, 0.1, 1, 0.3> -> *500 ->[gain]fmDetune
 	100 ->[gain] fmDetune

@@ -17,7 +17,7 @@
 <script src="knmeta.js"></script>
 <link href="main.css" rel="stylesheet" type="text/css" />
 <script src="simple64"></script>
-<script src="../lib/viz.js"></script>
+<!--script src="../lib/viz.js"></script-->
 <script>
 "use strict";
 function compress(s) {
@@ -33,10 +33,14 @@ $(() => {
 		Kefir.fromPromise($.get('kn.pegjs')),
 		Kefir.fromPromise($.get('prelude.kn')),
 		Kefir.fromPromise($.get('overture.kn')),
+		Kefir.fromPromise($.get('kn2.pegjs')),
+		Kefir.fromPromise($.get('overture2.kn')),
 	]).onValue(data => {
 		var grammar = data[0];
 		var prelude = data[1];
 		var overture = data[2];
+		var gr2 = data[3];
+		var ov2 = data[4];
 		console.log('Loaded:', grammar.length, prelude.length);
 		//var parserSource = PEG.buildParser(grammar, {output: 'source'});
 		//console.log(parserSource);
@@ -61,7 +65,21 @@ $(() => {
 				cls.__internal = true;
 			}
 			// try {
-				var parsedOverture = parser.parse(overture);
+				var par2 = PEG.buildParser(gr2);
+			// } catch(e) {
+			// 	console.log(e);
+			// 	console.error(`Error parsing gr2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
+			// 	throw e;
+			// }
+			try {
+				var parsedOverture2 = par2.parse(ov2);
+			} catch(e) {
+				console.log(e);
+				console.error(`Error parsing ov2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
+				throw e;
+			}
+			// try {
+				//var parsedOverture = parser.parse(overture);
 			// } catch(e) {
 			// 	console.log(e);
 			// 	throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
