@@ -101,11 +101,11 @@ class Basis {
 			state.on = v;
 		});
 		this.isConsumer(t => {
-			if (state.on > 0.5 && state.wasOn < 0.5) {
-				onFunc(t);
-			}
-			else if (state.on < 0.5 && state.wasOn > 0.5) {
+			if (Math.abs(state.on) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
 				offFunc(t);
+			} else
+			if (Math.abs(state.on - state.wasOn) >= 0.5) {
+				onFunc(t);
 			}
 			state.wasOn = state.on;
 		});
@@ -479,21 +479,6 @@ class Midi2NotesBasis extends Basis { // abstract
 		this.noteList = {};
 		this.nc = 0;
 		this.value = 0;
-		// this.inp.onValue(v => {
-		// 	if (v.t === 'on') {
-		// 		if (this.noteSet[v.n]) return;
-		// 		this.nc++;
-		// 		this.noteSet[v.n] = this.nc;
-		// 		this.noteList[this.nc] = v.n;
-		// 	}
-		// 	if (v.t === 'off') {
-		// 		var nc = this.noteSet[v.n];
-		// 		delete this.noteSet[v.n];
-		// 		delete this.noteList[nc];
-		// 	}
-		// 	this.value = this.getValue();
-		// });
-		// this.out.produceFromField(this, 'value');
 		this.out.plug(
 			this.inp.stream.map(v => {
 				if (v.t === 'on') {
@@ -519,12 +504,22 @@ class Midi2NotesBasis extends Basis { // abstract
 	}
 }
 
+const M2TModes = ['bool', 'retrig', 'count']
+
 class Midi2Trigger extends Midi2NotesBasis {
-	constructor() {
+	constructor(mode) {
 		super();
+		this.smode = M2TModes[mode];
 	}
 	getValue() {
-		return Object.keys(this.noteSet).length > 0 ? 1 : 0;
+		switch(this.smode) {
+			case 'count':
+				return Object.keys(this.noteSet).length;
+			case 'retrig':
+				return Object.keys(this.noteSet).length ? this.nc : 0;
+			default: return Object.keys(this.noteSet).length > 0 ? 1 : 0;
+		}
+		
 	}
 }
 
@@ -586,6 +581,59 @@ class Note2CV extends Basis {
 		}
 	}
 }
+
+const MaxPolyCount = 16;
+
+class Midi2PolyBasis extends Basis { // abstract
+	constructor() {
+		super();
+		this.inp = new MIDIIN();
+		this.values = [];
+		for (var i = 0; i < MaxPolyCount; i++) {
+			this['out' + i] = new POUT();
+			this.values.push(0);
+		};
+		
+		this.noteSet = {};
+		this.noteList = {};
+		this.nc = 0;
+		
+		this.allOut = this.inp.stream.map(v => {
+			if (v.t === 'on') {
+				if (this.noteSet[v.n]) return;
+				this.nc++;
+				this.noteSet[v.n] = this.nc;
+				this.noteList[this.nc] = v.n;
+			}
+			if (v.t === 'off') {
+				var nc = this.noteSet[v.n];
+				delete this.noteSet[v.n];
+				delete this.noteList[nc];
+			}
+			this.values = this.getValues();
+			return this.values;
+		})
+		.toProperty(() => this.values);
+		
+		for (var i = 0; i < MaxPolyCount; i++) {
+			let idx = i;
+			this['out' + i].plug(this.allOut.map(a => a[idx]));
+		};
+	}
+	getValues() {
+		throw "Define getValues :: () -> [val]";
+	}
+}
+
+class Midi2PolyNote extends Midi2PolyBasis {
+	constructor(polyCount) {
+		super();
+	}
+	getValues() {
+		
+	}
+}
+
 
 class P2A extends Basis {
 	constructor(mode) {

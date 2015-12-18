@@ -7,8 +7,9 @@ Const {
 
 Osc {
 	@enum SINE, SIN = 0, SQUARE, SAW, TRI
-	AIN freq, detune
+	AIN detune, freq
 	AOUT out
+	PIN trigger
 }
 
 Env {
@@ -59,7 +60,7 @@ Midi2Arpeggio {
 }
 
 Midi2Trigger {
-	@enum NORMAL, RETRIG
+	@enum BOOL, RETRIG, COUNT
 	MIDIIN inp
 	POUT out
 	PIN mode

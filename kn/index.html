@@ -33,14 +33,14 @@ $(() => {
 		Kefir.fromPromise($.get('kn.pegjs')),
 		Kefir.fromPromise($.get('prelude.kn')),
 		Kefir.fromPromise($.get('overture.kn')),
-		Kefir.fromPromise($.get('kn2.pegjs')),
-		Kefir.fromPromise($.get('overture2.kn')),
+		// Kefir.fromPromise($.get('kn2.pegjs')),
+		// Kefir.fromPromise($.get('overture2.kn')),
 	]).onValue(data => {
 		var grammar = data[0];
 		var prelude = data[1];
 		var overture = data[2];
-		var gr2 = data[3];
-		var ov2 = data[4];
+		// var gr2 = data[3];
+		// var ov2 = data[4];
 		console.log('Loaded:', grammar.length, prelude.length);
 		//var parserSource = PEG.buildParser(grammar, {output: 'source'});
 		//console.log(parserSource);
@@ -65,21 +65,21 @@ $(() => {
 				cls.__internal = true;
 			}
 			// try {
-				var par2 = PEG.buildParser(gr2);
+				// var par2 = PEG.buildParser(gr2);
 			// } catch(e) {
 			// 	console.log(e);
 			// 	console.error(`Error parsing gr2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
 			// 	throw e;
 			// }
-			try {
-				var parsedOverture2 = par2.parse(ov2);
-			} catch(e) {
-				console.log(e);
-				console.error(`Error parsing ov2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
-				throw e;
-			}
 			// try {
-				//var parsedOverture = parser.parse(overture);
+			// 	var parsedOverture2 = par2.parse(ov2);
+			// } catch(e) {
+			// 	console.log(e);
+			// 	console.error(`Error parsing ov2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
+			// 	throw e;
+			// }
+			// try {
+				var parsedOverture = parser.parse(overture);
 			// } catch(e) {
 			// 	console.log(e);
 			// 	throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
@@ -112,7 +112,7 @@ $(() => {
 		//console.log(res);
 		//$('#vis-network').html(res);
 
-		new window[knMainClass]();
+		window.main = new window[knMainClass]();
 		_fabrique.start();
 	});
 	
@@ -183,6 +183,197 @@ function StopItAll() {
 			data-note="72" class="w down bl br"><span class="label">i</span></span><span 
 			data-note="74" class="w down bl br"><span class="label">o</span></span><span 
 			data-note="76" class="w down bl br"><span class="label">p</span></span>
+		</div>
+	</div>
+	<div>
+		<div class="seven-seg minus">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-0">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-1">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-2">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-3">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-4">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-5">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-6">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-7">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-8">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div><div class="seven-seg d-9">
+			<span class="t m"></span>
+			<span class="t l"></span>
+			<span class="t r"></span>
+			<span class="m u"></span>
+			<span class="m d"></span>
+			<span class="b l"></span>
+			<span class="b r"></span>
+			<span class="b m"></span>
+		</div>
+		<div class="seven-seg2 minus">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-0">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-1">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-2">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-3">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-4">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-5">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-6">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-7">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-8">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
+		</div><div class="seven-seg2 d-9">
+			<span class="t m"><a></a><a></a></span>
+			<span class="t l"><a></a><a></a></span>
+			<span class="t r"><a></a><a></a></span>
+			<span class="c m"><a></a><a></a></span>
+			<span class="b r"><a></a><a></a></span>
+			<span class="b l"><a></a><a></a></span>
+			<span class="b m"><a></a><a></a></span>
 		</div>
 	</div>
 </body>
