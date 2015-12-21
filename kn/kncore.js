@@ -110,6 +110,25 @@ class Basis {
 			state.wasOn = state.on;
 		});
 	}
+	triggeredStream(fn, onFunc, offFunc) {
+		fn = fn || 'trigger';
+		if (!this[fn]) this[fn] = new PIN();
+		var state = {
+			value: 0,
+			wasOn: 0,
+		};
+		this[fn + 'State'] = state;
+		return this[fn].map(v => {
+			if (Math.abs(v) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
+				state.value = offFunc(state, v);
+			} else
+			if (Math.abs(v - state.wasOn) >= 0.5) {
+				state.value = onFunc(state, v);
+			}
+			state.wasOn = v;
+			return state.value;
+		}).toProperty(() => state.value);
+	}
 	isConsumer(fun) {
 		_fabrique.onConsume(fun);
 	}
@@ -849,22 +868,18 @@ class Sequence extends Basis {
 				this.values = s.split('').map(ss => ss == 'x' || ss == '1' ? 1 : 0);
 			}
 		}
-		this.clock = new PIN();
+		//this.clock = new PIN();
 		this.out = new POUT();
 		this.out.plug(
-			this.clock.stream
-				.scan((state, v) => {
-					if (state.on < 0.5 && v > 0.5) {
-						state.on = 1; state.step = (state.step + 1) % this.values.length;
-					}
-					else if (state.on > 0.5 && v < 0.5) {
-						state.on = 0;
-					}
-					return state;
-				}, {on: 0, step: -1})
-				.map(state => {
+			this.triggeredStream('clock',
+				(state, v) => {
+					state.step = ((state.step || 0) + 1) % this.values.length;
 					return this.values[state.step];
-				})
+				},
+				(state, v) => {
+					return state.value;
+				}
+			)
 		);
 	}
 }
