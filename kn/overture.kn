@@ -108,4 +108,6 @@ Keyboard theKeyboard
 #0.3 -> [freq]Osc panLfo -> *0.5 -> [pan]pan
 #theKeyboard -> Midi2Trigger -> [trigger]panLfo
 
+UIDial d1, UIDial d2 -> {_v|v*99} -> UIDigits<4> o1, UIValue<4> o2
 
+@UI {{d1 | d2} | o1 | o2}

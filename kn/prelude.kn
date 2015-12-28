@@ -144,3 +144,16 @@ Curve {
 	AOUT out
 }
 
+
+UIDial {
+	POUT out
+}
+
+UIDigits {
+	PIN inp
+}
+
+UIValue {
+	PIN inp
+}
+

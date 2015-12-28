@@ -28,7 +28,7 @@
 		return res;
 	}
 	function linkPoints(p0, p1) {
-		console.log('linking', p0.toString(), p1.toString());
+		//console.log('linking', p0.toString(), p1.toString());
 		for (let out of p0[1]) {
 			let a = out.split('.');
 			let n0 = a[0];
@@ -64,15 +64,23 @@
 
 S = ss:statement* { return [classes, ss]; }
 
-statement = cls / &{ _cc = classes[knMainClass]; return 1 } chain
+statement = cls
+	/ &{ _cc = classes[knMainClass]; return 1 } chain 
+	/ &{ _cc = classes[knMainClass]; return 1 } layout:layout { _cc.addLayout(layout) }
 
 cls
 	= name:Id COPEN &{
 		_cc = newCls(name);
 		return true;
 	} 
-	values:values? &{ _cc.values = values || {}; return true; }
-	chains:chains CCLOSE { return ["Class", { name, chains, values }] }
+	(
+	values:values { _cc.values = values || {} }
+	/
+	layout:layout { _cc.addLayout(layout) }
+	/
+	chain:chain
+	)*
+	CCLOSE { return ["Class", { name }] }
 
 values = ENUM &{ _cvi = 0; return true; } head:v_val tail:(COMMA v:v_val { return v; })* {
 	return [head].concat(tail).reduce((res, v) => (res[v.name] = v.val, res), {});
@@ -92,9 +100,16 @@ chains = head:chain tail:(SEMI? c:chain { return c} )* { return concatIO(head, t
 //		let p1 = p;
 //	})
 //	chain_tail?
-chain = head:point tail:(arrow p:point {return p})* {
-	return tail.reduce(linkPoints, head);
-}
+chain 
+	= head:point tail:(arrow p:point {return p})* {
+		return tail.reduce(linkPoints, head);
+	}
+
+layout = UI l:l_decls { return l }
+l_decls = head:l_decl tail:(PIPE d:l_decl { return d })* { return [head].concat(tail) }
+l_decl
+	= COPEN ids:l_decls CCLOSE { return ids }
+	/ id:decl
 
 arrow
 	= ARROW
@@ -260,6 +275,7 @@ STR2 "string2"
 NOTE = ws n:$([A-H] [#-b]? DIGIT?) ws { return n }
 TSEQ = ws s:$([x.]+) ws { return s.split('').map(c => c == 'x' ? 1 : 0) }
 ENUM = ws '@enum' ws
+UI = ws '@' ('ui'/'UI') ws
 AGR = ws a:[*_^+] ws { return a }
 MUL = ws '*' ws
 

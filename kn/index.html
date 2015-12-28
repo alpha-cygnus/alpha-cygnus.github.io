@@ -15,6 +15,7 @@
 		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script-->
 <script src="kncore.js"></script>
 <script src="knmeta.js"></script>
+<script src="knui.js"></script>
 <link href="main.css" rel="stylesheet" type="text/css" />
 <script src="simple64.js"></script>
 <!--script src="../lib/viz.js"></script-->
@@ -114,6 +115,9 @@ $(() => {
 
 		window.main = new window[knMainClass]();
 		_fabrique.start();
+		$('#UI').html(window.main.getHTML());
+		startUI();
+		window.main.onStartUI();
 	});
 	
 })
@@ -376,5 +380,7 @@ function StopItAll() {
 			<span class="b m"><a></a><a></a></span>
 		</div>
 	</div>
+	<div class="dial"></div>
+	<div id="UI"></div>
 </body>
 </html>

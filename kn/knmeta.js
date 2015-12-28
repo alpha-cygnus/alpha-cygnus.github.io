@@ -41,6 +41,15 @@ class KNMeta {
 		res.push('\t\tsuper();');
 		this.compileCons(res);
 		res.push('\t}');
+
+		res.push('\tgetHTML() {');
+		this.compileGetHTML(res);
+		res.push('\t}');
+
+		res.push('\tonStartUI() {');
+		this.compileOnStartUI(res);
+		res.push('\t}');
+
 		res.push('}');
 		return res.join('\n');
 	}
@@ -53,6 +62,12 @@ class KNMeta {
 	compileCons(res) {
 		return;
 	}
+	compileGetHTML(res) {
+		return;
+	}
+	compileOnStartUI(res) {
+		return;
+	}
 }
 
 class KNClassMeta extends KNMeta {
@@ -63,6 +78,7 @@ class KNClassMeta extends KNMeta {
 		this.nodes = {};
 		this.inpList = [];
 		this.outList = [];
+		this.layouts = [];
 	}
 	compileCons(res) {
 		for (var nn in this.nodes) {
@@ -82,6 +98,23 @@ class KNClassMeta extends KNMeta {
 		for (var ln in this.links) {
 			var li = this.links[ln];
 			res.push(`\t\tthis.${li.n0}.${li.e0}.connectTo(this.${li.n1}.${li.e1});`);
+		}
+	}
+	compileGetHTML(res) {
+		res.push(`\t\tvar html = [];`);
+		res.push(`\t\tvar s;`);
+		for (var nn in this.nodes) {
+			var t = this.nodes[nn];
+			var ps = t.params;
+			res.push(`\t\tif (s = this.${nn}.getHTML(this)) html.push(s);`);
+		}
+		res.push(`\t\treturn html.join('')`);
+	}
+	compileOnStartUI(res) {
+		for (var nn in this.nodes) {
+			var t = this.nodes[nn];
+			var ps = t.params;
+			res.push(`\t\tthis.${nn}.onStartUI(this);`);
 		}
 	}
 	addNode(type, id, title, params) {
@@ -107,71 +140,74 @@ class KNClassMeta extends KNMeta {
 		out.outIdx = this.outList.push(out.id) - 1;
 		out.outType = knMeta[out.type].outType;
 	}
-	getVertices() {
-		var res = [];
-		for (let nn in this.nodes) {
-			var n = this.nodes[nn];
-			var nc = knMeta[n.type];
-			res.push({
-				id: nn,
-				label: n.title || n.name || n.type,
-				shape: 'box',
-				font:{size:30},
-				size:40,
-			});
-			if (!nc.inpList) debugger;
-			for (let e of nc.inpList) {
-				res.push({
-					id: nn + '.' + e,
-					label: e,
-					shape: 'dot',
-					size:10,
-				});
-			}
-			for (let e of nc.outList) {
-				res.push({
-					id: nn + '.' + e,
-					label: e,
-					shape: 'diamond',
-					size:10,
-				});
-			}
-		}
-		return res;
+	addLayout(l) {
+		this.layouts.push(l);
 	}
-	getEdges() {
-		var res = [];
-		for (let nn in this.nodes) {
-			var n = this.nodes[nn];
-			var nc = knMeta[n.type];
-			for (let e of nc.inpList) {
-				res.push({
-					from: nn + '.' + e,
-					to: nn,
-					arrows: 'to',
-					length: 10,
-				});
-			}
-			for (let e of nc.outList) {
-				res.push({
-					from: nn,
-					to: nn + '.' + e,
-					arrows: 'to',
-					length: 10,
-				});
-			}
-		}
-		for (var ln in this.links) {
-			var li = this.links[ln];
-			res.push({
-				from: `${li.n0}.${li.e0}`,
-				to: `${li.n1}.${li.e1}`,
-				arrows: 'to',
-				length: 40,
-			});
-		}
-		return res;
-	}
+	// getVertices() {
+	// 	var res = [];
+	// 	for (let nn in this.nodes) {
+	// 		var n = this.nodes[nn];
+	// 		var nc = knMeta[n.type];
+	// 		res.push({
+	// 			id: nn,
+	// 			label: n.title || n.name || n.type,
+	// 			shape: 'box',
+	// 			font:{size:30},
+	// 			size:40,
+	// 		});
+	// 		if (!nc.inpList) debugger;
+	// 		for (let e of nc.inpList) {
+	// 			res.push({
+	// 				id: nn + '.' + e,
+	// 				label: e,
+	// 				shape: 'dot',
+	// 				size:10,
+	// 			});
+	// 		}
+	// 		for (let e of nc.outList) {
+	// 			res.push({
+	// 				id: nn + '.' + e,
+	// 				label: e,
+	// 				shape: 'diamond',
+	// 				size:10,
+	// 			});
+	// 		}
+	// 	}
+	// 	return res;
+	// }
+	// getEdges() {
+	// 	var res = [];
+	// 	for (let nn in this.nodes) {
+	// 		var n = this.nodes[nn];
+	// 		var nc = knMeta[n.type];
+	// 		for (let e of nc.inpList) {
+	// 			res.push({
+	// 				from: nn + '.' + e,
+	// 				to: nn,
+	// 				arrows: 'to',
+	// 				length: 10,
+	// 			});
+	// 		}
+	// 		for (let e of nc.outList) {
+	// 			res.push({
+	// 				from: nn,
+	// 				to: nn + '.' + e,
+	// 				arrows: 'to',
+	// 				length: 10,
+	// 			});
+	// 		}
+	// 	}
+	// 	for (var ln in this.links) {
+	// 		var li = this.links[ln];
+	// 		res.push({
+	// 			from: `${li.n0}.${li.e0}`,
+	// 			to: `${li.n1}.${li.e1}`,
+	// 			arrows: 'to',
+	// 			length: 40,
+	// 		});
+	// 	}
+	// 	return res;
+	// }
 	getPlant() {
 		var res = ['@startuml'];
 		var links = [];
@@ -231,43 +267,43 @@ class KNClassMeta extends KNMeta {
 		}
 		return res.join('\n');
 	}
-	getCyEles() {
-		var res = [];
-		for (let nn in this.nodes) {
-			var n = this.nodes[nn];
-			res.push({
-				data: { id: nn, label: n.title || n.name || n.type, }
-			});
-			var nc = knMeta[n.type];
-			for (let e of nc.inpList) {
-				res.push({
-					data: { id: nn + '.' + e, label: e, parent0: nn }
-				});
-				res.push({
-					data: { id: nn + '.' + e + '.lnk', source: nn + '.' + e, target: nn }
-				});
-			}
-			for (let e of nc.outList) {
-				res.push({
-					data: { id: nn + '.' + e, label: e, parent0: nn }
-				});
-				res.push({
-					data: { id: nn + '.' + e + '.lnk', source: nn, target: nn + '.' + e }
-				});
-			}
-		}
-		for (var ln in this.links) {
-			var li = this.links[ln];
-			res.push({
-				data: {
-					id: ln,
-					source: `${li.n0}.${li.e0}`,
-					target: `${li.n1}.${li.e1}`,
-				}
-			});
-		}
-		return res;
-	}
+	// getCyEles() {
+	// 	var res = [];
+	// 	for (let nn in this.nodes) {
+	// 		var n = this.nodes[nn];
+	// 		res.push({
+	// 			data: { id: nn, label: n.title || n.name || n.type, }
+	// 		});
+	// 		var nc = knMeta[n.type];
+	// 		for (let e of nc.inpList) {
+	// 			res.push({
+	// 				data: { id: nn + '.' + e, label: e, parent0: nn }
+	// 			});
+	// 			res.push({
+	// 				data: { id: nn + '.' + e + '.lnk', source: nn + '.' + e, target: nn }
+	// 			});
+	// 		}
+	// 		for (let e of nc.outList) {
+	// 			res.push({
+	// 				data: { id: nn + '.' + e, label: e, parent0: nn }
+	// 			});
+	// 			res.push({
+	// 				data: { id: nn + '.' + e + '.lnk', source: nn, target: nn + '.' + e }
+	// 			});
+	// 		}
+	// 	}
+	// 	for (var ln in this.links) {
+	// 		var li = this.links[ln];
+	// 		res.push({
+	// 			data: {
+	// 				id: ln,
+	// 				source: `${li.n0}.${li.e0}`,
+	// 				target: `${li.n1}.${li.e1}`,
+	// 			}
+	// 		});
+	// 	}
+	// 	return res;
+	// }
 	getDot() {
 		var res = [`digraph ${this.name} {`, 'node [width=0.1,height=0.1];', 'rankdir=LR;', 'size="20,20"'];
 		for (let nn in this.nodes) {
@@ -335,8 +371,8 @@ class KNProcMeta extends KNClassMeta {
 			var af = {
 				'+': ['a + b', 0],
 				'*': ['a * b', 1],
-				'_': ['min(a, b)', 100000],
-				'^': ['max(a, b)', -100000],
+				'_': ['Math.min(a, b)', 100000],
+				'^': ['Math.max(a, b)', -100000],
 			}[agr];
 			var def = p.def || af[1];
 			res.push(`\t\tthis.${p.name} = new PIN(${def}, (a, b) => ${af[0]}, ${af[1]})`);

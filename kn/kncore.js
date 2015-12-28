@@ -135,6 +135,12 @@ class Basis {
 	getConstant() {
 		return Tone.Signal._constant;
 	}
+	getHTML(parent) {
+		return null;
+	}
+	onStartUI(parent) {
+		return;
+	}
 }
 
 class INOUT extends Basis {
@@ -762,8 +768,9 @@ class Osc extends Basis {
 	}
 }
 
-class Dest {
+class Dest extends Basis {
 	constructor() {
+		super();
 		this.inp = new AIN(); //.bind(Tone.context.destination);
 		this.gain = window.mainGain || Tone.context.createGain();
 		window.mainGain = this.gain;
@@ -773,8 +780,9 @@ class Dest {
 	}
 }
 
-class Gain {
+class Gain extends Basis {
 	constructor(def) {
+		super();
 		this.g = Tone.context.createGain();
 		this.g.gain.value = 0;
 		this.inp = new AIN().bind(this.g);
@@ -783,8 +791,9 @@ class Gain {
 	}
 }
 
-class Delay {
+class Delay extends Basis {
 	constructor(def) {
+		super();
 		this.d = Tone.context.createDelay();
 		this.d.delayTime.value = 0;
 		this.inp = new AIN().bind(this.d);
@@ -793,8 +802,9 @@ class Delay {
 	}
 }
 
-class Pan {
+class Pan extends Basis {
 	constructor(def) {
+		super();
 		this.p = Tone.context.createStereoPanner();
 		this.p.pan.value = 0;
 		this.inp = new AIN().bind(this.p);
@@ -817,8 +827,9 @@ class Const extends Basis {
 	}
 }
 
-class Noise {
+class Noise extends Basis {
 	constructor(def) {
+		super();
 		this.n = new Tone.Noise();
 		this.n.start();
 		this.out = new AOUT().bind(this.n);
