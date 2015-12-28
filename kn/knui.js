@@ -158,3 +158,37 @@ class UIValue extends UIBasis {
 	}
 }
 
+class UILED extends UIBasis {
+	constructor(color) {
+		super();
+		color = color || 0xFF0000
+		this.color = color; // 0xRRGGBB
+		this.r = ((color >> 16) & 0xFF)/255;
+		this.g = ((color >> 8) & 0xFF)/255;
+		this.b = (color & 0xFF)/255;
+		this.inp = new PIN();
+		this.value = 0;
+		this.prevValue = null;
+		this.inp.onValue(v => {
+			this.value = v;
+		});
+		this.isConsumer(t => {
+			this.showValue(this.value);
+		});
+	}
+	showValue(v) {
+		if (!this.elem) return;
+		//v = Math.round(v*1000)/1000;
+		if (this.prevValue !== null && Math.abs(this.prevValue - v) < 0.001) return;
+		if (v < 0) v = 0;
+		if (v > 1) v = 1;
+
+		$(this.elem).css('color', 
+			//`rgba(${Math.round(this.r*255)}, ${Math.round(this.g*255)}, ${Math.round(this.b*255)}, ${v})`);
+			`rgb(${Math.round(this.r*v*255)}, ${Math.round(this.g*v*255)}, ${Math.round(this.b*v*255)})`);
+		this.prevValue = v;
+	}
+	getHTML() {
+		return `<div class="UI UILED" style="width:${this.width*20}px;" id="${this.getId()}"></div>`;
+	}
+}

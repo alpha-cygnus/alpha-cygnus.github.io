@@ -157,3 +157,8 @@ UIValue {
 	PIN inp
 }
 
+UILED {
+	PIN inp
+}
+
+

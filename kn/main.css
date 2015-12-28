@@ -316,8 +316,9 @@ div.UI {
 	width: 36px;
 	height: 36px;
 	border: 2px solid black;
-	background-color: grey;
+	color: grey;
 	border-radius: 50%;
+	background: -webkit-radial-gradient(center, ellipse cover, transparent 0%, currentcolor 70%);
 	/*
 	box-shadow:
 		inset -2px 2px 0px 0px rgba(#fff, 0.1),
@@ -336,7 +337,7 @@ div.UI {
 	width: 4px;
 	height: 40%;
 	margin-left: -1px;
-	background-color: white;
+	background: -webkit-linear-gradient(top, white 0%, black 100%);;
 	border-radius: 1px;
 	/*transition: all 200ms ease-in-out;*/
 	/*transform: rotate(-45deg);*/
@@ -350,8 +351,34 @@ div.UI {
 	display: inline-block;
 	width: 40px;
 	height: 20px;
-	outline: 1px dotted;
+	-webkit-box-shadow: inset 0px 0px 4px 0px rgba(0,0,0,1);
+	border-radius: 1px;
 	overflow: hidden;
 	white-space: nowrap;
 	font-family: courier;
 }
+
+.UILED {
+	position: relative;
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	border: 1px solid white;
+	color: #F00;
+	background: -webkit-radial-gradient(center, ellipse cover, currentcolor 0%, rgba(0, 0, 0, 0.3) 80%);
+	border-radius: 50%;
+	-webkit-box-shadow: inset 0px 0px 2px 0px rgba(255,255,255,1);
+}
+
+
+.layoutV {
+	display: flex;
+	flex-direction: column;
+}
+
+.layoutH {
+	display: flex;
+	flex-direction: row;
+}
+
+
