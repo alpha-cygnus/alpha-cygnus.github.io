@@ -103,12 +103,28 @@ class KNClassMeta extends KNMeta {
 	compileGetHTML(res) {
 		res.push(`\t\tvar html = [];`);
 		res.push(`\t\tvar s;`);
-		for (var nn in this.nodes) {
-			var t = this.nodes[nn];
-			var ps = t.params;
-			res.push(`\t\tif (s = this.${nn}.getHTML(this)) html.push(s);`);
+		function compileLayout(ly, isVert) {
+			res.push(`\t\thtml.push('<div class="layout${isVert ? 'V' : 'H'}">');`)
+			for (var ln of ly) {
+				if ($.isArray(ln)) {
+					compileLayout(ln, !isVert);
+				} else {
+					res.push(`\t\tif (s = this.${ln}.getHTML(this)) html.push(s);`);
+				}
+			}
+			res.push(`\t\thtml.push('</div>');`)
+		}
+		for (var ly of this.layouts) {
+			res.push(`\t\thtml.push('<div class="layoutV">');`)
+			compileLayout(ly);
+			res.push(`\t\thtml.push('</div>');`)
 		}
 		res.push(`\t\treturn html.join('')`);
+		// for (var nn in this.nodes) {
+		// 	var t = this.nodes[nn];
+		// 	var ps = t.params;
+		// 	res.push(`\t\tif (s = this.${nn}.getHTML(this)) html.push(s);`);
+		// }
 	}
 	compileOnStartUI(res) {
 		for (var nn in this.nodes) {
