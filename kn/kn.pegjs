@@ -255,6 +255,7 @@ IDSYM = LETTER / DIGIT / '_'
 Id "Identifier" = ws id:$(UPPER IDSYM*) ws { return id; }
 id "ident" = ws id:$(LOWER IDSYM*) ws { return id; }
 INT "integer" = ws num:$(('+'/'-')? DIGIT+) ws { return parseInt(num, 10); }
+HEX "hexadecimal" =  ws '0x' hex:$([0-9A-Fa-f]+) ws { return parseInt(hex, 16); }
 NUM "number" = ws num:$(('+'/'-')? DIGIT+ ('.' DIGIT+)?) ws { return parseFloat(num); }
 COLON = ws ':' ws
 SEMI = ws ';' ws
