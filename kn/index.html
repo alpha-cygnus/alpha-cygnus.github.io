@@ -43,15 +43,15 @@ $(() => {
 		// var gr2 = data[3];
 		// var ov2 = data[4];
 		console.log('Loaded:', grammar.length, prelude.length);
-		//var parserSource = PEG.buildParser(grammar, {output: 'source'});
-		//console.log(parserSource);
+		var parserSource = PEG.buildParser(grammar, {output: 'source'});
+		console.log(parserSource);
 		// try {
-			// try {
+			try {
 				var parser = PEG.buildParser(grammar);
-			// } catch(e) {
-			// 	console.log(e);
-			// 	throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			// }
+			} catch(e) {
+				console.log(e);
+				throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			}
 			// try {
 				var parsedPrelude = parser.parse(prelude);
 			// } catch(e) {
@@ -79,12 +79,12 @@ $(() => {
 			// 	console.error(`Error parsing ov2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
 			// 	throw e;
 			// }
-			// try {
+			try {
 				var parsedOverture = parser.parse(overture);
-			// } catch(e) {
-			// 	console.log(e);
-			// 	throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			// }
+			} catch(e) {
+				console.log(e);
+				throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			}
 			for (var c in knMeta) {
 				var cls = knMeta[c];
 				if (cls.__internal) continue;

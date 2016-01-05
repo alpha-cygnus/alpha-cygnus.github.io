@@ -60,6 +60,56 @@
 		}
 		return [p0[0], p1[1]];
 	}
+	var _abcState = {};
+	var abcScales = {
+		'-7': {F: -1, C: -1, G: -1, D: -1, A: -1, E: -1, B: -1},
+		'-6': {F:  0, C: -1, G: -1, D: -1, A: -1, E: -1, B: -1},
+		'-5': {F:  0, C:  0, G: -1, D: -1, A: -1, E: -1, B: -1},
+		'-4': {F:  0, C:  0, G:  0, D: -1, A: -1, E: -1, B: -1},
+		'-3': {F:  0, C:  0, G:  0, D:  0, A: -1, E: -1, B: -1},
+		'-2': {F:  0, C:  0, G:  0, D:  0, A:  0, E: -1, B: -1},
+		'-1': {F:  0, C:  0, G:  0, D:  0, A:  0, E:  0, B: -1},
+		 0: {F:  0, C:  0, G:  0, D:  0, A:  0, E:  0, B:  0},
+		 1: {F:  1, C:  0, G:  0, D:  0, A:  0, E:  0, B:  0},
+		 2: {F:  1, C:  1, G:  0, D:  0, A:  0, E:  0, B:  0},
+		 3: {F:  1, C:  1, G:  1, D:  0, A:  0, E:  0, B:  0},
+		 4: {F:  1, C:  1, G:  1, D:  1, A:  0, E:  0, B:  0},
+		 5: {F:  1, C:  1, G:  1, D:  1, A:  1, E:  0, B:  0},
+		 6: {F:  1, C:  1, G:  1, D:  1, A:  1, E:  1, B:  0},
+		 7: {F:  1, C:  1, G:  1, D:  1, A:  1, E:  1, B:  1},
+		// major
+		'C#': 7,
+		'F#': 6,
+		'B': 5,
+		'E': 4,
+		'A': 3,
+		'D': 2,
+		'G': 1,
+		'C': 0,
+		'F': -1,
+		'Bb': -2,
+		'Eb': -3,
+		'Ab': -4,
+		'Db': -5,
+		'Gb': -6,
+		'Cb': -7,
+		// minor
+		'A#m': 7,
+		'D#m': 6,
+		'G#m': 5,
+		'C#m': 4,
+		'F#m': 3,
+		'Bm': 2,
+		'Em': 1,
+		'Am': 0,
+		'Dm': -1,
+		'Gm': -2,
+		'Cm': -3,
+		'Fm': -4,
+		'Bbm': -5,
+		'Ebm': -6,
+		'Abm': -7,
+	}
 }
 
 S = ss:statement* { return [classes, ss]; }
@@ -67,6 +117,7 @@ S = ss:statement* { return [classes, ss]; }
 statement = cls
 	/ &{ _cc = classes[knMainClass]; return 1 } chain 
 	/ &{ _cc = classes[knMainClass]; return 1 } layout:layout { _cc.addLayout(layout) }
+	/ &{ _cc = classes[knMainClass]; return 1 } melody:melody { _cc.addMelody(melody) }
 
 cls
 	= name:Id COPEN &{
@@ -81,6 +132,8 @@ cls
 	chain:chain
 	)*
 	CCLOSE { return ["Class", { name }] }
+
+melody = START_ABC m:abc_melody END_ABC { return m }
 
 values = ENUM &{ _cvi = 0; return true; } head:v_val tail:(COMMA v:v_val { return v; })* {
 	return [head].concat(tail).reduce((res, v) => (res[v.name] = v.val, res), {});
@@ -214,7 +267,7 @@ pval
 	}
 	/// tseq
 
-num = NUM
+num = NUM / HEX / BIN
 str = STR
 note = n:NOTE { return noteToInt(n) }
 tseq = TSEQ
@@ -222,29 +275,130 @@ title = STR2
 
 code = '{' code:CODE '}' { return code; };
 
-abc_melody = abc_sep? abc_point (abc_sep? abc_point)* abc_sep
-abc_point = abc_pitch / abc_chord / abc_in_dir / abc_legato
-abc_legato = '(' abc_sep ? abc_pitch (abc_sep? abc_pitch)* ')'
-abc_pitch = abc_accidental? abc_note abc_octave* abc_duration?
-abc_chord = '[' abc_pitch+ ']'
-abc_in_dir = '[' abc_dir ']'
-abc_sep = '|' / '||' / '[|' / '|]' / ':]' / ':|' / '|:' / '[:' / space
-abc_note = [a-g] / [A-G]
-abc_accidental = '_' '_'? / '^' '^'? / '='
-abc_octave = ',' / "'"
-abc_duration = abc_ratio
-abc_ratio = INT ('/' INT)? / '/' INT
-abc_dir
-	= 'L:' abc_ratio
-	/ 'K:' abc_key
-abc_key = abc_note ('#' / 'b')? ('m' / 'min' / 'maj' / 'mix')?
 
+abc_note
+	= ds:abc_deco* pitch:(abc_pitch / abc_chord) len:abc_length? {
+		var deco = ds.reduce((res, d) => { res[d] = 1; return res }, {})
+		if (len) {
+			len[0] *= _abcState.len[0];
+			len[1] *= _abcState.len[1];
+		} else {
+			len = _abcState.len;
+		}
+		return {k: 'note', deco, pitch, len};
+	}
+abc_deco
+	= '.' { return '.' }
+	/ 'L' { return '>' }
+	/ '!>!' { return '>' }
+abc_accidental
+	= '_' { return -1 }
+	/ '__' { return -2 }
+	/ '^' { return +1 }
+	/' ^^' { return +2 }
+	/ '=' { return 0 }
+abc_octave
+	= ',' { return -1 }
+	/ "'" { return +1 }
+abc_length
+	= d:'/'+ { return [1, 1 << d.length] }
+	/ '/' d:INT { return [1, d] }
+	/ n:INT d:('/' d:INT {return d})? { return [n, (d ? d : 1)] }
+abc_letter
+	= c:[a-g] { return {c: c.toUpperCase(), o: 1 } }
+	/ c:[A-G] { return {c: c, o: 0} }
+abc_pitch = acc:abc_accidental? l:abc_letter os:abc_octave* {
+	var char = l.c;
+	var oct = os.reduce((res, o) => res + o, l.o);
+	if (!acc) {
+		acc = _abcState.curAcc[char] || _abcState.scale[char];
+	}
+	_abcState.curAcc[char] = acc;
+	return {acc, char, oct};
+}
+abc_chord = '[' ps:abc_pitch+ ']' { return ps }
+abc_chord_str = STR2
+
+abc_sequence = head:abc_point tail:(ws p:abc_point ws { return p })* {
+	var res = head;
+	for (var t of tail) res = res.concat(t);
+	return res;
+}
+abc_point
+	= abc_broken
+	/ note:abc_note g:abc_glide? {
+		if (g) note.glide = true;
+		return [note];
+	}
+	/ r:abc_rest { return [r] }
+	/ b:abc_bar { _abcState.curAcc = {}; return b }
+	/ chord:abc_chord_str { return [{k: 'chord', chord}]}
+	/ '[' abc_inset ']' { return [] }
+	/ abc_tuplet
+abc_inset
+	= 'K:' n:[0-7] a:[#b] { _abcState.scale = abcScales[n*(a == 'b' ? -1 : 1)]; }
+	/ 'K:' s:$([A-G][#b]'m')? { var ss = abcScales[s]; if (!s) error('Unsupported scale: ' + s); _abcState.scale = ss }
+	/ 'L:' n:INT '/' d:INT { _abcState.len = [n, d]; }
+abc_tuplet
+	= '(2' ws n1:abc_note ws n2:abc_note { 
+		n1.len[0] *= 3; n1.len[1] *= 2;
+		n2.len[0] *= 3; n2.len[1] *= 2;
+		return [n1, n2]
+	}
+	/ '(3' ws n1:abc_note ws n2:abc_note ws n3:abc_note { 
+		n1.len[0] *= 2; n1.len[1] *= 3;
+		n2.len[0] *= 2; n2.len[1] *= 3;
+		n3.len[0] *= 2; n3.len[1] *= 3;
+		return [n1, n2, n3];
+	}
+	/ '(4' ws n1:abc_note ws n2:abc_note ws n3:abc_note ws n4:abc_note { 
+		n1.len[0] *= 3; n1.len[1] *= 4;
+		n2.len[0] *= 3; n2.len[1] *= 4;
+		n3.len[0] *= 3; n3.len[1] *= 4;
+		n4.len[0] *= 3; n4.len[1] *= 4;
+		return [n1, n2, n3, n4];
+	}
+abc_rest = [zx] len:abc_length { return {k: 'rest', len}}
+abc_broken
+	= &{ return true; } note1:(abc_note/abc_rest) ws s:abc_broken_sep ws note2:(abc_note/abc_rest) {
+		note1.len[0] *= s[0];
+		note1.len[1] *= s[2];
+		note2.len[0] *= s[1];
+		note2.len[1] *= s[2];
+		return [note1, note2]
+	}
+abc_broken_sep
+	= '>' { return [3, 1, 2] }
+	/ '>>' { return [7, 1, 4] }
+	/ '>>>' { return [15, 1, 8] }
+	/ '<' { return [1, 3, 2] }
+	/ '<<' { return [1, 7, 4] }
+	/ '<<<' { return [1, 15, 8] }
+abc_bar
+	= ':|' { return [{k:'rep_end'}] }
+	/ '::' { return [{k:'rep_start'}, {k:'rep_end'}] }
+	/ '|:' { return [{k:'rep_start'}] }
+	/ '|' { return [] }
+abc_glide = '-'
+
+abc_melody = &{
+		_abcState = {
+			scale: abcScales[0],
+			len: [1, 8],
+			curAcc: {},
+		};
+		return true;
+	}
+	abc_sequence
 
 //--"lexer"
 
 space = [ \t\r\n]
+space0 = [ \t]
 comment = '#' [^\r\n]*
 ws "" = (space/comment)*
+ws0 "" = (space0/comment)*
+EOL = [\r\n]+
 COPEN = ws '{' ws
 CCLOSE = ws '}' ws
 UPPER = [A-Z]
@@ -256,6 +410,7 @@ Id "Identifier" = ws id:$(UPPER IDSYM*) ws { return id; }
 id "ident" = ws id:$(LOWER IDSYM*) ws { return id; }
 INT "integer" = ws num:$(('+'/'-')? DIGIT+) ws { return parseInt(num, 10); }
 HEX "hexadecimal" =  ws '0x' hex:$([0-9A-Fa-f]+) ws { return parseInt(hex, 16); }
+BIN "binary" =  ws '0b' hex:$([01]+) ws { return parseInt(hex, 2); }
 NUM "number" = ws num:$(('+'/'-')? DIGIT+ ('.' DIGIT+)?) ws { return parseFloat(num); }
 COLON = ws ':' ws
 SEMI = ws ';' ws
@@ -281,3 +436,6 @@ AGR = ws a:[*_^+] ws { return a }
 MUL = ws '*' ws
 
 CODE = $(([^{}] / '{' CODE '}')*)
+
+START_ABC = ('@start_abc' / '@startABC') ws0 EOL ws
+END_ABC = ('@end_abc' / '@endABC') ws

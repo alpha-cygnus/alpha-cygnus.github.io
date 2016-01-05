@@ -79,6 +79,7 @@ class KNClassMeta extends KNMeta {
 		this.inpList = [];
 		this.outList = [];
 		this.layouts = [];
+		this.melodies = [];
 	}
 	compileCons(res) {
 		for (var nn in this.nodes) {
@@ -158,6 +159,9 @@ class KNClassMeta extends KNMeta {
 	}
 	addLayout(l) {
 		this.layouts.push(l);
+	}
+	addMelody(m) {
+		this.melodies.push(m);
 	}
 	// getVertices() {
 	// 	var res = [];

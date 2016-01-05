@@ -1,3 +1,8 @@
+@startABC
+ABCDEFG
+@endABC
+
+
 Note2Detune {
 	PIN -> {note|(note - 69)*100} -> P2A -> AOUT
 }
@@ -112,3 +117,32 @@ UIDial d1, UIDial d2 -> {_v|v*99} -> UIDigits<4> o1, UIValue<3> o2
 d2 -> {v|abs(v)} -> UILED l0
 
 @UI {{d1 | d2} | o1 | {l0 | o2} }
+
+@startABC
+| D B AG
+| D3 D/-D/
+| DB AG
+| "C"E4
+| "Am"Ec BA
+| "D7"F3 d
+| ed cA
+| "G"B4 |
+| "G"DB AG
+| D3 D/-D/
+| DB AG
+| "C"E3 E
+| "Am"Ec BA
+| "G"dd dd
+| "D7"ed cA
+| "G"G2 z2 |
+|: "G"BB B2
+| BB B2
+| Bd G>A
+| "G7"B4
+| "C"cc c>c
+| "G"cB BB/B/
+| "A7"BA AB
+| "D7"A2 d2
+:| "D7"dd cA
+| "G"G4
+@endABC

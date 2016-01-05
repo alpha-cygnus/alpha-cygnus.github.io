@@ -337,12 +337,13 @@ div.UI {
 	width: 4px;
 	height: 40%;
 	margin-left: -1px;
-	background: -webkit-linear-gradient(top, white 0%, black 100%);;
+	/*background: -webkit-linear-gradient(top, white 0%, black 100%);;*/
+	background: black;
 	border-radius: 1px;
 	/*transition: all 200ms ease-in-out;*/
 	/*transform: rotate(-45deg);*/
 	/*transform-origin: -100% 50%;*/
-	/*box-shadow: 1px -1px 0px 0px rgba(#111, 0.2);*/
+	box-shadow: 1px -1px 0px 0px rgba(#111, 0.2);
 	content: "";
 }
 
