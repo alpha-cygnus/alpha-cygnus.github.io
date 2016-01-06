@@ -283,9 +283,9 @@ abc_note
 			len[0] *= _abcState.len[0];
 			len[1] *= _abcState.len[1];
 		} else {
-			len = _abcState.len;
+			len = [_abcState.len[0], _abcState.len[1]];
 		}
-		return {k: 'note', deco, pitch, len};
+		return {k: 'note', deco, pitch, len, legato: _abcState.legato};
 	}
 abc_deco
 	= '.' { return '.' }
@@ -335,6 +335,8 @@ abc_point
 	/ chord:abc_chord_str { return [{k: 'chord', chord}]}
 	/ '[' abc_inset ']' { return [] }
 	/ abc_tuplet
+	/ ws '(' ws { _abcState.legato++ }
+	/ ws ')' ws { _abcState.legato-- }
 abc_inset
 	= 'K:' n:[0-7] a:[#b] { _abcState.scale = abcScales[n*(a == 'b' ? -1 : 1)]; }
 	/ 'K:' s:$([A-G][#b]'m')? { var ss = abcScales[s]; if (!s) error('Unsupported scale: ' + s); _abcState.scale = ss }
@@ -386,10 +388,12 @@ abc_melody = &{
 			scale: abcScales[0],
 			len: [1, 8],
 			curAcc: {},
+			legato: 0,
 		};
 		return true;
 	}
-	abc_sequence
+	s:abc_sequence
+	{ return s; }
 
 //--"lexer"
 
