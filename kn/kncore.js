@@ -882,21 +882,21 @@ class Loop extends Basis {
 	// 1,0,0,1,0,0,1,0
 	constructor(s) {
 		super();
-		if ($.isArray(s)) this.values = [];
-		else if (typeof s == 'string') {
-			if (s.match(/^-?\d+(.\d+)?(,-?\d+)+(.\d+)?$/)) {
-				this.values = s.split(',').map(ss => parseFloat(ss));
-			}
-			if (s.match(/^[x.01]+$/)) {
-				this.values = s.split('').map(ss => ss == 'x' || ss == '1' ? 1 : 0);
-			}
-		}
+		this.values = Array.from(arguments);
+		// else if (typeof s == 'string') {
+		// 	if (s.match(/^-?\d+(.\d+)?(,-?\d+)+(.\d+)?$/)) {
+		// 		this.values = s.split(',').map(ss => parseFloat(ss));
+		// 	}
+		// 	if (s.match(/^[x.01]+$/)) {
+		// 		this.values = s.split('').map(ss => ss == 'x' || ss == '1' ? 1 : 0);
+		// 	}
+		// }
 		//this.clock = new PIN();
 		this.out = new POUT();
 		this.out.plug(
 			this.triggeredStream('clock',
 				(state, v) => {
-					state.step = ((state.step || 0) + 1) % this.values.length;
+					state.step = ((state.step === undefined ? -1 : state.step) + 1) % this.values.length;
 					return this.values[state.step];
 				},
 				(state, v) => {
@@ -915,6 +915,21 @@ class BinDemux extends Basis {
 			var out = this['out' + i] = new POUT();
 			let bi = i;
 			let b = 1 << bi;
+			out.plug(
+				this.inp.stream.map(v => (v & b) >> bi)
+			);
+		}
+	}
+}
+
+class QDemux extends Basis {
+	constructor() {
+		super();
+		this.inp = new PIN();
+		for (var i = 0; i < 16; i++) {
+			var out = this['out' + i] = new POUT();
+			let bi = i*2;
+			let b = 3 << bi;
 			out.plug(
 				this.inp.stream.map(v => (v & b) >> bi)
 			);

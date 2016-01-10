@@ -249,7 +249,7 @@ proc_param = agr:AGR? name:id? def:(EQ v:num {return v})? { return {agr, name, d
 proc_body = CODE
 
 params = AOPEN 
-	head:param tail:(COMMA? p:param { return p })* ACLOSE { return [head].concat(tail) }
+	head:param tail:(COMMA? p:param { return p })* COMMA? ACLOSE { return [head].concat(tail) }
 
 param = n:(n:id (EQ/COLON) { return n})?
 	v:pval { return {n:n, v: v} }
@@ -267,7 +267,7 @@ pval
 	}
 	/// tseq
 
-num = NUM / HEX / BIN
+num = HEX / BIN / QNUM / OCT / NUM
 str = STR
 note = n:NOTE { return noteToInt(n) }
 tseq = TSEQ
@@ -415,6 +415,8 @@ id "ident" = ws id:$(LOWER IDSYM*) ws { return id; }
 INT "integer" = ws num:$(('+'/'-')? DIGIT+) ws { return parseInt(num, 10); }
 HEX "hexadecimal" =  ws '0x' hex:$([0-9A-Fa-f]+) ws { return parseInt(hex, 16); }
 BIN "binary" =  ws '0b' hex:$([01]+) ws { return parseInt(hex, 2); }
+QNUM "quaternary" =  ws '0q' n:$([0-3]+) ws { return parseInt(n, 4); }
+OCT "binary" =  ws '0o' n:$([0-7]+) ws { return parseInt(n, 8); }
 NUM "number" = ws num:$(('+'/'-')? DIGIT+ ('.' DIGIT+)?) ws { return parseFloat(num); }
 COLON = ws ':' ws
 SEMI = ws ';' ws

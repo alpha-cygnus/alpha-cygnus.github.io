@@ -189,25 +189,40 @@ d2 -> {v|abs(v)} -> UILED l0
 
 @UI UILED bl0|UILED bl1|UILED bl2|UILED bl3|UILED bl4|UILED bl5|UILED bl6|UILED bl7
 
-Clock -> {c|floor((c - 10)/12)} -> BinDemux bdmx
+#Clock ->  ->
+QDemux dmx
 
-bdmx[0] -> bl0
-bdmx[1] -> bl1
-bdmx[2] -> bl2
-bdmx[3] -> bl3
-bdmx[4] -> bl4
-bdmx[5] -> bl5
-bdmx[6] -> bl6
-bdmx[7] -> bl7
+dmx[0] -> bl0
+dmx[1] -> bl1
+dmx[2] -> bl2
+dmx[3] -> bl3
+dmx[4] -> bl4
+dmx[5] -> bl5
+dmx[6] -> bl6
+dmx[7] -> bl7
 
-bdmx[0] -> Invert -> CHH chh
-bdmx[2] -> Invert -> BD2 bd
-bdmx[3] -> OHH ohh
+dmx[0] -> CHH chh
+dmx[1] -> BD2 bd
+dmx[2] -> SN2 sn
+dmx[3] -> OHH ohh
+dmx[4] -> chh
 
 chh, ohh
 , bd
-#, sn 
+, sn 
 -> *0.2 -> theMainOut
+Loop<
+0q1010,0,
+0q0001,0,
+0q0101,0,
+0q0010,0,
+0q0001,0,
+0q0011,0,
+0q0100,0,
+0q0001,
+0q0002
+> lp
 
-bdmx[0] -> Count -> UIValue<2> vvv
-@UI vvv
+@UI UIValue<2> vvv
+
+Clock -> {c|floor((c - 10)/12)} -> lp -> dmx, vvv

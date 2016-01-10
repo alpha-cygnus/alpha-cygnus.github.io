@@ -135,11 +135,31 @@ LFO {
 }
 
 Loop {
-	PIN trigger
-	POUT value
+	PIN clock
+	POUT out
 }
 
 BinDemux {
+	PIN inp
+	POUT out0
+	POUT out1
+	POUT out2
+	POUT out3
+	POUT out4
+	POUT out5
+	POUT out6
+	POUT out7
+	POUT out8
+	POUT out9
+	POUT out10
+	POUT out11
+	POUT out12
+	POUT out13
+	POUT out14
+	POUT out15
+}
+
+QDemux {
 	PIN inp
 	POUT out0
 	POUT out1
