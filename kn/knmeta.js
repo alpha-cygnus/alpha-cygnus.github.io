@@ -399,7 +399,7 @@ class KNProcMeta extends KNClassMeta {
 		}
 		if (!body) body = proc.params.map(p => p.name).join(' + ');
 		res.push('\t\tthis.out = new POUT();')
-		res.push(`\t\tthis.out.plug(Kefir.combine([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], (${proc.params.map(p => p.name).join(', ')}) => ${body}))`);
+		res.push(`\t\tthis.out.plug(Kefir.combine([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], (${proc.params.map(p => p.name).join(', ')}) => ${body}).filter(v => v !== null))`);
 	}
 }
 

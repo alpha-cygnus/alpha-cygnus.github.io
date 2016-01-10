@@ -118,7 +118,7 @@ class Basis {
 			wasOn: 0,
 		};
 		this[fn + 'State'] = state;
-		return this[fn].map(v => {
+		return this[fn].stream.map(v => {
 			if (Math.abs(v) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
 				state.value = offFunc(state, v);
 			} else
@@ -254,6 +254,19 @@ class POUT extends PINOUT {
 			}
 			_fabrique.onProduce(fun);
 			return () => _fabrique.offProduce(fun);
+		});
+		this.plug(stream);
+		state.stream = stream;
+		obj[field + 'State'] = state;
+		return this;
+	}
+	produceFromFunction(fun) {
+		var stream = Kefir.stream(emitter => {
+			var producer = (t) => {
+				emitter.emit(fun(t));
+			}
+			_fabrique.onProduce(producer);
+			return () => _fabrique.offProduce(producer);
 		});
 		this.plug(stream);
 		state.stream = stream;
@@ -692,7 +705,7 @@ class ADSR extends Basis {
 		super();
 		this.a = a || 0.1;
 		this.d = d || 0.5;
-		this.s = s || 0.5;
+		this.s = (s == undefined) ? 0.5 : s;
 		this.r = r || 1;
 		this.mn = mn || 0;
 		this.mx = mx || 1;
@@ -858,13 +871,12 @@ class Clock extends Basis {
 		this.value = 0;
 		this.out = new POUT();
 		this.out.produceFromField(this, 'value', (t) => {
-			if (this.value < 0.5) this.value = 1;
-			else this.value = 0;
+			return this.value++;
 		});
 	}
 }
 
-class Sequence extends Basis {
+class Loop extends Basis {
 	// x..x..x.
 	// 10010010
 	// 1,0,0,1,0,0,1,0
@@ -886,6 +898,38 @@ class Sequence extends Basis {
 				(state, v) => {
 					state.step = ((state.step || 0) + 1) % this.values.length;
 					return this.values[state.step];
+				},
+				(state, v) => {
+					return state.value;
+				}
+			)
+		);
+	}
+}
+
+class BinDemux extends Basis {
+	constructor() {
+		super();
+		this.inp = new PIN();
+		for (var i = 0; i < 16; i++) {
+			var out = this['out' + i] = new POUT();
+			let bi = i;
+			let b = 1 << bi;
+			out.plug(
+				this.inp.stream.map(v => (v & b) >> bi)
+			);
+		}
+	}
+}
+
+class Count extends Basis {
+	constructor() {
+		super();
+		this.out = new POUT();
+		this.out.plug(
+			this.triggeredStream('inp',
+				(state, v) => {
+					return state.value + v;
 				},
 				(state, v) => {
 					return state.value;

@@ -172,7 +172,7 @@ arrow
 
 //weight = '(' n:(num/id) ')' { return n }
 
-end = BOPEN id:id BCLOSE { return id }
+end = BOPEN id:(id/INT) BCLOSE { return id }
 
 point
 	= &{ _ci = _co = _ct = null; return true; } head:node tail:(COMMA node:node { return node; })* { 
