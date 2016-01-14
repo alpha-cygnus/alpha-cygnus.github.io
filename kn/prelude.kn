@@ -189,6 +189,9 @@ Curve {
 	AOUT out
 }
 
+WebMidi {
+	MIDIOUT out
+}
 
 UIDial {
 	POUT out
@@ -206,4 +209,12 @@ UILED {
 	PIN inp
 }
 
+UIKeyboard {
+	MIDIOUT out
+}
+
+MidiHub {
+	MIDIIN inp
+	MIDIOUT out
+}
 

@@ -116,7 +116,7 @@ class KNClassMeta extends KNMeta {
 			res.push(`\t\thtml.push('</div>');`)
 		}
 		for (var ly of this.layouts) {
-			res.push(`\t\thtml.push('<div class="layoutH">');`)
+			res.push(`\t\thtml.push('<div class="layoutV">');`)
 			compileLayout(ly);
 			res.push(`\t\thtml.push('</div>');`)
 		}

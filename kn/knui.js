@@ -1,5 +1,54 @@
 "use strict";
 
+var keysToNotes = {
+	81: 60,
+	50: 61,
+	87: 62,
+	51: 63,
+	69: 64,
+	82: 65,
+	53: 66,
+	84: 67,
+	54: 68,
+	89: 69,
+	55: 70,
+	85: 71,
+	73: 72,
+	57: 73,
+	79: 74,
+	48: 75,
+	80: 76,
+	219: -1,
+	221: +1,
+	// 219: 77, 
+	// 187: 78,
+	// 221: 79,
+	
+	90: 48,
+	83: 49,
+	88: 50,
+	68: 51,
+	67: 52,
+	86: 53,
+	71: 54,
+	66: 55,
+	72: 56,
+	78: 57,
+	74: 58,
+	77: 59,
+	188: 60,
+	76: 61,
+	190: 62,
+	186: 63,
+	191: 64,
+};
+
+window.keyNoteStream = Kefir.pool();
+
+$(function() {
+});
+
+
 var mouseCapturer = null;
 
 function setDialValue(elem, v) {
@@ -101,7 +150,6 @@ class UIDigits extends UIBasis {
 		if (s.length > mc) s = s.replace(/./g, '9');
 		while (s.length < mc) s = '0' + s;
 		//if (v < 0) s = '-' + s;
-		// console.log('setDigits', v, s);
 		for (var i = 0; i < this.numDigits; i++) {
 			var $d = $(this.elem).find('._' + i).removeClass('minus null d-0 d-1 d-2 d-3 d-4 d-5 d-6 d-7 d-8 d-9');
 			if (s[i] == '-') $d.addClass('minus');
@@ -190,5 +238,169 @@ class UILED extends UIBasis {
 	}
 	getHTML() {
 		return `<div class="UI UILED" style="width:${this.width*20}px;" id="${this.getId()}"></div>`;
+	}
+}
+
+function isMidiKeys(keyNoteStream) {
+	this.out = new MIDIOUT();
+	this.octave = 0;
+	// var noteOns = {};
+	// this.noteOns = noteOns;
+	this.buffer = [];
+	var maxBuf = 100;
+	var midis = keyNoteStream
+		.filter(v => {
+			var note = v.note;
+			// if (v.down && noteOns[note]) return false;
+			if (note > 1) return true;
+			if (!v.down) {
+				if (note === +1) this.octave++;
+				else if (note === -1) this.octave--;
+				if (this.octave < -4) this.octave = -4;
+				if (this.octave > 5) this.octave = 5;
+			}
+		})
+		.map(v => {
+			var note = v.note;
+			// if (v.down) noteOns[note] = 1;
+			// else delete noteOns[note];
+			return {
+				t: v.down ? 'on' : 'off',
+				n: note + this.octave*12,
+				o: this.octave,
+				v: 127,
+			};
+		})
+		.onValue(v => {
+			this.buffer.push(v);
+			while (this.buffer.length > maxBuf) this.buffer.shift(); // sanity
+			console.log(this.buffer);
+		});
+	//this.out.plug(midis);
+	this.out.produceFromBuffer(this, 'buffer');
+}
+
+class Keyboard extends Basis {
+	constructor() {
+		super();
+		var keysDown = {};
+		var keyFilter = e => !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
+		var kdns = Kefir.fromEvents(window, 'keydown')
+			.filter(keyFilter)
+			.filter(e => !keysDown[e.keyCode])
+			.map(e => {
+				keysDown[e.keyCode] = 1;
+				return {note: keysToNotes[e.keyCode], down: true};
+			});
+		var kups = Kefir.fromEvents(window, 'keyup')
+			.filter(keyFilter)
+			.map(e => {
+				delete keysDown[e.keyCode];
+				return {note: keysToNotes[e.keyCode], down: false};
+			});
+		
+		var keyNoteStream = Kefir.merge([kdns, kups]);
+		window.keyNoteStream.plug(keyNoteStream);
+		
+		isMidiKeys.call(this, keyNoteStream);
+	}
+}
+
+class UIKeyboard extends UIBasis {
+	constructor() {
+		super();
+		this.keyNoteStream = Kefir.pool(); //merge([uiKbdDown, uiKbdUp]);
+		window.keyNoteStream.plug(this.keyNoteStream);
+		
+		isMidiKeys.call(this, this.keyNoteStream);
+	}
+	getHTML() {
+		var html = `
+		<div class="UIKeyboard" id="${this.getId()}">
+			<div class="kbd-top"></div>
+			<div class="kbd" style="display:block">
+				<div class="kbd-up">
+					<span 
+					data-note="48" class="w up bl">&nbsp;</span><span 
+					data-note="49" class="k up"><span class="label">s</span></span><span 
+					data-note="50" class="w up">&nbsp;</span><span 
+					data-note="51" class="k up"><span class="label">d</span></span><span
+					data-note="52" class="w up br">&nbsp;</span><span 
+					data-note="53" class="w up w1 bl">&nbsp;</span><span 
+					data-note="54" class="k up"><span class="label">g</span></span><span 
+					data-note="55" class="w up w1">&nbsp;</span><span 
+					data-note="56" class="k up"><span class="label">h</span></span><span 
+					data-note="57" class="w up w1">&nbsp;</span><span 
+					data-note="58" class="k up"><span class="label">j</span></span><span 
+					data-note="59" class="w up w1 br">&nbsp;</span><span 
+					data-note="60" class="w up bl">&nbsp;</span><span 
+					data-note="61" class="k up"><span class="label">2</span></span><span 
+					data-note="62" class="w up">&nbsp;</span><span 
+					data-note="63" class="k up"><span class="label">3</span></span><span
+					data-note="64" class="w up br">&nbsp;</span><span 
+					data-note="65" class="w up w1 bl">&nbsp;</span><span 
+					data-note="66" class="k up"><span class="label">5</span></span><span 
+					data-note="67" class="w up w1">&nbsp;</span><span 
+					data-note="68" class="k up"><span class="label">6</span></span><span 
+					data-note="69" class="w up w1">&nbsp;</span><span 
+					data-note="70" class="k up"><span class="label">7</span></span><span 
+					data-note="71" class="w up w1 br">&nbsp;</span><span 
+					data-note="72" class="w up bl">&nbsp;</span><span 
+					data-note="73" class="k up"><span class="label">9</span></span><span 
+					data-note="74" class="w up">&nbsp;</span><span 
+					data-note="75" class="k up"><span class="label">0</span></span><span
+					data-note="76" class="w up br">&nbsp;</span>
+				<div class="kbd-down">
+					<span
+					data-note="48" class="w down bl br"><span class="label">z</span></span><span 
+					data-note="50" class="w down bl br"><span class="label">x</span></span><span 
+					data-note="52" class="w down bl br"><span class="label">c</span></span><span 
+					data-note="53" class="w down bl br"><span class="label">v</span></span><span 
+					data-note="55" class="w down bl br"><span class="label">b</span></span><span 
+					data-note="57" class="w down bl br"><span class="label">n</span></span><span 
+					data-note="59" class="w down bl br"><span class="label">m</span></span><span
+					data-note="60" class="w down bl br"><span class="label">q</span></span><span 
+					data-note="62" class="w down bl br"><span class="label">w</span></span><span 
+					data-note="64" class="w down bl br"><span class="label">e</span></span><span 
+					data-note="65" class="w down bl br"><span class="label">r</span></span><span 
+					data-note="67" class="w down bl br"><span class="label">t</span></span><span 
+					data-note="69" class="w down bl br"><span class="label">y</span></span><span 
+					data-note="71" class="w down bl br"><span class="label">u</span></span><span
+					data-note="72" class="w down bl br"><span class="label">i</span></span><span 
+					data-note="74" class="w down bl br"><span class="label">o</span></span><span 
+					data-note="76" class="w down bl br"><span class="label">p</span></span>
+				</div>
+			</div>
+		</div>
+		`;
+		return html;
+	}
+	onStartUI() {
+		this.elem = document.getElementById(this.getId());
+		var $elem = $(this.elem);
+
+		var notePressed = null;
+		var uiKbdDown = Kefir.fromEvents($elem.find('.kbd span[data-note]'), 'mousedown').map(e => {
+			notePressed = $(e.target).data('note');
+			return {note: notePressed, down: true};
+		});
+		var uiKbdUp = Kefir.fromEvents(document, 'mouseup').map(e => {
+			if (notePressed) {
+				var res = {note: notePressed, down: false};
+				notePressed = false;
+				return res;
+			}
+		})
+		.filter(e => e);
+		
+		this.keyNoteStream.plug(uiKbdDown).plug(uiKbdUp);
+		
+		window.keyNoteStream.onValue(v => {
+			if (v.down) {
+				$elem.find('.kbd span[data-note=' + v.note + ']').addClass('is-down');
+			} else {
+				$elem.find('.kbd span[data-note=' + v.note + ']').removeClass('is-down');
+			}
+		})
 	}
 }

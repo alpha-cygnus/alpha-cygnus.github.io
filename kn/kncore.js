@@ -1,48 +1,5 @@
 "use strict";
 
-var keysToNotes = {
-	81: 60,
-	50: 61,
-	87: 62,
-	51: 63,
-	69: 64,
-	82: 65,
-	53: 66,
-	84: 67,
-	54: 68,
-	89: 69,
-	55: 70,
-	85: 71,
-	73: 72,
-	57: 73,
-	79: 74,
-	48: 75,
-	80: 76,
-	219: -1,
-	221: +1,
-	// 219: 77, 
-	// 187: 78,
-	// 221: 79,
-	
-	90: 48,
-	83: 49,
-	88: 50,
-	68: 51,
-	67: 52,
-	86: 53,
-	71: 54,
-	66: 55,
-	72: 56,
-	78: 57,
-	74: 58,
-	77: 59,
-	188: 60,
-	76: 61,
-	190: 62,
-	186: 63,
-	191: 64,
-};
-
 const _getObjId = (function() {
 	var objMap = new WeakMap();
 	var last = 0;
@@ -55,38 +12,6 @@ const _getObjId = (function() {
 		return id;
 	}
 })();
-
-$(function() {
-	var keyFilter = e => !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
-	var kdns = Kefir.fromEvents(window, 'keydown').filter(keyFilter).map(e => ({note: keysToNotes[e.keyCode], down: true}));
-	var kups = Kefir.fromEvents(window, 'keyup').filter(keyFilter).map(e => ({note: keysToNotes[e.keyCode], down: false}));
-	var notePressed = null;
-	var uiKbdDown = Kefir.fromEvents($('.kbd span[data-note]'), 'mousedown').map(e => {
-		notePressed = $(e.target).data('note');
-		return {note: notePressed, down: true};
-	});
-	// var uiKbdUp = Kefir.fromEvents($('.kbd span[data-note]'), 'mouseup').map(e => {
-	// 	return {note: notePressed, down: false};
-	// });
-	var uiKbdUp = Kefir.fromEvents(document, 'mouseup').map(e => {
-		if (notePressed) {
-			var res = {note: notePressed, down: false};
-			notePressed = false;
-			return res;
-		}
-	})
-	.filter(e => e);
-	//uiKbdUp.log();
-	window.keyNoteStream = Kefir.merge([kdns, kups, uiKbdUp, uiKbdDown]);
-	window.keyNoteStream.onValue(v => {
-		if (v.down) {
-			$('.kbd span[data-note=' + v.note + ']').addClass('is-down');
-		} else {
-			$('.kbd span[data-note=' + v.note + ']').removeClass('is-down');
-		}
-	})
-	//window.keyNoteStream.log();
-});
 
 class Basis {
 	isTriggered(fn, onFunc, offFunc) {
@@ -177,13 +102,16 @@ class MIDIINOUT extends INOUT {
 class MIDIOUT extends MIDIINOUT {
 	produceFromBuffer(obj, field, onBeforeProduce) {
 		// this[field + 'Stream'];
+		this.obj = obj;
 		var stream = Kefir.stream(emitter => {
 			var fun = (t) => {
 				if (onBeforeProduce) onBeforeProduce(t);
-				for (var v of obj[field]) {
-					emitter.emit(v);
-				}
-				obj[field] = [];
+				var vs = this.obj[field];
+				emitter.emit(vs);
+				// for (var v of vs) {
+				// 	emitter.emit(v);
+				// }
+				this.obj[field] = [];
 			}
 			_fabrique.onProduce(fun);
 			return () => _fabrique.offProduce(fun);
@@ -362,12 +290,10 @@ class Fabrique {
 	onProduce(fun) {
 		let id = _getObjId(fun);
 		this.producers[id] = fun;
-		//console.log('on producer', id);
 	}
 	offProduce(fun) {
 		let id = _getObjId(fun);
 		delete this.producers[id];
-		//console.log('off producer', id);
 	}
 	onConsume(fun) {
 		let id = _getObjId(fun);
@@ -388,7 +314,6 @@ class Fabrique {
 		}
 	}
 	doTick(t) {
-		//console.log('t', t);
 		this.doProduce(t);
 		this.doConsume(t);
 	}
@@ -435,78 +360,6 @@ class Fabrique {
 
 const _fabrique = new Fabrique();
 
-class PINLogger extends Basis {
-	constructor() {
-		super();
-		this.inp = new PIN();
-		this.value = 0;
-		this.shown = false;
-		this.inp.onValue(v => {
-			this.value = v;
-			this.shown = false;
-			this.logged = false;
-		});
-		this.isConsumer(t => {
-			if (!this.logged) {
-				console.log('PINLogger', this.value, Math.round((t - Tone.context.currentTime)*1000));
-				this.logged = true;
-			}
-		});
-	}
-	attachUI(elem) {
-		this.isConsumer(t => {
-			if (!this.shown) {
-				$(elem).text(this.value);
-				this.shown = true;
-			}
-		})
-	}
-}
-
-
-class Keyboard extends Basis {
-	constructor() {
-		super();
-		this.out = new MIDIOUT();
-		this.octave = 0;
-		var noteOns = {};
-		this.noteOns = noteOns;
-		this.buffer = [];
-		var maxBuf = 100;
-		
-		var midis = window.keyNoteStream
-			.filter(v => {
-				var note = v.note;
-				if (v.down && noteOns[note]) return false;
-				if (note > 1) return true;
-				if (!v.down) {
-					if (note === +1) this.octave++;
-					else if (note === -1) this.octave--;
-					if (this.octave < -4) this.octave = -4;
-					if (this.octave > 5) this.octave = 5;
-				}
-			})
-			.map(v => {
-				var note = v.note;
-				if (v.down) noteOns[note] = 1;
-				else delete noteOns[note];
-				return {
-					t: v.down ? 'on' : 'off',
-					n: note + this.octave*12,
-					o: this.octave,
-					v: 127,
-				};
-			})
-			.onValue(v => {
-				this.buffer.push(v);
-				while (this.buffer.length > maxBuf) this.buffer.shift(); // sanity
-				console.log(this.buffer);
-			});
-		//this.out.plug(midis);
-		this.out.produceFromBuffer(this, 'buffer');
-	}
-}
-
 class Midi2NotesBasis extends Basis { // abstract
 	constructor(mode) {
 		super();
@@ -518,23 +371,24 @@ class Midi2NotesBasis extends Basis { // abstract
 		this.nc = 0;
 		this.value = 0;
 		this.out.plug(
-			this.inp.stream.map(v => {
-				if (v.t === 'on') {
-					if (this.noteSet[v.n]) return;
-					this.nc++;
-					this.noteSet[v.n] = this.nc;
-					this.noteList[this.nc] = v.n;
-				}
-				if (v.t === 'off') {
-					var nc = this.noteSet[v.n];
-					delete this.noteSet[v.n];
-					delete this.noteList[nc];
+			this.inp.stream.map(vs => {
+				for (var v of vs) {
+					if (v.t === 'on') {
+						if (this.noteSet[v.n]) continue;
+						this.nc++;
+						this.noteSet[v.n] = this.nc;
+						this.noteList[this.nc] = v.n;
+					}
+					if (v.t === 'off') {
+						var nc = this.noteSet[v.n];
+						delete this.noteSet[v.n];
+						delete this.noteList[nc];
+					}
 				}
 				this.value = this.getValue();
 				return this.value;
 			})
 			.toProperty(() => this.value)
-			.log(this.name || 'midi2note')
 		)
 	}
 	getValue() {
@@ -605,10 +459,8 @@ class Note2CV extends Basis {
 		this.inp.onValue(n => {
 			if (!n) return;
 			this.value = this.getValue(n);
-			//console.log(this.name || 'Note2CV', n, this.value);
 		});
 		this.isConsumer(t => {
-			//console.log(this.name || 'Note2CV', this.value, t);
 			this.pgain.setValueAtTime(this.value, t);
 		});
 	}
@@ -636,17 +488,19 @@ class Midi2PolyBasis extends Basis { // abstract
 		this.noteList = {};
 		this.nc = 0;
 		
-		this.allOut = this.inp.stream.map(v => {
-			if (v.t === 'on') {
-				if (this.noteSet[v.n]) return;
-				this.nc++;
-				this.noteSet[v.n] = this.nc;
-				this.noteList[this.nc] = v.n;
-			}
-			if (v.t === 'off') {
-				var nc = this.noteSet[v.n];
-				delete this.noteSet[v.n];
-				delete this.noteList[nc];
+		this.allOut = this.inp.stream.map(vs => {
+			for (var v of vs) {
+				if (v.t === 'on') {
+					if (this.noteSet[v.n]) return;
+					this.nc++;
+					this.noteSet[v.n] = this.nc;
+					this.noteList[this.nc] = v.n;
+				}
+				if (v.t === 'off') {
+					var nc = this.noteSet[v.n];
+					delete this.noteSet[v.n];
+					delete this.noteList[nc];
+				}
 			}
 			this.values = this.getValues();
 			return this.values;
@@ -663,12 +517,9 @@ class Midi2PolyBasis extends Basis { // abstract
 	}
 }
 
-class Midi2PolyNote extends Midi2PolyBasis {
+class Midi2PolyNote extends Basis {
 	constructor(polyCount) {
 		super();
-	}
-	getValues() {
-		
 	}
 }
 
@@ -685,14 +536,12 @@ class P2A extends Basis {
 
 		this.inp.onValue(v => {
 			this.value = v;
-			console.log(this.name || 'P2A', this.value, v);
 		});
 		this.last = undefined;
 		this.isConsumer(t => {
 			if (this.value === undefined) return;
 			if (isNaN(this.value)) return;
 			if (this.last != this.value) {
-				//console.log(this.name || 'P2A', this.value, t);
 				this.pgain.setValueAtTime(this.value, t);
 			}
 			this.last = this.value;
@@ -725,13 +574,11 @@ class ADSR extends Basis {
 		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
 	}
 	doAttack(time) {
-		console.log(this.name || '', 'env on', time, this.mx);
 		this.pgain.cancelScheduledValues(time);
 		this.pgain.setTargetAtTime(this.mx, time, this.a / 4);
 		this.pgain.setTargetAtTime(this.s, time + this.a, this.d / 4);
 	}
 	doRelease(time) {
-		console.log(this.name || '', 'env off', time, this.mn);
 		this.pgain.cancelScheduledValues(time);
 		this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
 	}

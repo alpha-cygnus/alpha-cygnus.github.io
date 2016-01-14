@@ -16,6 +16,7 @@
 <script src="kncore.js"></script>
 <script src="knmeta.js"></script>
 <script src="knui.js"></script>
+<script src="knmidi.js"></script>
 <link href="main.css" rel="stylesheet" type="text/css" />
 <script src="simple64.js"></script>
 <!--script src="../lib/viz.js"></script-->
@@ -29,78 +30,57 @@ function decompress(s) {
 	var zipped = Simple64.decode(s);
 	return RawDeflate.inflate(zipped);
 }
+function showError(msg) {
+	$('#error').html($('#error').html() + msg + '<br />');
+}
+
+function parse(sourceName, source, parseFunc) {
+	try {
+		var result = parseFunc(source);
+		return result;
+	}
+	catch(e) {
+		console.error(e);
+		if (e.location && e.message) {
+			var msg = `Error parsing ${sourceName} at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			showError(msg);
+			throw msg;
+		} else {
+			var msg = `Error parsing ${sourceName}`;
+			if (e.message) msg += ': ' + e.message;
+			msg += '<br />See console';
+			showError(msg);
+			parseFunc(source); // rethrow
+		}
+	}
+}
 $(() => {
 	Kefir.zip([
 		Kefir.fromPromise($.get('kn.pegjs')),
 		Kefir.fromPromise($.get('prelude.kn')),
 		Kefir.fromPromise($.get('overture.kn')),
-		// Kefir.fromPromise($.get('kn2.pegjs')),
-		// Kefir.fromPromise($.get('overture2.kn')),
 	]).onValue(data => {
 		var grammar = data[0];
 		var prelude = data[1];
 		var overture = data[2];
-		// var gr2 = data[3];
-		// var ov2 = data[4];
 		console.log('Loaded:', grammar.length, prelude.length);
 		// var parserSource = PEG.buildParser(grammar, {output: 'source'});
 		// console.log(parserSource);
-		// try {
-			try {
-				var parser = PEG.buildParser(grammar);
-			} catch(e) {
-				console.log(e);
-				throw `Error parsing grammar at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			}
-			// try {
-				var parsedPrelude = parser.parse(prelude);
-			// } catch(e) {
-			// 	console.log(e);
-			// 	//var msg = 'Error parsing prelude at', e.location.start.line + ':' + e.location.start.column + ':', e.message;
-			// 	throw `Error parsing prelude at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			// }
-			//console.log(JSON.stringify(parsedPrelude[0], null));
-			for (var c in knMeta) {
-				if (c === knMainClass) continue;
-				var cls = knMeta[c];
-				cls.__internal = true;
-			}
-			// try {
-				// var par2 = PEG.buildParser(gr2);
-			// } catch(e) {
-			// 	console.log(e);
-			// 	console.error(`Error parsing gr2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
-			// 	throw e;
-			// }
-			// try {
-			// 	var parsedOverture2 = par2.parse(ov2);
-			// } catch(e) {
-			// 	console.log(e);
-			// 	console.error(`Error parsing ov2 at ${e.location.start.line}:${e.location.start.column}: ${e.message}`);
-			// 	throw e;
-			// }
-			try {
-				var parsedOverture = parser.parse(overture);
-			} catch(e) {
-				console.log(e);
-				throw `Error parsing overture at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-			}
-			for (var c in knMeta) {
-				var cls = knMeta[c];
-				if (cls.__internal) continue;
-				console.log('// ' + c);
-				cls.compile();
-				// var src = knCompile(cls);
-				// console.log(src);
-				// var cc = eval(src);
-				// console.log(cc);
-				// window[c] = cc;
-			}
-		// }
-		// catch (msg) {
-		// 	$('#error').html($('#error').html() + msg + '<br />');
-		// 	console.error(msg);
-		// }
+
+		var parser = parse('grammar', grammar, s => PEG.buildParser(s));
+		var parsedPrelude = parse('prelude', prelude, s => parser.parse(s));
+		for (var c in knMeta) {
+			if (c === knMainClass) continue;
+			var cls = knMeta[c];
+			cls.__internal = true;
+		}
+		var parsedOverture = parse('overture', overture, s => parser.parse(s));
+		for (var c in knMeta) {
+			var cls = knMeta[c];
+			if (cls.__internal) continue;
+			console.log('// ' + c);
+			cls.compile();
+		}
 		
 		var klaz = 'SpreadingLead'; //knMainClass;
 		var ps = knMeta[klaz].getPlant();
@@ -119,7 +99,6 @@ $(() => {
 		startUI();
 		window.main.onStartUI();
 	});
-	
 })
 
 function StopItAll() {
@@ -130,66 +109,16 @@ function StopItAll() {
 </script>
 </head>
 <body>
-	<h1 onclick="console.log(1)">KaNa</h1>
-	<div id="vis-network"></div>
+	<!--h1 style="font-family: TengTel; text-rendering: optimizeLegibility;">&#xE003;&#xE040;&#xE010;&#xE040;</h1-->
+	<!--div id="vis-network"></div-->
 	<!--div id="PINLogger"></div-->
-	<button onclick="StopItAll()" id="PANIC">PANIC</button>
+	<div id="header">
+		<span id="logo" style="font-family: TengTel;font-size: 72pt;">&#xE003;&#xE010;</span>
+		<button onclick="StopItAll()" id="PANIC">PANIC</button>
+	</div>
 	<div id="error"></div>
 	<a style:"display:none" target="_blank" id="diaLink" href="#">Diagram</a>
-	<div class="kbd" style="display:block">
-		<div class="kbd-up">
-			<span 
-			data-note="48" class="w up bl">&nbsp;</span><span 
-			data-note="49" class="k up"><span class="label">s</span></span><span 
-			data-note="50" class="w up">&nbsp;</span><span 
-			data-note="51" class="k up"><span class="label">d</span></span><span
-			data-note="52" class="w up br">&nbsp;</span><span 
-			data-note="53" class="w up w1 bl">&nbsp;</span><span 
-			data-note="54" class="k up"><span class="label">g</span></span><span 
-			data-note="55" class="w up w1">&nbsp;</span><span 
-			data-note="56" class="k up"><span class="label">h</span></span><span 
-			data-note="57" class="w up w1">&nbsp;</span><span 
-			data-note="58" class="k up"><span class="label">j</span></span><span 
-			data-note="59" class="w up w1 br">&nbsp;</span><span 
-			data-note="60" class="w up bl">&nbsp;</span><span 
-			data-note="61" class="k up"><span class="label">2</span></span><span 
-			data-note="62" class="w up">&nbsp;</span><span 
-			data-note="63" class="k up"><span class="label">3</span></span><span
-			data-note="64" class="w up br">&nbsp;</span><span 
-			data-note="65" class="w up w1 bl">&nbsp;</span><span 
-			data-note="66" class="k up"><span class="label">5</span></span><span 
-			data-note="67" class="w up w1">&nbsp;</span><span 
-			data-note="68" class="k up"><span class="label">6</span></span><span 
-			data-note="69" class="w up w1">&nbsp;</span><span 
-			data-note="70" class="k up"><span class="label">7</span></span><span 
-			data-note="71" class="w up w1 br">&nbsp;</span><span 
-			data-note="72" class="w up bl">&nbsp;</span><span 
-			data-note="73" class="k up"><span class="label">9</span></span><span 
-			data-note="74" class="w up">&nbsp;</span><span 
-			data-note="75" class="k up"><span class="label">0</span></span><span
-			data-note="76" class="w up br">&nbsp;</span>
-		<div class="kbd-down">
-			<span
-			data-note="48" class="w down bl br"><span class="label">z</span></span><span 
-			data-note="50" class="w down bl br"><span class="label">x</span></span><span 
-			data-note="52" class="w down bl br"><span class="label">c</span></span><span 
-			data-note="53" class="w down bl br"><span class="label">v</span></span><span 
-			data-note="55" class="w down bl br"><span class="label">b</span></span><span 
-			data-note="57" class="w down bl br"><span class="label">n</span></span><span 
-			data-note="59" class="w down bl br"><span class="label">m</span></span><span
-			data-note="60" class="w down bl br"><span class="label">q</span></span><span 
-			data-note="62" class="w down bl br"><span class="label">w</span></span><span 
-			data-note="64" class="w down bl br"><span class="label">e</span></span><span 
-			data-note="65" class="w down bl br"><span class="label">r</span></span><span 
-			data-note="67" class="w down bl br"><span class="label">t</span></span><span 
-			data-note="69" class="w down bl br"><span class="label">y</span></span><span 
-			data-note="71" class="w down bl br"><span class="label">u</span></span><span
-			data-note="72" class="w down bl br"><span class="label">i</span></span><span 
-			data-note="74" class="w down bl br"><span class="label">o</span></span><span 
-			data-note="76" class="w down bl br"><span class="label">p</span></span>
-		</div>
-	</div>
-	<div>
+	<!--div>
 		<div class="seven-seg d-0">
 			<span class="t m"></span>
 			<span class="t l"></span>
@@ -380,7 +309,7 @@ function StopItAll() {
 			<span class="b m"><a></a><a></a></span>
 		</div>
 	</div>
-	<div class="dial"></div>
+	<div class="dial"></div-->
 	<div id="UI"></div>
 </body>
 </html>

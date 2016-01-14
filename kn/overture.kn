@@ -130,31 +130,25 @@ SN2 {
 }
 
 
-#Keyboard theKeyboard -> TestSynth ts -> Echo -> *(0.1) -> Pan pan -> MainOut theMainOut
+MidiHub allMidi
 
-Keyboard theKeyboard
-	#-> SpreadingLead ts 
+Keyboard theKeyboard -> allMidi
+
+@UI UIKeyboard theUIKeyboard
+
+theUIKeyboard -> allMidi
+
+WebMidi -> allMidi
+
+allMidi
+	-> SpreadingLead ts 
 	#-> FM1 #, SpreadingLead
-	-> (
-	BD1
-	HH1
-	)
-	#-> PingPong 
+	-> PingPong
 	-> *0.5 -> MainOut theMainOut
-
-#Keyboard theKeyboard -> (
-#	Midi2Note -> Note2CV -> Osc<SINE> sin -> *g -> PingPong -> *0.1 -> MainOut
-#	Midi2Trigger -> [trigger]ADSR<0.2 0.2 0.8 1> -> [gain]g
-#)
-
-#{*v = 1 | v < 0 ? v : 0 }
-#{*}
-
-#0.3 -> [freq]Osc panLfo -> *0.5 -> [pan]pan
-#theKeyboard -> Midi2Trigger -> [trigger]panLfo
 
 UIDial d1, UIDial d2 -> {_v|v*99} -> UIDigits<4> o1, UIValue<3> o2
 d2 -> {v|abs(v)} -> UILED l0
+
 
 @UI {{d1 | d2} | o1 | {l0 | o2} }
 
@@ -225,4 +219,4 @@ Loop<
 
 @UI UIValue<2> vvv
 
-Clock -> {c|floor((c - 10)/12)} -> lp -> dmx, vvv
+#Clock -> {c|floor((c - 10)/12)} -> lp -> dmx, vvv

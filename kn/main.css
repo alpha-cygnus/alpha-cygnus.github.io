@@ -382,4 +382,21 @@ div.UI {
 	flex-direction: row;
 }
 
+/*
+@font-face {
+    font-family: "FreeMonoTengwar";
+    src: url("../font/FreeMonoTengwar-embedding.eot");
+}
+*/
+@font-face {
+    font-family: "FreeMonoTengwar";
+    src: local("FreeMonoTengwar"),
+    local("FreeMonoTengwar-embedding"),
+    url("../font/FreeMonoTengwar-embedding.ttf") format("TrueType");
+}
+
+@font-face {
+    font-family: "TengTel";
+    src: url("../font/tengtelc.ttf") format("TrueType");
+}
 
