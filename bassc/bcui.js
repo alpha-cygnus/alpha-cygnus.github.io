@@ -45,6 +45,8 @@ var keysToNotes = {
 
 window.keyNoteStream = Kefir.pool();
 
+window.bcKeyboardEnabled = false;
+
 $(function() {
 });
 
@@ -284,7 +286,7 @@ class Keyboard extends Basis {
 	constructor() {
 		super();
 		var keysDown = {};
-		var keyFilter = e => !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
+		var keyFilter = e => window.bcKeyboardEnabled && !e.metaKey && !e.shiftKey && !e.ctrlKey && keysToNotes[e.keyCode];
 		var kdns = Kefir.fromEvents(window, 'keydown')
 			.filter(keyFilter)
 			.filter(e => !keysDown[e.keyCode])
