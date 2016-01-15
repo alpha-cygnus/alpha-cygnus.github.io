@@ -1,0 +1,220 @@
+#-- basic
+
+Const {
+	AIN inp
+	AOUT out
+}
+
+Osc {
+	@enum SINE, SIN = 0, SQUARE, SAW, TRI
+	AIN detune, freq
+	AOUT out
+	PIN trigger
+}
+
+Env {
+	AIN inp
+	AOUT out
+	PIN trigger
+	PIN attack, decay, sustain, release
+}
+
+ADSR {
+	AIN inp
+	AOUT out
+	PIN trigger
+	PIN attack, decay, sustain, release
+}
+
+Gain {
+	AIN inp, gain
+	AOUT out
+}
+
+Delay {
+	AIN inp
+	AOUT out
+	AIN time
+}
+
+P2A {
+	PIN inp
+	AOUT out
+}
+
+Keyboard {
+	MIDIOUT out
+}
+
+Note2CV {
+	PIN inp
+	AOUT out
+}
+
+Midi2Arpeggio {
+	MIDIIN inp
+	PIN clock
+	AOUT out
+	PIN octaves
+	PIN mode # up, down, updown, downup, random
+}
+
+Midi2Trigger {
+	@enum BOOL, RETRIG, COUNT
+	MIDIIN inp
+	POUT out
+	PIN mode
+}
+
+Midi2Note {
+	@enum MAX, MIN, LAST, FIRST
+	MIDIIN inp
+	POUT out
+	PIN priority # min, max, first, last
+}
+
+Filter {
+	@enum LOWPASS, HIGHPASS, BANDPASS, LOWSHELF, HIGHSHELF, PEAKING, NOTCH, ALLPASS
+		, LP = 0, HP, BP, LS, HS
+	AIN inp
+	AOUT out
+	PIN type
+	AIN freq
+	AIN q
+	AIN detune
+}
+
+Clock {
+	POUT out
+}
+
+Dest {
+	AIN inp
+	AIN volume
+	AOUT out
+}
+
+Pan {
+	AIN inp
+	AIN pan
+	AOUT out
+}
+
+Noise {
+	AOUT out
+}
+
+# -- UI
+Pot {
+	POUT value
+	#@init caption
+}
+
+Slider {
+	POUT value
+	#@init pos
+}
+
+DropDown {
+	POUT value
+	#@init values
+}
+
+Scope {
+	AIN in0, in1, in2, in3
+}
+
+
+# -- Automation
+LFO {
+	PIN trigger
+	PIN freq
+	PIN form # sine, triangle, pulse
+	PIN skew
+	POUT out
+}
+
+Loop {
+	PIN clock
+	POUT out
+}
+
+BinDemux {
+	PIN inp
+	POUT out0
+	POUT out1
+	POUT out2
+	POUT out3
+	POUT out4
+	POUT out5
+	POUT out6
+	POUT out7
+	POUT out8
+	POUT out9
+	POUT out10
+	POUT out11
+	POUT out12
+	POUT out13
+	POUT out14
+	POUT out15
+}
+
+QDemux {
+	PIN inp
+	POUT out0
+	POUT out1
+	POUT out2
+	POUT out3
+	POUT out4
+	POUT out5
+	POUT out6
+	POUT out7
+	POUT out8
+	POUT out9
+	POUT out10
+	POUT out11
+	POUT out12
+	POUT out13
+	POUT out14
+	POUT out15
+}
+
+Count {
+	PIN inp
+	POUT out
+}
+
+Curve {
+	PIN trigger
+	AOUT out
+}
+
+WebMidi {
+	MIDIOUT out
+}
+
+UIDial {
+	POUT out
+}
+
+UIDigits {
+	PIN inp
+}
+
+UIValue {
+	PIN inp
+}
+
+UILED {
+	PIN inp
+}
+
+UIKeyboard {
+	MIDIOUT out
+}
+
+MidiHub {
+	MIDIIN inp
+	MIDIOUT out
+}
+
