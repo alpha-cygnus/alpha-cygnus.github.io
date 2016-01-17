@@ -104,7 +104,8 @@ $(() => {
 		startUI();
 		window.main.onStartUI();
 		//$('#bccode').text(overture);
-		cmBcCode.setValue(overture);
+		if (window.cmBcCode) cmBcCode.setValue(overture);
+		else $('#bccode').text(overture);
 	});
 })
 

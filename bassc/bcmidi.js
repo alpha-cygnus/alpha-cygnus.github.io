@@ -5,14 +5,18 @@ class MidiProc {
 		navigator.requestMIDIAccess()
 			.then(ma => {
 				this.midi = ma;
-				for (var inp of ma.inputs) {
-					var inpId = inp[0];
-					var input = inp[1];
-					console.log('MIDI Input', input.id, ':', input.name);
-					input.onmidimessage = mm => this.midiMessageHandler(mm);
-				}
+				this.connectInputs();
+				this.midi.onstatechange = e => this.connectInputs();
 			})
 		this.listeners = {};
+	}
+	connectInputs() {
+		for (var inp of this.midi.inputs) {
+			var inpId = inp[0];
+			var input = inp[1];
+			console.log('MIDI Input', input.id, ':', input.name);
+			input.onmidimessage = mm => this.midiMessageHandler(mm);
+		}
 	}
 	midiMessageHandler(mm) {
 		var v = this.decode(mm.data);
