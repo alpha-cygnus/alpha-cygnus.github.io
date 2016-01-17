@@ -58,8 +58,6 @@ function parse(sourceName, source, parseFunc) {
 	}
 }
 $(() => {
-	setPage(location.hash.substr(1));
-	
 	Kefir.zip([
 		Kefir.fromPromise($.get('bc.pegjs')),
 		Kefir.fromPromise($.get('prelude.bc')),
@@ -91,7 +89,6 @@ $(() => {
 		var ps = bcMeta[klaz].getPlant();
 		$('#diaLink').attr('href', 'http://www.plantuml.com/plantuml/svg/' + compress(ps)).show();
 		
-		var src = bcMeta[klaz].getDot();
 		//console.log(src);
 		//var res = Viz(src);
 		//'digraph g { n0[shape=record,label="{{<a>a|<b>b}|abracadabra|{c|d|f}}"]; n0:a -> a; n0:b -> b }');
@@ -99,13 +96,17 @@ $(() => {
 		//$('#vis-network').html(res);
 
 		window.main = new window[bcMainClass]();
-		_fabrique.start();
 		$('#UI').html(window.main.getHTML());
-		startUI();
 		window.main.onStartUI();
 		//$('#bccode').text(overture);
-		if (window.cmBcCode) cmBcCode.setValue(overture);
-		else $('#bccode').text(overture);
+		// if (window.cmBcCode) cmBcCode.setValue(overture);
+		// else 
+		$('#bccode').text(overture);
+
+		_fabrique.start();
+		startUI();
+
+		setPage(location.hash.substr(1));
 	});
 })
 
@@ -113,6 +114,27 @@ function stopItAll() {
 	_fabrique.stop();
 	window.mainVolume.value = 0;
 	return false;
+}
+
+var bcPagesInfo = {
+	code: {
+		init() {
+			window.cmBcCode = CodeMirror.fromTextArea(document.getElementById("bccode"), {
+				lineNumbers: true,
+				mode: "htmlmixed"
+			});
+		}
+	},
+	ui: {
+		init() {
+		}
+	},
+	dia: {
+		init() {
+			$('#ifrVis').attr('src', 'vis.html?' + bcMainClass);
+		}
+	},
+
 }
 
 function setPage(page) {
@@ -130,13 +152,10 @@ function setPage(page) {
 	$('div.bc_page').hide();
 	$('#page_' + page).show();
 	bcKeyboardEnabled = (page == 'ui');
-	if (page == 'code') {
-		if (!window.cmBcCode) {
-			window.cmBcCode = CodeMirror.fromTextArea(document.getElementById("bccode"), {
-				lineNumbers: true,
-				mode: "htmlmixed"
-			});
-		}
+	var pinfo = bcPagesInfo[page];
+	if (pinfo && pinfo.init && !pinfo.inited) {
+		pinfo.init();
+		pinfo.inited = true;
 	}
 }
 </script>
@@ -194,10 +213,11 @@ function setPage(page) {
 		<div id="UI"></div>
     </div>
     <div class="container bc_page" id="page_dia">
-    	DIAGRAMME
+    	<div class="row" style="height:400px">
+	    	<iframe id="ifrVis" style="width:100%;height:100%" frameborder="0"></iframe>
+	    </div>
     </div>
     <div class="container bc_page" id="page_code">
-    	<div class="row">
     	  <div class="col-lg-12">
 			<form>
 			  <div class="form-group">

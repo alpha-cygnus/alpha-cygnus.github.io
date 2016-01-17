@@ -218,7 +218,7 @@ class BCClassMeta extends BCMeta {
 		return res.join('\n');
 	}
 	getDot() {
-		var res = [`digraph ${this.name} {`, 'node [width=0.1,height=0.1];', 'rankdir=LR;', 'size="20,20"'];
+		var res = [`digraph ${this.name} {`, 'node [width=0.1,height=0.1];', 'rankdir=LR;', 'size="10,10"'];
 		for (let nn in this.nodes) {
 			var n = this.nodes[nn];
 			var nc = bcMeta[n.type];
