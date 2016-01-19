@@ -315,66 +315,104 @@ class UIKeyboard extends UIBasis {
 		window.keyNoteStream.plug(this.keyNoteStream);
 		
 		isMidiKeys.call(this, this.keyNoteStream);
+		this.inp = new MIDIIN();
+		this.range = [24, 113];
 	}
 	getHTML() {
+		function isWhite(n) {
+			return {
+				 0: ['C', 'bl'],
+				 2: ['D', ' '],
+				 4: ['E', 'br'],
+				 5: ['F', 'w1 bl'],
+				 7: ['G', 'w1'],
+				 9: ['A', 'w1'],
+				11: ['B', 'w1 br']
+			}[n%12];
+		}
 		var html = `
 		<div class="UIKeyboard" id="${this.getId()}">
 			<div class="kbd-top"></div>
 			<div class="kbd" style="display:block">
-				<div class="kbd-up">
-					<span 
-					data-note="48" class="w up bl">&nbsp;</span><span 
-					data-note="49" class="k up"><span class="keylabel">s</span></span><span 
-					data-note="50" class="w up">&nbsp;</span><span 
-					data-note="51" class="k up"><span class="keylabel">d</span></span><span
-					data-note="52" class="w up br">&nbsp;</span><span 
-					data-note="53" class="w up w1 bl">&nbsp;</span><span 
-					data-note="54" class="k up"><span class="keylabel">g</span></span><span 
-					data-note="55" class="w up w1">&nbsp;</span><span 
-					data-note="56" class="k up"><span class="keylabel">h</span></span><span 
-					data-note="57" class="w up w1">&nbsp;</span><span 
-					data-note="58" class="k up"><span class="keylabel">j</span></span><span 
-					data-note="59" class="w up w1 br">&nbsp;</span><span 
-					data-note="60" class="w up bl">&nbsp;</span><span 
-					data-note="61" class="k up"><span class="keylabel">2</span></span><span 
-					data-note="62" class="w up">&nbsp;</span><span 
-					data-note="63" class="k up"><span class="keylabel">3</span></span><span
-					data-note="64" class="w up br">&nbsp;</span><span 
-					data-note="65" class="w up w1 bl">&nbsp;</span><span 
-					data-note="66" class="k up"><span class="keylabel">5</span></span><span 
-					data-note="67" class="w up w1">&nbsp;</span><span 
-					data-note="68" class="k up"><span class="keylabel">6</span></span><span 
-					data-note="69" class="w up w1">&nbsp;</span><span 
-					data-note="70" class="k up"><span class="keylabel">7</span></span><span 
-					data-note="71" class="w up w1 br">&nbsp;</span><span 
-					data-note="72" class="w up bl">&nbsp;</span><span 
-					data-note="73" class="k up"><span class="keylabel">9</span></span><span 
-					data-note="74" class="w up">&nbsp;</span><span 
-					data-note="75" class="k up"><span class="keylabel">0</span></span><span
-					data-note="76" class="w up br">&nbsp;</span>
-				<div class="kbd-down">
-					<span
-					data-note="48" class="w down bl br"><span class="keylabel">z</span></span><span 
-					data-note="50" class="w down bl br"><span class="keylabel">x</span></span><span 
-					data-note="52" class="w down bl br"><span class="keylabel">c</span></span><span 
-					data-note="53" class="w down bl br"><span class="keylabel">v</span></span><span 
-					data-note="55" class="w down bl br"><span class="keylabel">b</span></span><span 
-					data-note="57" class="w down bl br"><span class="keylabel">n</span></span><span 
-					data-note="59" class="w down bl br"><span class="keylabel">m</span></span><span
-					data-note="60" class="w down bl br"><span class="keylabel">q</span></span><span 
-					data-note="62" class="w down bl br"><span class="keylabel">w</span></span><span 
-					data-note="64" class="w down bl br"><span class="keylabel">e</span></span><span 
-					data-note="65" class="w down bl br"><span class="keylabel">r</span></span><span 
-					data-note="67" class="w down bl br"><span class="keylabel">t</span></span><span 
-					data-note="69" class="w down bl br"><span class="keylabel">y</span></span><span 
-					data-note="71" class="w down bl br"><span class="keylabel">u</span></span><span
-					data-note="72" class="w down bl br"><span class="keylabel">i</span></span><span 
-					data-note="74" class="w down bl br"><span class="keylabel">o</span></span><span 
-					data-note="76" class="w down bl br"><span class="keylabel">p</span></span>
-				</div>
-			</div>
-		</div>
-		`;
+				<div class="kbd-up">`
+		for (var n = this.range[0]; n < this.range[1]; n++) {
+			var w = isWhite(n);
+			if (w) {
+				// if (n == this.range[1] - 1) s += ' br';
+				// if (n == this.range[0]) s += ' bl';
+				var s = w[1];
+				html += `<span data-note="${n}" class="w up ${s}">&nbsp;</span>`;
+			} else {
+				html += `<span data-note="${n}" class="k up"><span class="keylabel"></span></span>`;
+			}
+		}
+		html += '</div>';
+		html += '<div class="kbd-down">';
+		for (var n = this.range[0]; n < this.range[1]; n++) {
+			var w = isWhite(n);
+			if (w) {
+				var l = w[0];
+				var o = Math.floor(n/12);
+				if (o > 5) {
+					l = l.toLowerCase();
+					while (--o >= 6) l += "'";
+				} else {
+					while (++o <= 5) l += ',';
+				}
+
+				html += `<span data-note="${n}" class="w down bl br"><span class="keylabel">${l}</span></span>`;
+			}
+		}
+
+					// <span 
+					// data-note="50" class="w up">&nbsp;</span><span 
+					// data-note="51" class="k up"><span class="keylabel">d</span></span><span
+					// data-note="52" class="w up br">&nbsp;</span><span 
+					// data-note="53" class="w up w1 bl">&nbsp;</span><span 
+					// data-note="54" class="k up"><span class="keylabel">g</span></span><span 
+					// data-note="55" class="w up w1">&nbsp;</span><span 
+					// data-note="56" class="k up"><span class="keylabel">h</span></span><span 
+					// data-note="57" class="w up w1">&nbsp;</span><span 
+					// data-note="58" class="k up"><span class="keylabel">j</span></span><span 
+					// data-note="59" class="w up w1 br">&nbsp;</span><span 
+					// data-note="60" class="w up bl">&nbsp;</span><span 
+					// data-note="61" class="k up"><span class="keylabel">2</span></span><span 
+					// data-note="62" class="w up">&nbsp;</span><span 
+					// data-note="63" class="k up"><span class="keylabel">3</span></span><span
+					// data-note="64" class="w up br">&nbsp;</span><span 
+					// data-note="65" class="w up w1 bl">&nbsp;</span><span 
+					// data-note="66" class="k up"><span class="keylabel">5</span></span><span 
+					// data-note="67" class="w up w1">&nbsp;</span><span 
+					// data-note="68" class="k up"><span class="keylabel">6</span></span><span 
+					// data-note="69" class="w up w1">&nbsp;</span><span 
+					// data-note="70" class="k up"><span class="keylabel">7</span></span><span 
+					// data-note="71" class="w up w1 br">&nbsp;</span><span 
+					// data-note="72" class="w up bl">&nbsp;</span><span 
+					// data-note="73" class="k up"><span class="keylabel">9</span></span><span 
+					// data-note="74" class="w up">&nbsp;</span><span 
+					// data-note="75" class="k up"><span class="keylabel">0</span></span><span
+					// data-note="76" class="w up br">&nbsp;</span>
+				// <div class="kbd-down">
+				// 	<span
+				// 	data-note="48" class="w down bl br"><span class="keylabel">z</span></span><span 
+				// 	data-note="50" class="w down bl br"><span class="keylabel">x</span></span><span 
+				// 	data-note="52" class="w down bl br"><span class="keylabel">c</span></span><span 
+				// 	data-note="53" class="w down bl br"><span class="keylabel">v</span></span><span 
+				// 	data-note="55" class="w down bl br"><span class="keylabel">b</span></span><span 
+				// 	data-note="57" class="w down bl br"><span class="keylabel">n</span></span><span 
+				// 	data-note="59" class="w down bl br"><span class="keylabel">m</span></span><span
+				// 	data-note="60" class="w down bl br"><span class="keylabel">q</span></span><span 
+				// 	data-note="62" class="w down bl br"><span class="keylabel">w</span></span><span 
+				// 	data-note="64" class="w down bl br"><span class="keylabel">e</span></span><span 
+				// 	data-note="65" class="w down bl br"><span class="keylabel">r</span></span><span 
+				// 	data-note="67" class="w down bl br"><span class="keylabel">t</span></span><span 
+				// 	data-note="69" class="w down bl br"><span class="keylabel">y</span></span><span 
+				// 	data-note="71" class="w down bl br"><span class="keylabel">u</span></span><span
+				// 	data-note="72" class="w down bl br"><span class="keylabel">i</span></span><span 
+				// 	data-note="74" class="w down bl br"><span class="keylabel">o</span></span><span 
+				// 	data-note="76" class="w down bl br"><span class="keylabel">p</span></span>
+				// </div>
+		html += `</div></div>`;
 		return html;
 	}
 	onStartUI() {
@@ -397,11 +435,21 @@ class UIKeyboard extends UIBasis {
 		
 		this.keyNoteStream.plug(uiKbdDown).plug(uiKbdUp);
 		
-		window.keyNoteStream.onValue(v => {
-			if (v.down) {
-				$elem.find('.kbd span[data-note=' + v.note + ']').addClass('is-down');
-			} else {
-				$elem.find('.kbd span[data-note=' + v.note + ']').removeClass('is-down');
+		// window.keyNoteStream.onValue(v => {
+		// 	if (v.down) {
+		// 		$elem.find('.kbd span[data-note=' + v.note + ']').addClass('is-down');
+		// 	} else {
+		// 		$elem.find('.kbd span[data-note=' + v.note + ']').removeClass('is-down');
+		// 	}
+		// })
+		this.inp.stream.onValue(vs => {
+			for (var v of vs) {
+				if (v.t == 'on') {
+					$elem.find('.kbd span[data-note=' + v.n + ']').addClass('is-down');
+				}
+				if (v.t == 'off') {
+					$elem.find('.kbd span[data-note=' + v.n + ']').removeClass('is-down');
+				}
 			}
 		})
 	}

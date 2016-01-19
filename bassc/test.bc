@@ -1,3 +1,8 @@
+@startABC
+ABCDEFG
+@endABC
+
+
 Note2Detune {
 	PIN -> {note|(note - 69)*100} -> P2A -> AOUT
 }
@@ -48,14 +53,12 @@ TestSynth {
 
 SpreadingLead {
 	MIDIIN inp -> Midi2Trigger trig, Midi2Note<LAST> note
-	note -> Note2Detune ->[detune] Osc<SAW> o1, o2, o3, o4, o5
+	note -> Note2Detune ->[detune] Osc<SAW> o1, o2, o3, o4, o5, Osc<SQUARE> sub
 	o1, o2, o3, o4, o5 -> ADSR<0.1, 0.3, 0.7, 1> ampEnv -> *0.2 -> AOUT out
-	#trig ->([trigger]ampEnv; [trigger]ADSR<5, 0.1, 1, 0.3> -> Delay<0.3> sEnv)
-	trig -> [trigger]ampEnv
-	#AIN<15> spread -> [gain]* gspread
-	#sEnv
-	inp -> MidiCC<1> -> P2A -> *15 -> ([detune] o2; *-1 -> [detune]o3; *2 -> [detune]o4; *-2 -> [detune]o5)
-	#-1200 ->[detune] sub
+	trig ->([trigger]ampEnv; [trigger]ADSR<5, 0.1, 1, 0.3> -> Delay<0.3> sEnv)
+	AIN<15> spread -> [gain]* gspread
+	sEnv -> gspread -> ([detune] o2; *-1 -> [detune]o3; *2 -> [detune]o4; *-3 -> [detune]o5)
+	-1200 ->[detune] sub
 }
 
 FM1 {
@@ -138,13 +141,87 @@ allMidi -> theUIKeyboard
 
 allMidi -> MidiPoly<5> poly
 
-poly[0] -> SpreadingLead ts0
-poly[1] -> SpreadingLead ts1
-poly[2] -> SpreadingLead ts2
-poly[3] -> SpreadingLead ts3
-poly[4] -> SpreadingLead ts4
+poly[0] -> FM1 ts0
+poly[1] -> FM1 ts1
+poly[2] -> FM1 ts2
+poly[3] -> FM1 ts3
+poly[4] -> FM1 ts4
 
 ts0, ts1, ts2, ts3, ts4
-	#-> PingPong
+	-> PingPong
 	-> *0.5 -> MainOut theMainOut
 
+#UIDial d1, UIDial d2 -> {_v|v*99} -> UIDigits<4> o1, UIValue<3> o2
+#d2 -> {v|abs(v)} -> UILED l0
+
+
+#@UI {{d1 | d2} | o1 | {l0 | o2} }
+
+@startABC
+| D B AG
+| D3 D/-D/
+| DB AG
+| "C"E4
+| "Am"Ec BA
+| "D7"F3 d
+| ed cA
+| "G"B4 |
+| "G"DB AG
+| D3 D/-D/
+| DB AG
+| "C"E3 E
+| "Am"Ec BA
+| "G"dd dd
+| "D7"ed cA
+| "G"G2 z2 |
+|: "G"BB B2
+| BB B2
+| Bd G>A
+| "G7"B4
+| "C"cc c>c
+| "G"cB BB/B/
+| "A7"BA AB
+| "D7"A2 d2
+:| "D7"dd cA
+| "G"G4
+@endABC
+
+@UI UILED bl0|UILED bl1|UILED bl2|UILED bl3|UILED bl4|UILED bl5|UILED bl6|UILED bl7
+
+#Clock ->  ->
+QDemux dmx
+
+dmx[0] -> bl0
+dmx[1] -> bl1
+dmx[2] -> bl2
+dmx[3] -> bl3
+dmx[4] -> bl4
+dmx[5] -> bl5
+dmx[6] -> bl6
+dmx[7] -> bl7
+
+dmx[0] -> CHH chh
+dmx[1] -> BD2 bd
+dmx[2] -> SN2 sn
+dmx[3] -> OHH ohh
+dmx[4] -> chh
+
+chh, ohh
+, bd
+, sn 
+-> *0.2 -> theMainOut
+Loop<
+0q1010,0,
+0q0001,0,
+0q0101,0,
+0q0010,0,
+0q0001,0,
+0q0011,0,
+0q0100,0,
+0q0001,
+0q0002
+> lp
+
+@UI UIValue<2> vvv
+
+#Clock -> {c|floor((c - 10)/12)} -> lp -> dmx, vvv

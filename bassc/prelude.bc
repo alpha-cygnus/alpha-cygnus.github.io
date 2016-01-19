@@ -210,6 +210,7 @@ UILED {
 }
 
 UIKeyboard {
+	MIDIIN inp
 	MIDIOUT out
 }
 
@@ -218,3 +219,19 @@ MidiHub {
 	MIDIOUT out
 }
 
+MidiPoly {
+	MIDIIN inp
+	MIDIOUT out0
+	MIDIOUT out1
+	MIDIOUT out2
+	MIDIOUT out3
+	MIDIOUT out4
+	MIDIOUT out5
+	MIDIOUT out6
+	MIDIOUT out7
+}
+
+MidiCC {
+	MIDIIN inp
+	POUT out
+}

@@ -94,3 +94,130 @@ class WebMidi extends Basis {
 		//console.log(this.buffer);
 	}
 }
+
+const MaxPolyVoices = 8;
+
+class MidiPoly extends Basis {
+	constructor(vc) {
+		super();
+		this.inp = new MIDIIN();
+		this.voices = {
+			fromNote: {},
+			list: [],
+			allocated: [],
+			free: [],
+			max: 4,
+			allocate(noteOn) {
+				var n = noteOn.n;
+				var i = this.fromNote[n];
+				if (i) {
+					this.deallocate(i);
+				}
+				if (this.allocated.length >= this.max) {
+					this.deallocate(this.allocated[0]);
+				}
+				i = this.free.shift();
+				this.allocated.push(i);
+				this.fromNote[n] = i;
+				this.list[i - 1].note = n;
+				this.list[i - 1].buffer.push(noteOn);
+				return this;
+			},
+			deallocate(i, noteOff) {
+				if (!i) return;
+				var n = this.list[i - 1].note;
+				if (!noteOff) {
+					noteOff = {
+						t: 'off', n: n, v: 0,
+					}
+				}
+				this.list[i - 1].buffer.push(noteOff);
+				this.free.push(i);
+				var ai = this.allocated.indexOf(i);
+				this.allocated.splice(ai, 1);
+				delete this.fromNote[n];
+				return this;
+			},
+		}
+		for (var i = 0; i < MaxPolyVoices; i++) {
+			this['out' + i] = new MIDIOUT();
+			this.voices.list[i] = {
+				buffer: [],
+				note: 0,
+			};
+		}
+		if (!vc) vc = 4;
+		if (vc <= 0) vc = 1;
+		if (vc > MaxPolyVoices) vc = MaxPolyVoices;
+		this.voices.max = vc;
+		for (var i = 0; i < vc; i++) {
+			this.voices.free.push([i + 1]);
+		}
+		var scan = this.inp.stream.scan((vs, es) => {
+			for (var e of es) {
+				switch(e.t) {
+					case 'on':
+						vs.allocate(e);
+						break;
+					case 'off':
+						vs.deallocate(vs.fromNote[e.n], e);
+						break;
+					case 'pitch':
+					case 'cc':
+						for (var i = 0; i < vc; i++) {
+							vs.list[i].buffer.push(e);
+						}
+						break;
+				}
+			}
+			return vs;
+		}, this.voices);
+		for (var i = 0; i < MaxPolyVoices; i++) {
+			let ii = i;
+			this['out' + i].plug(
+				scan.map(vs => {
+					var buf = vs.list[ii].buffer;
+					vs.list[ii].buffer = [];
+					if (buf.length > 0) console.log('out' + ii, buf);
+					return buf;
+				})
+			);
+		}
+	}
+}
+
+class MidiCC extends Basis {
+	constructor(n) {
+		super();
+		this.ccn = n;
+		this.inp = new MIDIIN();
+		this.out = new POUT();
+		this.value = 0;
+		this.out.plug(
+			this.inp.stream.scan((v, es) => {
+				for (var e of es) {
+					if (e.t == 'cc' && e.n == this.ccn) v = e.v;
+				}
+				return v;
+			}, 0)
+		);
+	}
+}
+
+class MidiPitchWheel extends Basis {
+	constructor(n) {
+		super();
+		this.ccn = n;
+		this.inp = new MIDIIN();
+		this.out = new POUT();
+		this.value = 0;
+		this.out.plug(
+			this.inp.stream.scan((v, es) => {
+				for (var e of es) {
+					if (e.t == 'pitch') v = e.v;
+				}
+				return v;
+			}, 0)
+		);
+	}
+}

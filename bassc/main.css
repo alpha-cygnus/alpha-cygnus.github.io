@@ -21,7 +21,9 @@ div#error {
 	margin-top: 75px;
 }
 .kbd .w span.keylabel {
-	margin-top: 25px;
+	margin-top: 6px;
+	font-size: smaller;
+	color: #888;
 }
 .kbd span.k {
 	vertical-align: top;
