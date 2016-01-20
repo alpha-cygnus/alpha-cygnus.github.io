@@ -13,6 +13,12 @@ const _getObjId = (function() {
 	}
 })();
 
+function _apply(fn) {
+	return function(args) {
+		return fn.apply(this, args);
+	}
+}
+
 class Basis {
 	isTriggered(fn, onFunc, offFunc) {
 		fn = fn || 'trigger';
@@ -84,9 +90,22 @@ class MIDIINOUT extends INOUT {
 	constructor() {
 		super();
 		this.pool = Kefir.pool();
+		this.plugged = _fabrique.tickStream.map(t => []);
+		this.pool.plug(this.plugged);
+		this.inStreams = [];
 	}
 	plug(obs) {
-		this.pool.plug(obs);
+		this.pool.unplug(this.plugged);
+		this.inStreams.push(obs);
+		if (this.inStreams.length > 1) {
+			this.plugged = Kefir.zip(this.inStreams).map(vs => {
+				return vs.reduce((a, b) => a.concat(b));
+			});
+		} else {
+			this.plugged = obs;
+		}
+		this.pool.plug(this.plugged);
+		return this;
 	}
 	connectTo(inout) {
 		inout.plug(this.stream);
@@ -103,21 +122,26 @@ class MIDIOUT extends MIDIINOUT {
 	produceFromBuffer(obj, field, onBeforeProduce) {
 		// this[field + 'Stream'];
 		this.obj = obj;
-		var stream = Kefir.stream(emitter => {
-			var fun = (t) => {
-				if (onBeforeProduce) onBeforeProduce(t);
-				var vs = this.obj[field];
-				emitter.emit(vs);
-				// for (var v of vs) {
-				// 	emitter.emit(v);
-				// }
-				this.obj[field] = [];
-			}
-			_fabrique.onProduce(fun);
-			return () => _fabrique.offProduce(fun);
-		});
+		// var stream = Kefir.stream(emitter => {
+		// 	var fun = (t) => {
+		// 		if (onBeforeProduce) onBeforeProduce(t);
+		// 		var vs = this.obj[field];
+		// 		emitter.emit(vs);
+		// 		// for (var v of vs) {
+		// 		// 	emitter.emit(v);
+		// 		// }
+		// 		this.obj[field] = [];
+		// 	}
+		// 	_fabrique.onProduce(fun);
+		// 	return () => _fabrique.offProduce(fun);
+		// });
+		var stream = _fabrique.tickStream.map(t => {
+			if (onBeforeProduce) onBeforeProduce(t);
+			var vs = this.obj[field];
+			this.obj[field] = [];
+			return vs;
+		})
 		this.plug(stream);
-		// obj[field + 'State'] = state;
 		return this;
 	}
 }
@@ -130,32 +154,46 @@ class MIDIIN extends MIDIINOUT {
 class PINOUT extends INOUT {
 	constructor(def, agrFun, agrInit) {
 		super();
-		agrFun = agrFun || ((a, b) => a + b);
-		agrInit = agrInit || 0;
+		this.agrFun = agrFun || ((a, b) => a + b);
+		this.agrInit = agrInit || 0;
 		this.pool = Kefir.pool();
 		this.value = def || 0;
-		this.outs = this.pool
-			.scan((state, v) => {
-				state[v.id] = v.v;
-				return state;
-			}, {})
-			.map(state => {
-				var v = def;
-				var first = 1;
-				for (var id in state) {
-					if (first) v = agrInit;
-					first = 0;
-					//v += state[id];
-					v = agrFun(v, state[id]);
-				}
-				this.value = v;
-				return v;
-			})
-			.toProperty(() => this.value)
+		this.plugged = _fabrique.tickStream.map(t => this.value);
+		this.pool.plug(this.plugged);
+		this.inStreams = [];
+		this.outs = this.pool;
+		// this.outs = this.pool
+		// 	.scan((state, v) => {
+		// 		state[v.id] = v.v;
+		// 		return state;
+		// 	}, {})
+		// 	.map(state => {
+		// 		var v = def;
+		// 		var first = 1;
+		// 		for (var id in state) {
+		// 			if (first) v = agrInit;
+		// 			first = 0;
+		// 			//v += state[id];
+		// 			v = agrFun(v, state[id]);
+		// 		}
+		// 		this.value = v;
+		// 		return v;
+		// 	})
+		// 	.toProperty(() => this.value)
 	}
 	plug(obs) {
-		let id = _getObjId(obs);
-		this.pool.plug(obs.map(v => ({v, id})));
+		this.pool.unplug(this.plugged);
+		this.inStreams.push(obs);
+		if (this.inStreams.length > 1) {
+			this.plugged = Kefir.zip(this.inStreams).map(vs => {
+				return vs.reduce(this.agrFun, this.agrInit);
+			});
+		} else {
+			this.plugged = obs;
+		}
+		this.pool.plug(this.plugged);
+		// let id = _getObjId(obs);
+		// this.pool.plug(obs.map(v => ({v, id})));
 		return this;
 	}
 	connectTo(inout) {
@@ -172,16 +210,23 @@ class POUT extends PINOUT {
 			last: undefined
 		};
 		this[field + 'Stream'];
-		var stream = Kefir.stream(emitter => {
-			var fun = (t) => {
-				if (onBeforeProduce) onBeforeProduce(t);
-				if (obj[field] !== state.last) {
-					emitter.emit(obj[field]);
-					state.last = obj[field];
-				}
+		// var stream = Kefir.stream(emitter => {
+		// 	var fun = (t) => {
+		// 		if (onBeforeProduce) onBeforeProduce(t);
+		// 		if (obj[field] !== state.last) {
+		// 			emitter.emit(obj[field]);
+		// 			state.last = obj[field];
+		// 		}
+		// 	}
+		// 	_fabrique.onProduce(fun);
+		// 	return () => _fabrique.offProduce(fun);
+		// });
+		var stream = _fabrique.tickStream.map(t => {
+			if (onBeforeProduce) onBeforeProduce(t);
+			if (obj[field] !== state.last) {
+				state.last = obj[field];
 			}
-			_fabrique.onProduce(fun);
-			return () => _fabrique.offProduce(fun);
+			return state.last;
 		});
 		this.plug(stream);
 		state.stream = stream;
@@ -189,13 +234,14 @@ class POUT extends PINOUT {
 		return this;
 	}
 	produceFromFunction(fun) {
-		var stream = Kefir.stream(emitter => {
-			var producer = (t) => {
-				emitter.emit(fun(t));
-			}
-			_fabrique.onProduce(producer);
-			return () => _fabrique.offProduce(producer);
-		});
+		// var stream = Kefir.stream(emitter => {
+		// 	var producer = (t) => {
+		// 		emitter.emit(fun(t));
+		// 	}
+		// 	_fabrique.onProduce(producer);
+		// 	return () => _fabrique.offProduce(producer);
+		// });
+		var stream = _fabrique.tickStream.map(fun);
 		this.plug(stream);
 		state.stream = stream;
 		obj[field + 'State'] = state;
@@ -205,7 +251,7 @@ class POUT extends PINOUT {
 
 class PIN extends PINOUT {
 	toProp(obj, pn) {
-		this.out.onValue(v => {
+		this.outs.onValue(v => {
 			obj[pn] = v;
 		});
 	}
@@ -286,6 +332,13 @@ class Fabrique {
 		this.bpm = 120;
 		this.ppqn = 48;
 		this.calcTps();
+		this.tickStream = Kefir.stream(emitter => {
+			var fun = (t) => {
+				emitter.emit(t);
+			}
+			_fabrique.onProduce(fun);
+			return () => _fabrique.offProduce(fun);
+		})
 	}
 	onProduce(fun) {
 		let id = _getObjId(fun);
@@ -388,7 +441,6 @@ class Midi2NotesBasis extends Basis { // abstract
 				this.value = this.getValue();
 				return this.value;
 			})
-			.toProperty(() => this.value)
 		)
 	}
 	getValue() {
@@ -442,91 +494,94 @@ class Midi2Note extends Midi2NotesBasis {
 	}
 }
 
-const N2VModes = ['detune', 'freq'];
+// const N2VModes = ['detune', 'freq'];
 
-class Note2CV extends Basis {
-	constructor(mode) {
-		super();
-		this.smode = N2VModes[mode];
-		this.inp = new PIN();
-		this.out = new AOUT();
-		this.pgain = this.out.gain.gain;
-		this.pgain.value = 0;
-		this.constant = this.getConstant();
-		this.constant.connect(this.out.gain);
+// class Note2CV extends Basis {
+// 	constructor(mode) {
+// 		super();
+// 		this.smode = N2VModes[mode];
+// 		this.inp = new PIN();
+// 		this.out = new AOUT();
+// 		this.pgain = this.out.gain.gain;
+// 		this.pgain.value = 0;
+// 		this.constant = this.getConstant();
+// 		this.constant.connect(this.out.gain);
 		
-		this.value = 0;
-		this.inp.onValue(n => {
-			if (!n) return;
-			this.value = this.getValue(n);
-		});
-		this.isConsumer(t => {
-			this.pgain.setValueAtTime(this.value, t);
-		});
-	}
-	getValue(n) {
-		switch(this.smode) {
-			case 'freq': return Math.pow(2, (n - 69)/12)*440;
-			default: return (n - 69)*100; // detune
-		}
-	}
-}
+// 		this.value = 0;
+// 		this.inp.onValue(n => {
+// 			if (!n) return;
+// 			this.value = this.getValue(n);
+// 		});
+// 		this.isConsumer(t => {
+// 			this.pgain.setValueAtTime(this.value, t);
+// 		});
+// 	}
+// 	getValue(n) {
+// 		switch(this.smode) {
+// 			case 'freq': return Math.pow(2, (n - 69)/12)*440;
+// 			default: return (n - 69)*100; // detune
+// 		}
+// 	}
+// }
 
-const MaxPolyCount = 16;
+// const MaxPolyCount = 16;
 
-class Midi2PolyBasis extends Basis { // abstract
-	constructor() {
-		super();
-		this.inp = new MIDIIN();
-		this.values = [];
-		for (var i = 0; i < MaxPolyCount; i++) {
-			this['out' + i] = new POUT();
-			this.values.push(0);
-		};
+// class Midi2PolyBasis extends Basis { // abstract
+// 	constructor() {
+// 		super();
+// 		this.inp = new MIDIIN();
+// 		this.values = [];
+// 		for (var i = 0; i < MaxPolyCount; i++) {
+// 			this['out' + i] = new POUT();
+// 			this.values.push(0);
+// 		};
 		
-		this.noteSet = {};
-		this.noteList = {};
-		this.nc = 0;
+// 		this.noteSet = {};
+// 		this.noteList = {};
+// 		this.nc = 0;
 		
-		this.allOut = this.inp.stream.map(vs => {
-			for (var v of vs) {
-				if (v.t === 'on') {
-					if (this.noteSet[v.n]) return;
-					this.nc++;
-					this.noteSet[v.n] = this.nc;
-					this.noteList[this.nc] = v.n;
-				}
-				if (v.t === 'off') {
-					var nc = this.noteSet[v.n];
-					delete this.noteSet[v.n];
-					delete this.noteList[nc];
-				}
-			}
-			this.values = this.getValues();
-			return this.values;
-		})
-		.toProperty(() => this.values);
+// 		this.allOut = this.inp.stream.map(vs => {
+// 			for (var v of vs) {
+// 				if (v.t === 'on') {
+// 					if (this.noteSet[v.n]) return;
+// 					this.nc++;
+// 					this.noteSet[v.n] = this.nc;
+// 					this.noteList[this.nc] = v.n;
+// 				}
+// 				if (v.t === 'off') {
+// 					var nc = this.noteSet[v.n];
+// 					delete this.noteSet[v.n];
+// 					delete this.noteList[nc];
+// 				}
+// 			}
+// 			this.values = this.getValues();
+// 			return this.values;
+// 		})
+// 		.toProperty(() => this.values);
 		
-		for (var i = 0; i < MaxPolyCount; i++) {
-			let idx = i;
-			this['out' + i].plug(this.allOut.map(a => a[idx]));
-		};
-	}
-	getValues() {
-		throw "Define getValues :: () -> [val]";
-	}
-}
+// 		for (var i = 0; i < MaxPolyCount; i++) {
+// 			let idx = i;
+// 			this['out' + i].plug(this.allOut.map(a => a[idx]));
+// 		};
+// 	}
+// 	getValues() {
+// 		throw "Define getValues :: () -> [val]";
+// 	}
+// }
 
-class Midi2PolyNote extends Basis {
-	constructor(polyCount) {
-		super();
-	}
-}
+// class Midi2PolyNote extends Basis {
+// 	constructor(polyCount) {
+// 		super();
+// 	}
+// }
 
+const P2AModes = ['set', 'linear', 'exp'];
 
 class P2A extends Basis {
-	constructor(mode) {
+	constructor(mode, lag) {
 		super();
+		this.smode = P2AModes[mode] || 'set';
+		this.lag = lag < 0 ? 0 : lag || 0;
 		this.inp = new PIN();
 		this.out = new AOUT();
 		this.pgain = this.out.gain.gain;
@@ -542,7 +597,17 @@ class P2A extends Basis {
 			if (this.value === undefined) return;
 			if (isNaN(this.value)) return;
 			if (this.last != this.value) {
-				this.pgain.setValueAtTime(this.value, t);
+				switch (this.smode) {
+					case 'set':
+						this.pgain.setValueAtTime(this.value, t + this.lag);
+						break;
+					case 'linear':
+						this.pgain.linearRampToValueAtTime(this.value, t + this.lag);
+						break;
+					case 'exp':
+						this.pgain.exponentialRampToValueAtTime(this.value, t + this.lag);
+						break;
+				}
 			}
 			this.last = this.value;
 		});
@@ -564,6 +629,7 @@ class ADSR extends Basis {
 		this.release = new PIN(this.r).onValue(v => this.r = v);
 		this.min = new PIN(this.mn).onValue(v => this.mn = v);
 		this.max = new PIN(this.mx).onValue(v => this.mx = v);
+
 		this.inp = new AIN(1);
 		this.out = new AOUT();
 		this.inp.gain.connect(this.out.gain);
@@ -599,7 +665,7 @@ class Osc extends Basis {
 		this.out = new AOUT();
 		this.freq = new AIN(440);
 		this.detune = new AIN();
-		this.makeOsc();
+		//this.makeOsc(Tone.context.currentTime);
 		this.isTriggered('trigger', t => {
 			this.killOsc(t);
 			this.makeOsc(t);
@@ -614,12 +680,12 @@ class Osc extends Basis {
 		this.out.bind(this.osc);
 		this.freq.bind(this.osc.frequency);
 		this.detune.bind(this.osc.detune);
-		this.osc.start();
+		this.osc.start(t);
 		return this.osc;
 	}
 	killOsc(t) {
 		if (!this.osc) return this.osc;
-		this.osc.stop();
+		this.osc.stop(t);
 		this.out.unbind(this.osc);
 		this.freq.unbind(this.osc.frequency);
 		this.detune.unbind(this.osc.detune);
@@ -716,10 +782,23 @@ class Clock extends Basis {
 	constructor() {
 		super();
 		this.value = 0;
+		this.on = 1;
+		this.trigger = new PIN(1);
 		this.out = new POUT();
-		this.out.produceFromField(this, 'value', (t) => {
-			return this.value++;
-		});
+		this.out.plug(
+			Kefir.zip([_fabrique.tickStream, this.trigger.stream],
+				(t, trig) => {
+					if (Math.abs(this.on, trig) > 0.5) {
+						if (Math.abs(trig) > 0) this.value = 0;
+					}
+					this.on = trig;
+					return this.value++;
+				}
+			)
+		)
+		// this.out.produceFromField(this, 'value', (t) => {
+		// 	return this.value++;
+		// });
 	}
 }
 
@@ -738,18 +817,37 @@ class Loop extends Basis {
 		// 		this.values = s.split('').map(ss => ss == 'x' || ss == '1' ? 1 : 0);
 		// 	}
 		// }
-		//this.clock = new PIN();
+		this.on = 1;
+		this.step = undefined;
+		this.pc = 0;
+		this.clock = new PIN();
+		this.trigger = new PIN(1);
 		this.out = new POUT();
 		this.out.plug(
-			this.triggeredStream('clock',
-				(state, v) => {
-					state.step = ((state.step === undefined ? -1 : state.step) + 1) % this.values.length;
-					return this.values[state.step];
-				},
-				(state, v) => {
-					return state.value;
+			// this.triggeredStream('clock',
+			// 	(state, v) => {
+			// 		state.step = ((state.step === undefined ? -1 : state.step) + 1) % this.values.length;
+			// 		return this.values[state.step];
+			// 	},
+			// 	(state, v) => {
+			// 		return state.value;
+			// 	}
+			// )
+			Kefir.zip([this.clock.stream, this.trigger.stream], (c, t) => {
+				if (Math.abs(t - this.on) > 0.5) {
+					if (Math.abs(t) > 0.5) {
+						this.step == undefined;
+					}
 				}
-			)
+				this.on = t;
+				if (Math.abs(c - this.pc) > 0.5) {
+					if (Math.abs(c) > 0.5) {
+						this.step = ((this.step === undefined ? -1 : this.step) + 1) % this.values.length;
+					}
+				}
+				this.pc = c;
+				return this.values[this.step || 0];
+			})
 		);
 	}
 }
@@ -787,85 +885,41 @@ class QDemux extends Basis {
 class Count extends Basis {
 	constructor() {
 		super();
+		this.on = 1;
+		this.step = undefined;
+		this.pv = 0;
+		this.inp = new PIN();
+		this.trigger = new PIN(1);
+		this.value = 0;
 		this.out = new POUT();
 		this.out.plug(
-			this.triggeredStream('inp',
-				(state, v) => {
-					return state.value + v;
-				},
-				(state, v) => {
-					return state.value;
-				}
-			)
-		);
-	}
-}
-
-function abcPitchToMidiNote(pitch) {
-	var acc = pitch.acc;
-	var char = pitch.char;
-	var oct = pitch.oct;
-	var c2i = {C: 0, D:2, E:4, F: 5, G: 7, H: 9, A: 9, B: 11};
-	var n = c2i[char] + oct*12 + acc + 60;
-	return n;
-}
-
-function *abcMelodyToMonoSequence(melody, params) {
-	params = params || {};
-	var legatoLen = params.legatoLen || 0;
-	var staccatoLen = params.staccatoLen || 1;
-	var normalLen = params.normalLen || -1;
-	var ppqn = params.ppqn || _fabrique.ppqn;
-
-	function lenToTicks(len, d) {
-		var full = Math.round(ppqn*4*len[0]/len[1]);
-		//return full;
-		if (!d) return full;
-		if (d >= full) d = full - 1;
-		if (d < 0) return [full + d, -d];
-		if (d > 0) return [d, full - d];
-		return full;
-	}
-	function getNote(e) {
-		var p = e.pitch;
-		if ($.isArray(p)) p = p[0];
-		return abcPitchToMidiNote(p);
-
-	}
-
-	var gate = 0;
-	var lastN = 60;
-	for (var i = 0; i < melody.length; i++) {
-		var e = melody[i];
-		switch (e.k) {
-			case 'note': 
-				var n = getNote(e);
-				if (e.glide) {
-					var e1 = melody[i + 1];
-					if (e1 && e1.k == 'note') {
-						var dur = lenToTicks(e.len);
-						yield [dur, [n, getNote(e1)], ++gate];
-						break;
+			Kefir.zip([this.inp.stream, this.trigger.stream], (v, t) => {
+				if (Math.abs(t - this.on) > 0.5) {
+					if (Math.abs(t) > 0.5) {
+						this.value = 0;
 					}
 				}
-				var d = normalLen;
-				if (e.legato) d = legatoLen;
-				else if (e.deco['.']) d = staccatoLen;
-				var dur = lenToTicks(e.len, d);
-				if ($.isArray(dur)) {
-					yield [dur[0], n, ++gate];
-					yield [dur[1], n, 0];
-					gate = 0;
-				} else {
-					yield [dur, n, ++gate];
+				this.on = t;
+				if (Math.abs(v - this.pv) > 0.5) {
+					if (Math.abs(v) > 0.5) {
+						this.value += v;
+					}
 				}
-				lastN = n;
-				break;
-			case 'rest':
-				var dur = lenToTicks(e.len);
-				yield [dur, lastN, 0];
-				gate = 0;
-				break;
-		}
+				this.pv = v;
+				return this.value;
+			})
+		);
+		// this.out = new POUT();
+		// this.out.plug(
+		// 	this.triggeredStream('inp',
+		// 		(state, v) => {
+		// 			return state.value + v;
+		// 		},
+		// 		(state, v) => {
+		// 			return state.value;
+		// 		}
+		// 	)
+		// );
 	}
 }
+
