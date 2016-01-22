@@ -1,100 +1,42 @@
 Note2Detune {
-	PIN -> {note|(note - 69)*100} -> P2A -> AOUT
+	PIN -> {n|(n - 69)*100} -> P2A -> AOUT
 }
 
-Note2Freq {
-	PIN -> {note|pow(2, (note - 69)/12)*440} -> P2A -> AOUT
+SimpleSine {
+	MIDIIN inp -> Midi2Note -> Note2Detune ->[detune]Osc o
+	inp -> Midi2Trigger -> [trigger]ADSR adsr
+	o -> adsr -> AOUT out
 }
 
-MainOut {
-	AIN inp -> Dest dest, AOUT out
-}
+Keyboard keys -> MidiHub allMidi
+UIKeyboard uiKeys -> allMidi -> uiKeys
 
-Echo {
-	AIN inp -> Delay d -> * gwet -> inp -> * gdry -> AOUT out
-	AIN<0.5> dry -> [gain]gdry
-	AIN<0.5> wet -> [gain]gwet
-	AIN<0.5> time -> [time]d
-}
+@UI uiKeys
 
-Invert {
-	PIN -> {v|v?0:1} -> POUT
-}
+#allMidi -> SimpleSine -> *0.2 -> Dest
 
-PingPong {
-	AIN inp -> * gdecayIL -> Delay dl -> * gdecayLR -> Delay dr -> * gdecayRL -> dl
-	inp -> * gdry -> AOUT out
-	dl -> Pan pl -> out
-	dr -> Pan pr -> out
-	AIN<0.7> spread -> [pan]pr
-	spread -> *-1 -> [pan]pl
+# this should be equiv to what goes below
+#allMidi -> MidiPoly<4>[0-3] => SimpleSine ss0-3 -> *0.1 -> Dest
 
-	AIN<0.5> dry -> [gain]gdry
-	AIN<0.3> decay -> [gain] gdecayLR, gdecayRL, gdecayIL
-	AIN<0.4> time ->[time] dl, dr
-}
+allMidi -> MidiPoly<8> poly[0-7] => SimpleSine ss$0-7 -> *0.1 -> Dest
 
-TestSynth {
-	MIDIIN inp -> Midi2Trigger trig, Midi2Note<LAST> note
-	note -> Note2Detune ->[detune] Osc<SAW> o1, o2, o3, Osc<SQUARE> sub
-	o1, o2, o3 -> Filter<HP> flt -> ADSR<0.01, 0.3, 0.5, 1> ampEnv -> AOUT out
-	sub -> ampEnv
-	ADSR<0.8, 0.3, 0, 0.5> fltEnv -> *10000 -> +30 -> [freq]flt
-	trig ->[trigger] ampEnv, fltEnv
-	+15 ->[detune] o1
-	-15 ->[detune] o2
-	-2400 ->[detune] sub
-}
+@UI {UILED led$0-7}
 
-SpreadingLead {
-	MIDIIN inp -> Midi2Trigger trig, Midi2Note<LAST> note
-	note -> Note2Detune ->[detune] Osc<SAW> o1, o2, o3, o4, o5
-	o1, o2, o3, o4, o5 -> ADSR<0.1, 0.3, 0.7, 1> ampEnv -> *0.2 -> AOUT out
-	#trig ->([trigger]ampEnv; [trigger]ADSR<5, 0.1, 1, 0.3> -> Delay<0.3> sEnv)
-	trig -> [trigger]ampEnv
-	#AIN<15> spread -> [gain]* gspread
-	#sEnv
-	inp -> MidiCC<1> -> P2A -> *15 -> ([detune] o2; *-1 -> [detune]o3; *2 -> [detune]o4; *-2 -> [detune]o5)
-	#-1200 ->[detune] sub
-}
+poly[0-7] => Midi2Trigger mt$0-7 => led$0-7
 
-FM1 {
-	MIDIIN inp -> Midi2Trigger trig, Midi2Note<LAST> note
-	note -> Note2Detune -> [detune]Osc<SINE> o1, o2
-	o2 -> *100 fmDetune -> [detune]o1
-	#trig ->[trigger] ADSR<5, 0.1, 1, 0.3> -> *500 ->[gain]fmDetune
-	inp -> MidiCC<1> -> P2A -> *500 -> [gain]fmDetune
-	100 ->[gain] fmDetune
-	-1800 ->[detune] o2
-	0.5 -> [freq]Osc -> *100 ->[detune] o2
-	o1 -> ADSR<0.1, 0.3, 0.7, 1> amp -> AOUT out
-	trig ->[trigger] amp
-}
+Clock -> {t|floor(t/24)} ticker -> UIValue tv
 
-BD1 {
-	MIDIIN inp -> Midi2Trigger<RETRIG> trig, Midi2Note<LAST> note
-	trig -> [trigger] ADSR<0.001, 0.09, 0.05, 0.3> freqEnv, ADSR<0.001, 0.2, 0, 0.2> ampEnv
-	freqEnv -> *1000 ->[freq] Osc<SINE> osc -> ampEnv -> *0.5 -> AOUT out
-	note -> Note2Detune ->[detune] osc
-}
+ticker -> Loop<
+	0q0101
+	0q0200
+	0q0110
+	0q0200
+	0q1101
+	0q0200
+	0q0110
+	0q0200
+> -> QDemux dmx[0-3] => {t|t/3} p$0-3 => UILED dmx$0-3
 
-HH1 {
-	MIDIIN inp -> Midi2Trigger<RETRIG> trig, Midi2Note<LAST> note
-	trig -> [trigger]ADSR<0.01, 0.5, 0.001, 0.1> ampEnv
-	Noise osc -> Filter<HP> flt 
-		-> ampEnv -> *0.5 -> AOUT out
-
-	note -> Note2Detune -> [detune]flt
-	4800 ->[detune]flt
-}
-HH2 {
-	PIN trig -> [trigger]ADSR<0.01, 0.5, 0, 0.1> ampEnv
-	Noise osc -> Filter<HP> flt 
-		-> ampEnv -> *0.5 -> AOUT out
-
-	PIN<60> note -> Note2Detune -> [detune]flt
-	4800 ->[detune]flt
-}
 CHH {
 	PIN trig -> Count -> [trigger]ADSR<0.01, 0.075, 0, 0.1> ampEnv
 	Noise osc -> Filter<HP> flt 
@@ -111,40 +53,18 @@ OHH {
 	PIN<60> note -> Note2Detune -> [detune]flt
 	4800 ->[detune]flt
 }
-BD2 {
+BD {
 	PIN trig -> [trigger] ADSR<0.001, 0.09, 0.05, 0.3> freqEnv, ADSR<0.001, 0.2, 0, 0.2> ampEnv
 	freqEnv -> *1000 ->[freq] Osc<SINE> osc -> ampEnv -> *0.5 -> AOUT out
 	PIN<60> note -> Note2Detune ->[detune] osc
 }
 
-SN2 {
-	PIN trig -> BD2 bd, HH2 hh -> AOUT out
+SN {
+	PIN trig -> BD bd, OHH hh -> AOUT out
 	{|48} -> [note]hh
 	{|48} -> [note]bd
 }
 
+dmx[0-3] => (BD -> *5; SN -> *1; CHH -> *1; OHH -> *1) -> *0.2 -> Dest
 
-MidiHub allMidi
-
-Keyboard theKeyboard -> allMidi
-
-@UI UIKeyboard theUIKeyboard
-
-theUIKeyboard -> allMidi
-
-WebMidi -> allMidi
-
-allMidi -> theUIKeyboard
-
-allMidi -> MidiPoly<5> poly
-
-poly[0] -> SpreadingLead ts0
-poly[1] -> SpreadingLead ts1
-poly[2] -> SpreadingLead ts2
-poly[3] -> SpreadingLead ts3
-poly[4] -> SpreadingLead ts4
-
-ts0, ts1, ts2, ts3, ts4
-	#-> PingPong
-	-> *0.5 -> MainOut theMainOut
-
+@UI tv | dmx$0-3

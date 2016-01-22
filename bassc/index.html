@@ -54,6 +54,7 @@ function parse(sourceName, source, parseFunc) {
 			if (e.message) msg += ': ' + e.message;
 			msg += '<br />See console';
 			showError(msg);
+			debugger;
 			parseFunc(source); // rethrow
 		}
 	}
@@ -86,9 +87,9 @@ $(() => {
 			cls.compile();
 		}
 		
-		var klaz = 'SpreadingLead'; //bcMainClass;
-		var ps = bcMeta[klaz].getPlant();
-		$('#diaLink').attr('href', 'http://www.plantuml.com/plantuml/svg/' + compress(ps)).show();
+		// var klaz = 'SpreadingLead'; //bcMainClass;
+		// var ps = bcMeta[klaz].getPlant();
+		// $('#diaLink').attr('href', 'http://www.plantuml.com/plantuml/svg/' + compress(ps)).show();
 		
 		//console.log(src);
 		//var res = Viz(src);

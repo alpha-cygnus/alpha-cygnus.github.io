@@ -19,64 +19,50 @@ function _apply(fn) {
 	}
 }
 
-function _onTrigger(trig, state, onOn, onOff, onIdle) {
-	var wasOn = state.on;
-	state.on = trig;
-	if (Math.abs(wasOn - trig) >= 0.5) {
-		if (Math.abs(trig) > 0.5) {
-			if (onOn) return onOn();
-		} else {
-			if (onOff) return onOff();
-		}
-	} else {
-		if (onIdle) return onIdle();
-	}
-}
-
 class Basis {
-	// isTriggered(fn, onFunc, offFunc) {
-	// 	fn = fn || 'trigger';
-	// 	if (!this[fn]) this[fn] = new PIN();
-	// 	var state = {
-	// 		on: 0,
-	// 		wasOn: 0,
-	// 	};
-	// 	this[fn + 'State'] = state;
-	// 	this[fn].onValue(v => {
-	// 		state.on = v;
-	// 	});
-	// 	this.isConsumer(t => {
-	// 		if (Math.abs(state.on) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
-	// 			offFunc(t);
-	// 		} else
-	// 		if (Math.abs(state.on - state.wasOn) >= 0.5) {
-	// 			onFunc(t);
-	// 		}
-	// 		state.wasOn = state.on;
-	// 	});
-	// }
-	// triggeredStream(fn, onFunc, offFunc) {
-	// 	fn = fn || 'trigger';
-	// 	if (!this[fn]) this[fn] = new PIN();
-	// 	var state = {
-	// 		value: 0,
-	// 		wasOn: 0,
-	// 	};
-	// 	this[fn + 'State'] = state;
-	// 	return this[fn].stream.map(v => {
-	// 		if (Math.abs(v) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
-	// 			state.value = offFunc(state, v);
-	// 		} else
-	// 		if (Math.abs(v - state.wasOn) >= 0.5) {
-	// 			state.value = onFunc(state, v);
-	// 		}
-	// 		state.wasOn = v;
-	// 		return state.value;
-	// 	}).toProperty(() => state.value);
-	// }
-	// isConsumer(fun) {
-	// 	_fabrique.onConsume(fun);
-	// }
+	isTriggered(fn, onFunc, offFunc) {
+		fn = fn || 'trigger';
+		if (!this[fn]) this[fn] = new PIN();
+		var state = {
+			on: 0,
+			wasOn: 0,
+		};
+		this[fn + 'State'] = state;
+		this[fn].onValue(v => {
+			state.on = v;
+		});
+		this.isConsumer(t => {
+			if (Math.abs(state.on) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
+				offFunc(t);
+			} else
+			if (Math.abs(state.on - state.wasOn) >= 0.5) {
+				onFunc(t);
+			}
+			state.wasOn = state.on;
+		});
+	}
+	triggeredStream(fn, onFunc, offFunc) {
+		fn = fn || 'trigger';
+		if (!this[fn]) this[fn] = new PIN();
+		var state = {
+			value: 0,
+			wasOn: 0,
+		};
+		this[fn + 'State'] = state;
+		return this[fn].stream.map(v => {
+			if (Math.abs(v) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
+				state.value = offFunc(state, v);
+			} else
+			if (Math.abs(v - state.wasOn) >= 0.5) {
+				state.value = onFunc(state, v);
+			}
+			state.wasOn = v;
+			return state.value;
+		}).toProperty(() => state.value);
+	}
+	isConsumer(fun) {
+		_fabrique.onConsume(fun);
+	}
 	getConstant() {
 		return Tone.Signal._constant;
 	}
@@ -362,27 +348,27 @@ class Fabrique {
 		let id = _getObjId(fun);
 		delete this.producers[id];
 	}
-	// onConsume(fun) {
-	// 	let id = _getObjId(fun);
-	// 	this.consumers[id] = fun;
-	// }
-	// offConsume(fun) {
-	// 	let id = _getObjId(fun);
-	// 	delete this.consumers[id];
-	// }
+	onConsume(fun) {
+		let id = _getObjId(fun);
+		this.consumers[id] = fun;
+	}
+	offConsume(fun) {
+		let id = _getObjId(fun);
+		delete this.consumers[id];
+	}
 	doProduce(t) {
 		for (let id in this.producers) {
 			this.producers[id](t);
 		}
 	}
-	// doConsume(t) {
-	// 	for (let id in this.consumers) {
-	// 		this.consumers[id](t);
-	// 	}
-	// }
+	doConsume(t) {
+		for (let id in this.consumers) {
+			this.consumers[id](t);
+		}
+	}
 	doTick(t) {
 		this.doProduce(t);
-		// this.doConsume(t);
+		this.doConsume(t);
 	}
 	calcTps() {
 		this.tps = this.bpm*this.ppqn/60;
@@ -650,36 +636,18 @@ class ADSR extends Basis {
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
 		
-		//this.doRelease(Tone.context.currentTime);
-		//this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
-		this.trigger = new PIN(0);
-		this.triggerState = {};
-		Kefir.zip([_fabrique.tickStream, this.trigger, this.attack, this.decay, this.sustain, this.release],
-			(time, trig, a, d, s, r) => {
-				_onTrigger(trig, this.triggerState,
-					() => {
-						this.pgain.cancelScheduledValues(time);
-						this.pgain.setTargetAtTime(1, time, a / 4);
-						this.pgain.setTargetAtTime(s, time + a, d / 4);
-					},
-					() => {
-						this.pgain.cancelScheduledValues(time);
-						this.pgain.setTargetAtTime(0, time, r / 4);
-					}
-				)
-				return time;
-			}
-		).onValue(t => t);
+		this.doRelease(Tone.context.currentTime);
+		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
 	}
-	// doAttack(time) {
-	// 	this.pgain.cancelScheduledValues(time);
-	// 	this.pgain.setTargetAtTime(this.mx, time, this.a / 4);
-	// 	this.pgain.setTargetAtTime(this.s, time + this.a, this.d / 4);
-	// }
-	// doRelease(time) {
-	// 	this.pgain.cancelScheduledValues(time);
-	// 	this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
-	// }
+	doAttack(time) {
+		this.pgain.cancelScheduledValues(time);
+		this.pgain.setTargetAtTime(this.mx, time, this.a / 4);
+		this.pgain.setTargetAtTime(this.s, time + this.a, this.d / 4);
+	}
+	doRelease(time) {
+		this.pgain.cancelScheduledValues(time);
+		this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
+	}
 }
 
 class Env extends ADSR { // old name
@@ -698,10 +666,10 @@ class Osc extends Basis {
 		this.freq = new AIN(440);
 		this.detune = new AIN();
 		//this.makeOsc(Tone.context.currentTime);
-		// this.isTriggered('trigger', t => {
-		// 	this.killOsc(t);
-		// 	this.makeOsc(t);
-		// }, t => t);
+		this.isTriggered('trigger', t => {
+			this.killOsc(t);
+			this.makeOsc(t);
+		}, t => t);
 		
 	}
 	makeOsc(t) {

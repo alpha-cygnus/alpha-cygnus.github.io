@@ -27,38 +27,58 @@
 		//console.log('concatIO', head, tail, res);
 		return res;
 	}
+	function linkOutInp(out, inp) {
+		let a0 = out.split('.');
+		let n0 = a0[0];
+		let e0 = a0[1];
+		let c0 = bcMeta[_cc.nodes[n0].type];
+		if (!c0) debugger;
+		if (e0.match(/^\d+$/)) e0 = c0.outList[e0];
+		let t0 = c0.nodes[e0] && c0.nodes[e0].outType;
+		if (!t0) debugger;
+		if (!t0) error(`Output ${a0[1]} is not defined for ${n0}:${c0.name} in ${_cc.name}`);
+		
+		let a1 = inp.split('.');
+		let n1 = a1[0];
+		let e1 = a1[1];
+		let c1 = bcMeta[_cc.nodes[n1].type];
+		if (!c1) debugger;
+		if (e1.match(/^\d+$/)) e1 = c1.inpList[e1];
+		let t1 = c1.nodes[e1] && c1.nodes[e1].inpType;
+		if (!t1) debugger;
+		if (!t1) error(`Input ${a1[1]} is not defined for ${n1}:${c1.name} in ${_cc.name}`);
+		if (t0 != t1) {
+			error(`Incompatible connection for ${n0}[${e0}](${t0})->[${e1}]${n1}(${t1}) in ${_cc.name}`);
+		}
+
+		let lid = [n0, e0, e1, n1];
+
+		_cc.links[lid.join(',')] = { n0, n1, e0, e1, t: t0 };
+	}
 	function linkPoints(p0, p1) {
 		//console.log('linking', p0.toString(), p1.toString());
 		for (let out of p0[1]) {
-			let a = out.split('.');
-			let n0 = a[0];
-			let e0 = a[1];
-			let c0 = bcMeta[_cc.nodes[n0].type];
-			if (!c0) debugger;
-			if (e0.match(/^\d+$/)) e0 = c0.outList[e0];
-			let t0 = c0.nodes[e0] && c0.nodes[e0].outType;
-			if (!t0) debugger;
-			if (!t0) error(`Output ${a[1]} is not defined for ${n0}:${c0.name} in ${_cc.name}`);
 			for (let inp of p1[0]) {
-				let a = inp.split('.');
-				let n1 = a[0];
-				let e1 = a[1];
-				let c1 = bcMeta[_cc.nodes[n1].type];
-				if (!c1) debugger;
-				if (e1.match(/^\d+$/)) e1 = c1.inpList[e1];
-				let t1 = c1.nodes[e1] && c1.nodes[e1].inpType;
-				if (!t1) debugger;
-				if (!t1) error(`Input ${a[1]} is not defined for ${n1}:${c1.name} in ${_cc.name}`);
-				if (t0 != t1) {
-					error(`Incompatible connection for ${n0}[${e0}](${t0})->[${e1}]${n1}(${t1}) in ${_cc.name}`);
-				}
-
-				let lid = [n0, e0, e1, n1];
-
-				_cc.links[lid.join(',')] = { n0, n1, e0, e1, t: t0 };
+				linkOutInp(out, inp);
 			}
 		}
 		return [p0[0], p1[1]];
+	}
+	function linkPointsP(p0, p1) {
+		var olen = p0[1].length;
+		var ilen = p1[0].length;
+		if (olen != ilen) error('Input-output list length mismatch:' + p0[1].toString() + ',' + JSON.stringify(p1[0]));
+		for (var i = 0; i < ilen; i++) {
+			linkOutInp(p0[1][i], p1[0][i]);
+		};
+		return [p0[0], p1[1]];
+	}
+	function makeRange(a, b) {
+		var res = [a];
+		if (b === null) b = a;
+		if (b < a) return res;
+		for (var i = a + 1; i <= b; i++) res.push(i);
+		return res;
 	}
 	var _abcState = {};
 }
@@ -104,19 +124,23 @@ chains = head:chain tail:(SEMI? c:chain { return c} )* { return concatIO(head, t
 //		let p1 = p;
 //	})
 //	chain_tail?
-chain 
-	= head:point tail:(arrow p:point {return p})* {
-		return tail.reduce(linkPoints, head);
-	}
-
 layout = UI l:l_decls { return l }
 l_decls = head:l_decl tail:(PIPE d:l_decl { return d })* { return [head].concat(tail) }
 l_decl
 	= COPEN ids:l_decls CCLOSE { return ids }
-	/ id:decl
+	/ ids:decl
+
+chain 
+	= head:point tail:(a:arrow p:point {return [a, p]})* {
+		return tail.reduce((res, ap) => {
+			var a = ap[0], p = ap[1];
+			return a.p ? linkPointsP(res, p) : linkPoints(res, p);
+		}, head);
+	}
 
 arrow
-	= ARROW
+	= ARROW { return { p: false } }
+	/ PARROW { return { p: true } }
 	//= e0:(end?) ws '-'+ '>' ws e1:(end?) { return {e0: e0 || 0, e1: e1 || 0} }
 	//= e0:(end?) ws '-'+ w:weight? '-'* '>' ws e1:(end?) { return {e0: e0 || 0, e1: e1 || 0, w: w || 1} }
 	/// e0:(end?) ws '<' ('-' &[-(])* w:weight? '-'+ ws e1:(end?) { return {e0: e0 || 0, e1: e1 || 0, w: w || 1, back: true} }
@@ -125,35 +149,61 @@ arrow
 
 end = BOPEN id:(id/INT) BCLOSE { return id }
 
+idr = id:id r:('$' a:INT b:('-' i:INT { return i; })? { return makeRange(a, b); })? {
+	if (!r) return [id];
+	return r.map(i => id + '$' + i);
+}
+
+ends = BOPEN h:end1 t:(COMMA e:end1 {return e})* BCLOSE { return t.reduce((a, b) => a.concat(b), h); }
+end1
+	= idr:idr { return idr }
+	/ a:INT b:('-' i:INT { return i; })? { return makeRange(a, b) }
+	
 point
 	= &{ _ci = _co = _ct = null; return true; } head:node tail:(COMMA node:node { return node; })* { 
+		//if (tail.length) debugger;
 		return concatIO(head, tail);
 	}
 	/ sub_chains
 
 sub_chains = POPEN chains:chains PCLOSE { return chains; }
 
-node = (inp:end? { _ci = inp || _ci; }) id:decl (out:end? { _co = out || _co; }) {
-		return [
-			[id + '.' + (_ci || 0)],
-			[id + '.' + (_co || 0)],
-		];
+
+node = (inp:ends? { _ci = inp || _ci; }) idr:decl (out:ends? { _co = out || _co; }) {
+		var cis = _ci || [0];
+		var cos = _co || [0];
+		var res = [[], []];
+		for (var id of idr) {
+			for (var ci of cis) res[0].push(id + '.' + ci);
+			for (var co of cos) res[1].push(id + '.' + co);
+		}
+		return res;
+		// return [
+		// 	[id + '.' + (_ci || 0)],
+		// 	[id + '.' + (_co || 0)],
+		// ];
 	}
 	
 
 decl
-	= type:Type id:id? title:title? {
-		if (id && _cc.nodes[id]) error(id + " is already defined");
+	= type:Type idr:idr? title:title? {
 		_ct = type;
-		return _cc.addNode(_ct, id, title);
-	}
-	/ id:id title:title? {
-		if (_ct) {
+		if (!idr) return [_cc.addNode(_ct, null, title)];
+		for (var id of idr) {
 			if (_cc.nodes[id]) error(id + " is already defined");
-			return _cc.addNode(_ct, id, title);
+			_cc.addNode(_ct, id, title)
 		}
-		if (!_cc.nodes[id]) error(id + " is not defined");
-		return id;
+		return idr;
+	}
+	/ idr:idr title:title? {
+		for (var id of idr) {
+			if (_ct) {
+				if (_cc.nodes[id]) error(id + " is already defined");
+				_cc.addNode(_ct, id, title);
+			}
+			if (!_cc.nodes[id]) error(id + " is not defined");
+		}
+		return idr;
 	}
 
 Type
@@ -372,6 +422,7 @@ NUM "number" = ws num:$(('+'/'-')? DIGIT+ ('.' DIGIT+)?) ws { return parseFloat(
 COLON = ws ':' ws
 SEMI = ws ';' ws
 ARROW "->" = ws '-'+ '>' ws
+PARROW "=>" = ws '='+ '>' ws
 BOPEN = ws '[' ws
 BCLOSE = ws ']' ws
 COMMA = ws ',' ws

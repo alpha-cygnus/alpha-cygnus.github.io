@@ -218,6 +218,10 @@ class BCClassMeta extends BCMeta {
 		return res.join('\n');
 	}
 	getDot() {
+		function dotName(nn) {
+			return 'n_' + nn.replace('$', '__');
+		}
+		
 		var res = [`digraph ${this.name} {`, 'node [width=0.1,height=0.1];', 'rankdir=LR;', 'size="10,10"'];
 		for (let nn in this.nodes) {
 			var n = this.nodes[nn];
@@ -227,7 +231,8 @@ class BCClassMeta extends BCMeta {
 				if (n.type == 'Const') {
 					label = n.params.join(', ');
 				} else {
-					label = n.type;
+					var t = n.type;
+					label = bcMeta[t].typeLabel || t;
 					if (n.params && n.params.length) {
 						label += '(' + n.params.join(', ') + ')';
 					}
@@ -237,21 +242,21 @@ class BCClassMeta extends BCMeta {
 				// if (n.outType) label += ' <<' + n.outType + '>>';
 			}
 			var s = '{{';
-			s += nc.inpList.map(e => `<${e}> ${e}`).join('|');
+			s += nc.inpList.map(e => `<${dotName(e)}> ${e}`).join('|');
 			s += '}|' + label + '|{';
-			s += nc.outList.map(e => `<${e}> ${e}`).join('|');
+			s += nc.outList.map(e => `<${dotName(e)}> ${e}`).join('|');
 			s += '}}';
-			res.push(`n_${nn}[id="${nn}",shape=record,label="${s}"];`);
+			res.push(`${dotName(nn)}[id="${nn}",shape=record,label="${s}"];`);
 		}
 		res.push('{ rank = source; ');
-		res.push(this.inpList.map(e => `n_${e}`).join(';'));
+		res.push(this.inpList.map(e => dotName(e)).join(';'));
 		res.push('};');
 		res.push('{ rank = sink; ');
-		res.push(this.outList.map(e => `n_${e}`).join(';'));
+		res.push(this.outList.map(e => dotName(e)).join(';'));
 		res.push('};');
 		for (var ln in this.links) {
 			var li = this.links[ln];
-			res.push(`n_${li.n0}:${li.e0} -> n_${li.n1}:${li.e1};`);
+			res.push(`${dotName(li.n0)}:${dotName(li.e0)} -> ${dotName(li.n1)}:${dotName(li.e1)};`);
 		}
 		res.push('}');
 		return res.join('\n');
@@ -262,6 +267,7 @@ class BCProcMeta extends BCClassMeta {
 	constructor(proc) {
 		var name = `Proc_${++bcProcCount}`;
 		super(name);
+		this.typeLabel = proc.body;
 		this.proc = proc;
 		var i = 0;
 		for (var p of proc.params) {

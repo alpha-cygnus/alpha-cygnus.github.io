@@ -75,7 +75,7 @@ class MidiHub extends Basis {
 		super();
 		this.inp = new MIDIIN();
 		this.out = new MIDIOUT();
-		this.out.stream.plug(this.inp.stream);
+		this.out.plug(this.inp.stream);
 	}
 }
 
@@ -95,7 +95,7 @@ class WebMidi extends Basis {
 	}
 }
 
-const MaxPolyVoices = 8;
+const MaxPolyVoices = 16;
 
 class MidiPoly extends Basis {
 	constructor(vc) {
@@ -140,7 +140,7 @@ class MidiPoly extends Basis {
 			},
 		}
 		for (var i = 0; i < MaxPolyVoices; i++) {
-			this['out' + i] = new MIDIOUT();
+			this['out$' + i] = new MIDIOUT();
 			this.voices.list[i] = {
 				buffer: [],
 				note: 0,
@@ -174,7 +174,7 @@ class MidiPoly extends Basis {
 		}, this.voices);
 		for (var i = 0; i < MaxPolyVoices; i++) {
 			let ii = i;
-			this['out' + i].plug(
+			this['out$' + i].plug(
 				scan.map(vs => {
 					var buf = vs.list[ii].buffer;
 					vs.list[ii].buffer = [];

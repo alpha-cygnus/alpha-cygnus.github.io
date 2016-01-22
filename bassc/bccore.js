@@ -20,49 +20,6 @@ function _apply(fn) {
 }
 
 class Basis {
-	isTriggered(fn, onFunc, offFunc) {
-		fn = fn || 'trigger';
-		if (!this[fn]) this[fn] = new PIN();
-		var state = {
-			on: 0,
-			wasOn: 0,
-		};
-		this[fn + 'State'] = state;
-		this[fn].onValue(v => {
-			state.on = v;
-		});
-		this.isConsumer(t => {
-			if (Math.abs(state.on) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
-				offFunc(t);
-			} else
-			if (Math.abs(state.on - state.wasOn) >= 0.5) {
-				onFunc(t);
-			}
-			state.wasOn = state.on;
-		});
-	}
-	triggeredStream(fn, onFunc, offFunc) {
-		fn = fn || 'trigger';
-		if (!this[fn]) this[fn] = new PIN();
-		var state = {
-			value: 0,
-			wasOn: 0,
-		};
-		this[fn + 'State'] = state;
-		return this[fn].stream.map(v => {
-			if (Math.abs(v) < 0.5 && Math.abs(state.wasOn) >= 0.5) {
-				state.value = offFunc(state, v);
-			} else
-			if (Math.abs(v - state.wasOn) >= 0.5) {
-				state.value = onFunc(state, v);
-			}
-			state.wasOn = v;
-			return state.value;
-		}).toProperty(() => state.value);
-	}
-	isConsumer(fun) {
-		_fabrique.onConsume(fun);
-	}
 	getConstant() {
 		return Tone.Signal._constant;
 	}
@@ -120,21 +77,7 @@ class MIDIINOUT extends INOUT {
 
 class MIDIOUT extends MIDIINOUT {
 	produceFromBuffer(obj, field, onBeforeProduce) {
-		// this[field + 'Stream'];
 		this.obj = obj;
-		// var stream = Kefir.stream(emitter => {
-		// 	var fun = (t) => {
-		// 		if (onBeforeProduce) onBeforeProduce(t);
-		// 		var vs = this.obj[field];
-		// 		emitter.emit(vs);
-		// 		// for (var v of vs) {
-		// 		// 	emitter.emit(v);
-		// 		// }
-		// 		this.obj[field] = [];
-		// 	}
-		// 	_fabrique.onProduce(fun);
-		// 	return () => _fabrique.offProduce(fun);
-		// });
 		var stream = _fabrique.tickStream.map(t => {
 			if (onBeforeProduce) onBeforeProduce(t);
 			var vs = this.obj[field];
@@ -162,24 +105,6 @@ class PINOUT extends INOUT {
 		this.pool.plug(this.plugged);
 		this.inStreams = [];
 		this.outs = this.pool;
-		// this.outs = this.pool
-		// 	.scan((state, v) => {
-		// 		state[v.id] = v.v;
-		// 		return state;
-		// 	}, {})
-		// 	.map(state => {
-		// 		var v = def;
-		// 		var first = 1;
-		// 		for (var id in state) {
-		// 			if (first) v = agrInit;
-		// 			first = 0;
-		// 			//v += state[id];
-		// 			v = agrFun(v, state[id]);
-		// 		}
-		// 		this.value = v;
-		// 		return v;
-		// 	})
-		// 	.toProperty(() => this.value)
 	}
 	plug(obs) {
 		this.pool.unplug(this.plugged);
@@ -192,8 +117,6 @@ class PINOUT extends INOUT {
 			this.plugged = obs;
 		}
 		this.pool.plug(this.plugged);
-		// let id = _getObjId(obs);
-		// this.pool.plug(obs.map(v => ({v, id})));
 		return this;
 	}
 	connectTo(inout) {
@@ -201,6 +124,28 @@ class PINOUT extends INOUT {
 	}
 	get stream() {
 		return this.outs;
+	}
+	get triggerStream() {
+		return this.outs.scan(
+			(state, trig) => {
+				if (Math.abs(state.on - trig) >= 0.5) {
+					if (Math.abs(trig) > 0.5) {
+						state.v = +1;
+					} else {
+						state.v = -1;
+					}
+				} else {
+					state.v = 0;
+				}
+				state.on = trig;
+				if (this.doLog) console.log('PIN.scan', state, trig);
+				return state;
+			},
+			{on: 0, v: 0}
+		).map(state => {
+			if (this.doLog) console.log('PIN.scan.map', state);
+			return state.v || 0;
+		});
 	}
 }
 
@@ -210,17 +155,6 @@ class POUT extends PINOUT {
 			last: undefined
 		};
 		this[field + 'Stream'];
-		// var stream = Kefir.stream(emitter => {
-		// 	var fun = (t) => {
-		// 		if (onBeforeProduce) onBeforeProduce(t);
-		// 		if (obj[field] !== state.last) {
-		// 			emitter.emit(obj[field]);
-		// 			state.last = obj[field];
-		// 		}
-		// 	}
-		// 	_fabrique.onProduce(fun);
-		// 	return () => _fabrique.offProduce(fun);
-		// });
 		var stream = _fabrique.tickStream.map(t => {
 			if (onBeforeProduce) onBeforeProduce(t);
 			if (obj[field] !== state.last) {
@@ -234,13 +168,6 @@ class POUT extends PINOUT {
 		return this;
 	}
 	produceFromFunction(fun) {
-		// var stream = Kefir.stream(emitter => {
-		// 	var producer = (t) => {
-		// 		emitter.emit(fun(t));
-		// 	}
-		// 	_fabrique.onProduce(producer);
-		// 	return () => _fabrique.offProduce(producer);
-		// });
 		var stream = _fabrique.tickStream.map(fun);
 		this.plug(stream);
 		state.stream = stream;
@@ -258,11 +185,6 @@ class PIN extends PINOUT {
 	onValue(onVal) {
 		this.outs.onValue(onVal);
 	}
-	// consume(onVal, onTick) {
-	// 	this.onValue(onVal);
-	// 	if (onTick) _fabrique.onConsume(onTick);
-	// 	return this;
-	// }
 }
 
 // Audio in/out
@@ -348,27 +270,13 @@ class Fabrique {
 		let id = _getObjId(fun);
 		delete this.producers[id];
 	}
-	onConsume(fun) {
-		let id = _getObjId(fun);
-		this.consumers[id] = fun;
-	}
-	offConsume(fun) {
-		let id = _getObjId(fun);
-		delete this.consumers[id];
-	}
 	doProduce(t) {
 		for (let id in this.producers) {
 			this.producers[id](t);
 		}
 	}
-	doConsume(t) {
-		for (let id in this.consumers) {
-			this.consumers[id](t);
-		}
-	}
 	doTick(t) {
 		this.doProduce(t);
-		this.doConsume(t);
 	}
 	calcTps() {
 		this.tps = this.bpm*this.ppqn/60;
@@ -494,36 +402,6 @@ class Midi2Note extends Midi2NotesBasis {
 	}
 }
 
-// const N2VModes = ['detune', 'freq'];
-
-// class Note2CV extends Basis {
-// 	constructor(mode) {
-// 		super();
-// 		this.smode = N2VModes[mode];
-// 		this.inp = new PIN();
-// 		this.out = new AOUT();
-// 		this.pgain = this.out.gain.gain;
-// 		this.pgain.value = 0;
-// 		this.constant = this.getConstant();
-// 		this.constant.connect(this.out.gain);
-		
-// 		this.value = 0;
-// 		this.inp.onValue(n => {
-// 			if (!n) return;
-// 			this.value = this.getValue(n);
-// 		});
-// 		this.isConsumer(t => {
-// 			this.pgain.setValueAtTime(this.value, t);
-// 		});
-// 	}
-// 	getValue(n) {
-// 		switch(this.smode) {
-// 			case 'freq': return Math.pow(2, (n - 69)/12)*440;
-// 			default: return (n - 69)*100; // detune
-// 		}
-// 	}
-// }
-
 // const MaxPolyCount = 16;
 
 // class Midi2PolyBasis extends Basis { // abstract
@@ -588,65 +466,63 @@ class P2A extends Basis {
 		this.pgain.value = 0;
 		this.constant = this.getConstant();
 		this.constant.connect(this.out.gain);
-
-		this.inp.onValue(v => {
-			this.value = v;
-		});
+		
 		this.last = undefined;
-		this.isConsumer(t => {
-			if (this.value === undefined) return;
-			if (isNaN(this.value)) return;
-			if (this.last != this.value) {
-				switch (this.smode) {
-					case 'set':
-						this.pgain.setValueAtTime(this.value, t + this.lag);
-						break;
-					case 'linear':
-						this.pgain.linearRampToValueAtTime(this.value, t + this.lag);
-						break;
-					case 'exp':
-						this.pgain.exponentialRampToValueAtTime(this.value, t + this.lag);
-						break;
+		Kefir.zip([_fabrique.tickStream, this.inp.stream])
+			.onValue(_apply(
+				(t, v) => {
+					if (v === undefined) return;
+					if (isNaN(v)) return;
+					if (this.last != v) {
+						switch (this.smode) {
+							case 'set':
+								this.pgain.setValueAtTime(v, t + this.lag);
+								break;
+							case 'linear':
+								this.pgain.linearRampToValueAtTime(v, t + this.lag);
+								break;
+							case 'exp':
+								this.pgain.exponentialRampToValueAtTime(v, t + this.lag);
+								break;
+						}
+					}
+					this.last = v;
 				}
-			}
-			this.last = this.value;
-		});
+			));
 	}
 }
 
 class ADSR extends Basis {
-	constructor(a, d, s, r, mn, mx) {
+	constructor(a, d, s, r) {
 		super();
-		this.a = a || 0.1;
-		this.d = d || 0.5;
-		this.s = (s == undefined) ? 0.5 : s;
-		this.r = r || 1;
-		this.mn = mn || 0;
-		this.mx = mx || 1;
-		this.attack = new PIN(this.a).onValue(v => this.a = v);
-		this.decay = new PIN(this.d).onValue(v => this.d = v);
-		this.sustain = new PIN(this.s).onValue(v => this.s = v);
-		this.release = new PIN(this.r).onValue(v => this.r = v);
-		this.min = new PIN(this.mn).onValue(v => this.mn = v);
-		this.max = new PIN(this.mx).onValue(v => this.mx = v);
 
 		this.inp = new AIN(1);
 		this.out = new AOUT();
 		this.inp.gain.connect(this.out.gain);
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
+
+		this.attack = new PIN(a || 0.1);
+		this.decay = new PIN(d || 0.5);
+		this.sustain = new PIN((s == undefined) ? 0.5 : s);
+		this.release = new PIN(r || 1);
 		
-		this.doRelease(Tone.context.currentTime);
-		this.isTriggered('trigger', t => this.doAttack(t), t => this.doRelease(t));
-	}
-	doAttack(time) {
-		this.pgain.cancelScheduledValues(time);
-		this.pgain.setTargetAtTime(this.mx, time, this.a / 4);
-		this.pgain.setTargetAtTime(this.s, time + this.a, this.d / 4);
-	}
-	doRelease(time) {
-		this.pgain.cancelScheduledValues(time);
-		this.pgain.setTargetAtTime(this.mn, time, this.r / 4);
+		this.trigger = new PIN(0);
+		Kefir.zip([_fabrique.tickStream, this.trigger.triggerStream, this.attack.stream, this.decay.stream, this.sustain.stream, this.release.stream])
+			.onValue(_apply(
+				(time, trig, a, d, s, r) => {
+					//console.log('ADSR', time, trig, a, d, s, r);
+					if (trig > 0) {
+						this.pgain.cancelScheduledValues(time);
+						this.pgain.setTargetAtTime(1, time, a / 4);
+						this.pgain.setTargetAtTime(s, time + a, d / 4);
+					}
+					if (trig < 0) {
+						this.pgain.cancelScheduledValues(time);
+						this.pgain.setTargetAtTime(0, time, r / 4);
+					}
+				}
+			));
 	}
 }
 
@@ -665,11 +541,20 @@ class Osc extends Basis {
 		this.out = new AOUT();
 		this.freq = new AIN(440);
 		this.detune = new AIN();
+		Kefir.zip([_fabrique.tickStream, this.trigger.triggerStream])
+			.onValue(_apply(
+				(t, trig) => {
+					if (trig > 0) {
+						this.killOsc(t);
+						this.makeOsc(t);
+					}
+				}
+			));
 		//this.makeOsc(Tone.context.currentTime);
-		this.isTriggered('trigger', t => {
-			this.killOsc(t);
-			this.makeOsc(t);
-		}, t => t);
+		// this.isTriggered('trigger', t => {
+		// 	this.killOsc(t);
+		// 	this.makeOsc(t);
+		// }, t => t);
 		
 	}
 	makeOsc(t) {
@@ -782,16 +667,14 @@ class Clock extends Basis {
 	constructor() {
 		super();
 		this.value = 0;
-		this.on = 1;
 		this.trigger = new PIN(1);
 		this.out = new POUT();
 		this.out.plug(
-			Kefir.zip([_fabrique.tickStream, this.trigger.stream],
+			Kefir.zip([_fabrique.tickStream, this.trigger.triggerStream],
 				(t, trig) => {
-					if (Math.abs(this.on, trig) > 0.5) {
-						if (Math.abs(trig) > 0) this.value = 0;
+					if (trig > 0) {
+						this.value = 0;
 					}
-					this.on = trig;
 					return this.value++;
 				}
 			)
@@ -833,19 +716,13 @@ class Loop extends Basis {
 			// 		return state.value;
 			// 	}
 			// )
-			Kefir.zip([this.clock.stream, this.trigger.stream], (c, t) => {
-				if (Math.abs(t - this.on) > 0.5) {
-					if (Math.abs(t) > 0.5) {
-						this.step == undefined;
-					}
+			Kefir.zip([this.clock.triggerStream, this.trigger.triggerStream], (clock, trig) => {
+				if (trig > 0) {
+					this.step == undefined;
 				}
-				this.on = t;
-				if (Math.abs(c - this.pc) > 0.5) {
-					if (Math.abs(c) > 0.5) {
-						this.step = ((this.step === undefined ? -1 : this.step) + 1) % this.values.length;
-					}
+				if (clock > 0) {
+					this.step = ((this.step === undefined ? -1 : this.step) + 1) % this.values.length;
 				}
-				this.pc = c;
 				return this.values[this.step || 0];
 			})
 		);
@@ -857,7 +734,7 @@ class BinDemux extends Basis {
 		super();
 		this.inp = new PIN();
 		for (var i = 0; i < 16; i++) {
-			var out = this['out' + i] = new POUT();
+			var out = this['out$' + i] = new POUT();
 			let bi = i;
 			let b = 1 << bi;
 			out.plug(
@@ -872,7 +749,7 @@ class QDemux extends Basis {
 		super();
 		this.inp = new PIN();
 		for (var i = 0; i < 16; i++) {
-			var out = this['out' + i] = new POUT();
+			var out = this['out$' + i] = new POUT();
 			let bi = i*2;
 			let b = 3 << bi;
 			out.plug(
@@ -885,27 +762,18 @@ class QDemux extends Basis {
 class Count extends Basis {
 	constructor() {
 		super();
-		this.on = 1;
-		this.step = undefined;
-		this.pv = 0;
 		this.inp = new PIN();
 		this.trigger = new PIN(1);
 		this.value = 0;
 		this.out = new POUT();
 		this.out.plug(
-			Kefir.zip([this.inp.stream, this.trigger.stream], (v, t) => {
-				if (Math.abs(t - this.on) > 0.5) {
-					if (Math.abs(t) > 0.5) {
-						this.value = 0;
-					}
+			Kefir.zip([this.inp.stream, this.inp.triggerStream, this.trigger.triggerStream], (v, vt, t) => {
+				if (t > 0) {
+					this.value = 0;
 				}
-				this.on = t;
-				if (Math.abs(v - this.pv) > 0.5) {
-					if (Math.abs(v) > 0.5) {
-						this.value += v;
-					}
+				if (vt > 0) {
+					this.value += v;
 				}
-				this.pv = v;
 				return this.value;
 			})
 		);

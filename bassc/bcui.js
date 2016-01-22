@@ -133,11 +133,12 @@ class UIDigits extends UIBasis {
 		this.value = 0;
 		this.prevValue = null;
 		this.inp.onValue(v => {
-			this.value = v;
+			this.setDigits(v);
+			// this.value = v;
 		});
-		this.isConsumer(t => {
-			this.setDigits(this.value);
-		});
+		// this.isConsumer(t => {
+		// 	this.setDigits(this.value);
+		// });
 	}
 	setDigits(v) {
 		if (!this.elem) return;
@@ -185,14 +186,14 @@ class UIValue extends UIBasis {
 		super();
 		this.width = num || 2;
 		this.inp = new PIN();
-		this.value = 0;
+		//this.value = 0;
 		this.prevValue = null;
 		this.inp.onValue(v => {
-			this.value = v;
+			this.showValue(v);
 		});
-		this.isConsumer(t => {
-			this.showValue(this.value);
-		});
+		// this.isConsumer(t => {
+		// 	this.showValue(this.value);
+		// });
 	}
 	showValue(v) {
 		if (!this.elem) return;
@@ -217,14 +218,14 @@ class UILED extends UIBasis {
 		this.g = ((color >> 8) & 0xFF)/255;
 		this.b = (color & 0xFF)/255;
 		this.inp = new PIN();
-		this.value = 0;
+		// this.value = 0;
 		this.prevValue = null;
 		this.inp.onValue(v => {
-			this.value = v;
+			this.showValue(v);
+			// this.value = v;
 		});
-		this.isConsumer(t => {
-			this.showValue(this.value);
-		});
+		// this.isConsumer(t => {
+		// });
 	}
 	showValue(v) {
 		if (!this.elem) return;
