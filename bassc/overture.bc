@@ -1,3 +1,6 @@
+#include <ins/drums>
+
+
 Note2Detune {
 	PIN -> {n|(n - 69)*100} -> P2A -> AOUT
 }
@@ -24,18 +27,26 @@ allMidi -> MidiPoly<8> poly[0-7] => SimpleSine ss$0-7 -> *0.1 -> Dest
 
 poly[0-7] => Midi2Trigger mt$0-7 => led$0-7
 
-Clock -> {t|floor(t/24)} ticker -> UIValue tv
 
-ticker -> Loop<
+@UI UIButton btnPlay | UILED ledPlaying
+
+btnPlay -> ledPlaying
+
+Clock -> Count tickCount -> {t|floor(t/24)} step -> UIValue tv
+
+step -> Sel<
 	0q0101
 	0q0200
-	0q0110
+	0q0101
 	0q0200
 	0q1101
 	0q0200
-	0q0110
-	0q0200
-> -> QDemux dmx[0-3] => {t|t/3} p$0-3 => UILED dmx$0-3
+	0q0101
+	0q0202
+> -> {*} gate -> QDemux dmx[0-3] => {t|t/3} p$0-3 => UILED dmx$0-3
+
+btnPlay -> gate
+btnPlay -> [reset]tickCount
 
 CHH {
 	PIN trig -> Count -> [trigger]ADSR<0.01, 0.075, 0, 0.1> ampEnv
@@ -68,3 +79,4 @@ SN {
 dmx[0-3] => (BD -> *5; SN -> *1; CHH -> *1; OHH -> *1) -> *0.2 -> Dest
 
 @UI tv | dmx$0-3
+

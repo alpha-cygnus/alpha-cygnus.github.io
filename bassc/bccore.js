@@ -685,45 +685,36 @@ class Clock extends Basis {
 	}
 }
 
-class Loop extends Basis {
-	// x..x..x.
-	// 10010010
-	// 1,0,0,1,0,0,1,0
+class Count extends Basis {
+	constructor() {
+		super();
+		this.inp = new PIN();
+		this.reset = new PIN(1);
+		this.value = 0;
+		this.out = new POUT();
+		this.out.plug(
+			Kefir.zip([this.inp.stream, this.inp.triggerStream, this.reset.triggerStream], (v, vt, t) => {
+				if (t > 0) {
+					this.value = 0;
+				}
+				if (vt > 0) {
+					this.value += 1;
+				}
+				return this.value;
+			})
+		);
+	}
+}
+
+class Sel extends Basis {
 	constructor(s) {
 		super();
 		this.values = Array.from(arguments);
-		// else if (typeof s == 'string') {
-		// 	if (s.match(/^-?\d+(.\d+)?(,-?\d+)+(.\d+)?$/)) {
-		// 		this.values = s.split(',').map(ss => parseFloat(ss));
-		// 	}
-		// 	if (s.match(/^[x.01]+$/)) {
-		// 		this.values = s.split('').map(ss => ss == 'x' || ss == '1' ? 1 : 0);
-		// 	}
-		// }
-		this.on = 1;
-		this.step = undefined;
-		this.pc = 0;
-		this.clock = new PIN();
-		this.trigger = new PIN(1);
+		this.inp = new PIN();
 		this.out = new POUT();
 		this.out.plug(
-			// this.triggeredStream('clock',
-			// 	(state, v) => {
-			// 		state.step = ((state.step === undefined ? -1 : state.step) + 1) % this.values.length;
-			// 		return this.values[state.step];
-			// 	},
-			// 	(state, v) => {
-			// 		return state.value;
-			// 	}
-			// )
-			Kefir.zip([this.clock.triggerStream, this.trigger.triggerStream], (clock, trig) => {
-				if (trig > 0) {
-					this.step == undefined;
-				}
-				if (clock > 0) {
-					this.step = ((this.step === undefined ? -1 : this.step) + 1) % this.values.length;
-				}
-				return this.values[this.step || 0];
+			this.inp.stream.map((idx) => {
+				return this.values[(idx || 0) % this.values.length];
 			})
 		);
 	}
@@ -756,38 +747,6 @@ class QDemux extends Basis {
 				this.inp.stream.map(v => (v & b) >> bi)
 			);
 		}
-	}
-}
-
-class Count extends Basis {
-	constructor() {
-		super();
-		this.inp = new PIN();
-		this.trigger = new PIN(1);
-		this.value = 0;
-		this.out = new POUT();
-		this.out.plug(
-			Kefir.zip([this.inp.stream, this.inp.triggerStream, this.trigger.triggerStream], (v, vt, t) => {
-				if (t > 0) {
-					this.value = 0;
-				}
-				if (vt > 0) {
-					this.value += v;
-				}
-				return this.value;
-			})
-		);
-		// this.out = new POUT();
-		// this.out.plug(
-		// 	this.triggeredStream('inp',
-		// 		(state, v) => {
-		// 			return state.value + v;
-		// 		},
-		// 		(state, v) => {
-		// 			return state.value;
-		// 		}
-		// 	)
-		// );
 	}
 }
 

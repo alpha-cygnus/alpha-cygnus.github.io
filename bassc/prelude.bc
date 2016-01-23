@@ -134,8 +134,8 @@ LFO {
 	POUT out
 }
 
-Loop {
-	PIN clock
+Sel {
+	PIN inp
 	POUT out
 }
 
@@ -151,6 +151,7 @@ QDemux {
 
 Count {
 	PIN inp
+	PIN reset
 	POUT out
 }
 
@@ -177,6 +178,10 @@ UIValue {
 
 UILED {
 	PIN inp
+}
+
+UIButton {
+	POUT out
 }
 
 UIKeyboard {

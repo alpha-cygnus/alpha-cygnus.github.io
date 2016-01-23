@@ -455,3 +455,23 @@ class UIKeyboard extends UIBasis {
 		})
 	}
 }
+
+class UIButton extends UIBasis {
+	constructor() {
+		super();
+		this.out = new POUT();
+		this.out.produceFromField(this, 'value');
+	}
+	get value() {
+		if (!this.elem) return 0;
+		return $(this.elem).hasClass('on');
+	}
+	getHTML() {
+		return `<div class="UI UIButton glyphicon glyphicon-play" id="${this.getId()}"></div>`;
+	}
+	onStartUI() {
+		this.elem = document.getElementById(this.getId());
+		$(this.elem).on('click', function() { $(this).toggleClass('on') });
+	}
+}
+

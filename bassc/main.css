@@ -277,6 +277,25 @@ div.UI {
 	-webkit-box-shadow: inset 0px 0px 2px 0px rgba(255,255,255,1);
 }
 
+.UIButton {
+	position: relative;
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	padding: 1px 2px;
+	border: 1px solid gray;
+	border-radius: 4px;
+	background: #EEE;
+	color: black;
+}
+.UIButton:hover {
+	background: #888;
+}
+
+.UIButton.on {
+	color: red;
+}
+
 
 .layoutV {
 	display: flex;
