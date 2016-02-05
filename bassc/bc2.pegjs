@@ -1,164 +1,10 @@
 {
-	function noteToInt(n) {
-		var m;
-		var n2i = {C: 0, D:2, E:4, F: 5, G: 7, H: 9, A: 9, B: 11};
-		var a2i = {'#': 1, 'b': -1, '-': 0};
-		if (m = n.match(/([A-H])([b#-])?([0-9])?/)) {
-			var i = n2i[m[1]];
-			i += a2i[m[2] || '-'];
-			i += 12*(m[3] || '5');
-		}
-		return i;
-	}
-	function makeRange(a, b) {
-		var res = [a];
-		if (b === null) b = a;
-		if (b < a) return res;
-		for (var i = a + 1; i <= b; i++) res.push(i);
-		return res;
-	}
-	var _abcState = {};
-	
-	class SyntaxElem {
-		constructor() {
-			this.location = location();
-		}
-	}
-	class Module extends SyntaxElem {
-		constructor(items) {
-			super();
-			this.items = items;
-		}
-	}
-	class EnumDef extends SyntaxElem {
-		constructor(vals) {
-			super();
-			this.values = vals;
-		}
-	}
-	class EnumValDef extends SyntaxElem {
-		constructor(name, val) {
-			super();
-			this.name = name;
-			this.val = val;
-		}
-	}
-	class Chain extends SyntaxElem {
-		constructor(head, links) {
-			super();
-			this.head = head;
-			this.links = links;
-		}
-	}
-	class ChainLink extends SyntaxElem {
-		constructor(arrow, point) {
-			super();
-			this.arrow = arrow;
-			this.point = point;
-		}
-	}
-	class Layout extends SyntaxElem {
-		constructor(lyt) {
-			super();
-			this.layout = lyt;
-		}
-	}
-	class Point extends SyntaxElem {
-		constructor(items) {
-			super();
-			this.items = items;
-		}
-	}
-	class Node extends SyntaxElem {
-		constructor(inp, decl, out) {
-			super();
-			this.inp = inp;
-			this.decl = decl;
-			this.out = out;
-		}
-	}
-	class Decl extends SyntaxElem {
-		constructor(type, ids, title) {
-			super();
-			this.type = type;
-			this.ids = ids;
-			this.title = title;
-		}
-	}
-	class Ref extends SyntaxElem {
-		constructor(ids, title) {
-			super();
-			this.ids = ids;
-			this.title = title;
-		}
-	}
-	class TypeRef extends SyntaxElem {
-		constructor(name, params) {
-			super();
-			this.name = name;
-			this.params = params;
-		}
-	}
-	class TypeConst extends SyntaxElem {
-		constructor(v) {
-			super();
-			this.value = v;
-		}
-	}
-	class TypeGain extends SyntaxElem {
-		constructor(v) {
-			super();
-			this.value = v;
-		}
-	}
-	class TypeProc extends SyntaxElem {
-		constructor(proc) {
-			super();
-			this.proc = proc;
-		}
-	}
-	class Proc extends SyntaxElem {
-		constructor(params, body) {
-			super();
-			this.params = params;
-			this.body = body;
-		}
-	}
-	class ProcParam extends SyntaxElem {
-		constructor(agr, name, def) {
-			super();
-			this.agr = agr;
-			this.name = name;
-			this.def = def;
-		}
-	}
-	class ParamNum extends SyntaxElem {
-		constructor(v) {
-			super();
-			this.value = v;
-		}
-	}
-	class ParamProc extends SyntaxElem {
-		constructor(proc) {
-			super();
-			this.proc = proc;
-		}
-	}
-	class ParamRef extends SyntaxElem {
-		constructor(ids) {
-			super();
-			this.ids = ids;
-		}
-	}
-	class ParamEnum extends SyntaxElem {
-		constructor(name) {
-			super();
-			this.name = name;
-		}
-	}
+	"include BCPU";
+	BCPU.location = location;
+	BCPU.error = error;
 }
 
-S = head:statement? tail:(ST_SEP+ s:statement { return s; })* { return [head].concat(tail); }
+S = head:statement? tail:(ST_SEP+ s:statement { return s; })* ws { return Main([head].concat(tail)); }
 
 statement = module
 	/ chain
@@ -173,31 +19,31 @@ module
 	/
 	chain:chain
 	)*
-	CCLOSE { return new Module(name, items) }
+	CCLOSE { return Module(name, items) }
 
 values = ENUM head:v_val tail:(COMMA v:v_val { return v; })* {
-	return new EnumDef([head].concat(tail));
+	return EnumDef([head].concat(tail));
 }
 v_val = name:Id val:(EQ v:INT {return v})? { 
-	return new EnumValDef(name, val);
+	return EnumValDef(name, val);
 }
 
 //chains = head:chain tail:(SEMI c:chain { return c} )* { return [head].concat(tail); }
 
-layout = UI l:l_decls { return new Layout(l); }
+layout = UI l:l_decls { return Layout(l); }
 l_decls = head:l_decl tail:(PIPE d:l_decl { return d })* { return [head].concat(tail) }
 l_decl
 	= COPEN ids:l_decls CCLOSE { return ids }
 	/ ids:decl
 
 chain 
-	= head:point links:(a:arrow p:point { return new ChainLink(a, p); })* {
-		return new Chain(head, links);
+	= head:point links:(a:arrow p:point { return ChainLink(a, p); })* {
+		return Chain(head, links);
 	}
 
 arrow
-	= ARROW { return { p: false } }
-	/ PARROW { return { p: true } }
+	= ARROW { return ChainArrow(false); }
+	/ PARROW { return ChainArrow(true); }
 
 range = a:INT b:('-' i:INT { return i; })? { return makeRange(a, b) }
 
@@ -217,7 +63,7 @@ port1
 	
 point
 	= head:item tail:(COMMA item:item { return item; })* { 
-		return new Point([head].concat(tail));
+		return Point([head].concat(tail));
 	}
 	/// sub_chains
 
@@ -228,39 +74,38 @@ item
 //sub_chains = POPEN chains:chains PCLOSE { return chains; }
 
 node = inp:ports? decl:decl out:ports? {
-		return new Node(inp, decl, out);
+		return Node(inp, decl, out);
 	}
 	
 
 decl
-	= type:Type idr:idr? title:title? {
-		return new Decl(type, idr, title);
+	= type:Cons idr:idr? title:title? {
+		return Decl(type, idr, title);
 	}
 	/ idr:idr title:title? {
-		return new Ref(idr, title);
+		return Ref(idr, title);
 	}
 
-Type
+Cons
 	= type:Id ps:params? {
-		return new TypeRef(type, ps);
+		return ConsRef(type, ps);
 	}
 	/ 
 	n:num {
-		return new TypeConst(n);
+		return ConsConst(n);
 	}
 	/
 	MUL n:num? {
-		return new TypeGain(n);
+		return ConsGain(n);
 	}
 	/
 	p:processing {
-		console.log(p);
-		return new TypeProc(p);
+		return ConsProc(p);
 	}
 
-processing = COPEN params:proc_params body:(PIPE b:proc_body {return b})? CCLOSE { return new Proc(params, body); }
+processing = COPEN params:proc_params body:(PIPE b:proc_body {return b})? CCLOSE { return Proc(params, body); }
 proc_params = h:proc_param t:(COMMA p:proc_param {return p})* { return [h].concat(t); }
-proc_param = agr:AGR? name:id? def:(EQ v:num {return v})? { return new ProcParam(agr, name, def); }
+proc_param = agr:AGR? name:id? def:(EQ v:num {return v})? { return ProcParam(agr, name, def); }
 proc_body = CODE
 
 params = AOPEN head:param tail:(COMMA? p:param { return p })* COMMA? ACLOSE { return [head].concat(tail) }
@@ -270,12 +115,12 @@ param = pval
 	// v:pval { return {n:n, v: v} }
 
 pval 
-	= n:num { return new ParamNum(n); }
-	/ p:processing { return new ParamProc(p); }
-	/ idr:idr { return new ParamRef(ids); }
+	= n:num { return ParamNum(n); }
+	/ p:processing { return ParamProc(p); }
+	/ idr:idr { return ParamRef(ids); }
 	/// str
 	/// note
-	/ id:Id { return new ParamEnum(id); }
+	/ id:Id { return ParamEnum(id); }
 
 num = HEX / BIN / QNUM / OCT / NUM
 str = STR
@@ -293,48 +138,48 @@ comment = '#' [^\r\n]*
 ws "" = (space/comment)*
 ws0 "" = (space0/comment)*
 EOL = [\r\n]+
-COPEN = ws '{' ws
-CCLOSE = ws '}' ws
+COPEN = ws '{' ws0
+CCLOSE = ws '}' ws0
 UPPER = [A-Z]
 LOWER = [a-z]
 LETTER = UPPER / LOWER
 DIGIT = [0-9]
 IDSYM = LETTER / DIGIT / '_'
-Id "Identifier" = ws id:$(UPPER IDSYM*) ws { return id; }
-id "ident" = ws id:$(LOWER IDSYM*) ws { return id; }
-INT "integer" = ws num:$(('+'/'-')? DIGIT+) ws { return parseInt(num, 10); }
-HEX "hexadecimal" =  ws '0x' hex:$([0-9A-Fa-f]+) ws { return parseInt(hex, 16); }
-BIN "binary" =  ws '0b' hex:$([01]+) ws { return parseInt(hex, 2); }
-QNUM "quaternary" =  ws '0q' n:$([0-3]+) ws { return parseInt(n, 4); }
-OCT "binary" =  ws '0o' n:$([0-7]+) ws { return parseInt(n, 8); }
-NUM "number" = ws num:$(('+'/'-')? DIGIT+ ('.' DIGIT+)?) ws { return parseFloat(num); }
-COLON = ws ':' ws
-SEMI = ws ';' ws
-ARROW "->" = ws '-'+ '>' ws
-PARROW "=>" = ws '='+ '>' ws
-BOPEN = ws '[' ws
-BCLOSE = ws ']' ws
-COMMA = ws ',' ws
-POPEN = ws '(' ws
-PCLOSE = ws ')' ws
-AOPEN = ws '<' ws
-ACLOSE = ws '>' ws
-PIPE = ws '|' ws
-EQ = ws '=' ws
+Id "Identifier" = ws id:$(UPPER IDSYM*) ws0 { return id; }
+id "ident" = ws id:$(LOWER IDSYM*) ws0 { return id; }
+INT "integer" = ws num:$(('+'/'-')? DIGIT+) ws0 { return parseInt(num, 10); }
+HEX "hexadecimal" =  ws '0x' hex:$([0-9A-Fa-f]+) ws0 { return parseInt(hex, 16); }
+BIN "binary" =  ws '0b' hex:$([01]+) ws0 { return parseInt(hex, 2); }
+QNUM "quaternary" =  ws '0q' n:$([0-3]+) ws0 { return parseInt(n, 4); }
+OCT "binary" =  ws '0o' n:$([0-7]+) ws0 { return parseInt(n, 8); }
+NUM "number" = ws num:$(('+'/'-')? DIGIT+ ('.' DIGIT+)?) ws0 { return parseFloat(num); }
+COLON = ws ':' ws0
+SEMI = ws ';' ws0
+ARROW "->" = ws '-'+ '>' ws0
+PARROW "=>" = ws '='+ '>' ws0
+BOPEN = ws '[' ws0
+BCLOSE = ws ']' ws0
+COMMA = ws ',' ws0
+POPEN = ws '(' ws0
+PCLOSE = ws ')' ws0
+AOPEN = ws '<' ws0
+ACLOSE = ws '>' ws0
+PIPE = ws '|' ws0
+EQ = ws '=' ws0
 STR "string" 
-	= ws "'" s:$([^']*) "'" ws { return "'" + s + "'"; }
+	= ws "'" s:$([^']*) "'" ws0 { return "'" + s + "'"; }
 STR2 "string2" 
-	= ws '"' s:$([^"]*) '"' ws { return '"' + s + '"'; }
-NOTE = ws n:$([A-H] [#-b]? DIGIT?) ws { return n }
-TSEQ = ws s:$([x.]+) ws { return s.split('').map(c => c == 'x' ? 1 : 0) }
-ENUM = ws '@enum' ws
-UI = ws '@' ('ui'/'UI') ws
-AGR = ws a:[*_^+] ws { return a }
-MUL = ws '*' ws
+	= ws '"' s:$([^"]*) '"' ws0 { return '"' + s + '"'; }
+NOTE = ws n:$([A-H] [#-b]? DIGIT?) ws0 { return n }
+TSEQ = ws s:$([x.]+) ws0 { return s.split('').map(c => c == 'x' ? 1 : 0) }
+ENUM = ws '@enum' ws0
+UI = ws '@' ('ui'/'UI') ws0
+AGR = ws a:[*_^+] ws0 { return a }
+MUL = ws '*' ws0
 
 CODE = $(([^{}] / '{' CODE '}')*)
 
-ST_SEP = SEMI
+ST_SEP = SEMI / ws0 EOL ws
 
 START_ABC = ('@start_abc' / '@startABC') ws0 EOL ws
 END_ABC = ('@end_abc' / '@endABC') ws
