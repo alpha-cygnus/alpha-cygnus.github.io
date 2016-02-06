@@ -22,20 +22,22 @@ Invert {
 }
 
 PingPong {
+	<aDry = 0.5, aDecay = 0.5, aTime = 0.4, aSpread = 0.7>
 	AIN inp -> * gdecayIL -> Delay dl -> * gdecayLR -> Delay dr -> * gdecayRL -> dl
 	inp -> * gdry -> AOUT out
 	dl -> Pan pl -> out
 	dr -> Pan pr -> out
-	AIN<0.7> spread -> [pan]pr
+	AIN<aSpread> spread -> [pan]pr
 	spread -> *-1 -> [pan]pl
 
-	AIN<0.5> dry -> [gain]gdry
-	AIN<0.3> decay -> [gain] gdecayLR, gdecayRL, gdecayIL
-	AIN<0.4> time ->[time] dl, dr
+	AIN<aDry> dry -> [gain]gdry
+	AIN<aDecay> decay -> [gain] gdecayLR, gdecayRL, gdecayIL
+	AIN<aTime> time ->[time] dl, dr
 }
 
 TestSynth {
-	MIDIIN inp -> Midi2Trigger trig, Midi2Note<LAST> note
+	<MidiNoteMode aNoteMode = LAST> 
+	MIDIIN inp -> MidiTrigger trig, MidiNote<aNoteMode> note
 	note -> Note2Detune ->[detune] Osc<SAW> o1, o2, o3, Osc<SQUARE> sub
 	o1, o2, o3 -> Filter<HP> flt -> ADSR<0.01, 0.3, 0.5, 1> ampEnv -> AOUT out
 	sub -> ampEnv

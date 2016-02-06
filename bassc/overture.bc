@@ -43,7 +43,7 @@ step -> Sel<
 	0q0200
 	0q0101
 	0q0202
-> -> {*} gate -> QDemux dmx[0-3] => {t|t/3} p$0-3 => UILED dmx$0-3
+> -> {*} gate -> QDemux dmx[0-3] => {t|t/3} $0-3 => UILED dmx$0-3
 
 btnPlay -> gate
 btnPlay -> [reset]tickCount
