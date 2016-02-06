@@ -76,7 +76,7 @@ SN {
 	{|48} -> [note]bd
 }
 
-dmx[0-3] => (BD -> *5; SN -> *1; CHH -> *1; OHH -> *1) -> *0.2 -> Dest
+dmx[0-3] => (BD -> *5), (SN -> *1), (CHH -> *1), (OHH -> *1) -> *0.2 -> Dest
 
 @UI tv | dmx$0-3
 

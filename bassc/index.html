@@ -38,7 +38,7 @@ function showError(msg) {
 	$('#error').html($('#error').html() + msg + '<br />');
 }
 
-function download(filename, text) {
+function saveLocal(filename, text) {
     var pom = document.createElement('a');
     pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
     pom.setAttribute('download', filename);
@@ -84,8 +84,8 @@ $(() => {
 		var prelude = data[1];
 		var overture = data[2];
 		console.log('Loaded:', grammar.length, prelude.length);
-		// var parserSource = PEG.buildParser(grammar, {output: 'source'});
-		// console.log(parserSource);
+		var parserSource = PEG.buildParser(grammar, {output: 'source', optimize: 'speed'});
+		console.log(parserSource);
 
 		var parser = parse('grammar', grammar, s => PEG.buildParser(s));
 		var parsedPrelude = parse('prelude', prelude, s => parser.parse(s));

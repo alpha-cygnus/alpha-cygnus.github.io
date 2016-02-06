@@ -1,0 +1,397 @@
+(function(global){
+"use strict";
+
+var bcMeta = {}
+var bcProcCount = 0;
+
+function bcFillParams(res, ps) {
+	var params = [];
+	var opts = {};
+	var i = 0;
+	for (let p of (ps || [])) {
+		let n = p.n;
+		if (n) opts[n] = p.v;
+		else {
+			if ($.isArray(p.v)) {
+				params.push.apply(params, p.v);
+			} else params.push(p.v);
+		}
+	}
+	res.params = params;
+	res.opts = opts;
+	return res;
+}
+
+
+class Meta {
+	constructor(name) {
+		bcMeta[name] = this;
+		this.name = name;
+	}
+	setOpt(name, val) {
+		if (val === undefined) val = true;
+		this[name] = val;
+		return this;
+	}
+	getBase() {
+		return 'BC.Module';
+	}
+	compileToSource() {
+		var res = [`class ${this.name} extends ${this.getBase()} {`];
+		res.push('\tconstructor() {');
+		res.push('\t\tsuper();');
+		this.compileCons(res);
+		res.push('\t}');
+
+		res.push('\tgetHTML() {');
+		this.compileGetHTML(res);
+		res.push('\t}');
+
+		res.push('\tonStartUI() {');
+		this.compileOnStartUI(res);
+		res.push('\t}');
+		
+		this.compileAdditional(res);
+
+		res.push('}');
+		res.push(`BC.${this.name} = ${this.name};`)
+		return res.join('\n');
+	}
+	compile() {
+		var src = this.compileToSource();
+		var cc = eval(src);
+		this.cc = cc;
+		window[this.name] = cc;
+	}
+	compileCons(res) {
+		return;
+	}
+	compileGetHTML(res) {
+		return;
+	}
+	compileOnStartUI(res) {
+		return;
+	}
+	compileAdditional(res) {
+		return;
+	}
+}
+
+class MetaModule extends Meta {
+	constructor(name) {
+		super(name);
+		this.links = {};
+		this.uses = {};
+		this.nodes = {};
+		this.inpList = [];
+		this.outList = [];
+		this.layouts = [];
+		this.melodies = [];
+	}
+	compileCons(res) {
+		for (var nn in this.nodes) {
+			var t = this.nodes[nn];
+			var ps = t.params;
+			res.push(`\t\tthis.${nn} = new ${t.type}(${ps.join(', ')});`);
+			if (t.name) {
+				res.push(`\t\tthis.${nn}.name = '${t.name}';`);
+			}
+			if (t.title) {
+				res.push(`\t\tthis.${nn}.title = ${t.title};`);
+			}
+			for (var na in t.opts) {
+				res.push(`\t\tthis.${nn}.${na} = ${t.opts[na]};`);
+			}
+		}
+		for (var ln in this.links) {
+			var li = this.links[ln];
+			res.push(`\t\tthis.${li.n0}.${li.e0}.connectTo(this.${li.n1}.${li.e1});`);
+		}
+	}
+	compileGetHTML(res) {
+		res.push(`\t\tvar html = [];`);
+		res.push(`\t\tvar s;`);
+		function compileLayout(ly, isVert) {
+			res.push(`\t\thtml.push('<div class="layout${isVert ? 'V' : 'H'}">');`)
+			for (var ln of ly) {
+				if ($.isArray(ln)) {
+					compileLayout(ln, !isVert);
+				} else {
+					res.push(`\t\tif (s = this.${ln}.getHTML(this)) html.push(s);`);
+				}
+			}
+			res.push(`\t\thtml.push('</div>');`)
+		}
+		for (var ly of this.layouts) {
+			res.push(`\t\thtml.push('<div class="layoutV">');`)
+			compileLayout(ly);
+			res.push(`\t\thtml.push('</div>');`)
+		}
+		res.push(`\t\treturn html.join('')`);
+	}
+	compileOnStartUI(res) {
+		for (var nn in this.nodes) {
+			var t = this.nodes[nn];
+			var ps = t.params;
+			res.push(`\t\tthis.${nn}.onStartUI(this);`);
+		}
+	}
+	fixId(tp, id) {
+		var type = tp.type;
+		var tn = type.name;
+		var ci = this.uses[tn] || 0;
+		if (!id) id = '_' + tn + '_' + (++ci);
+		if (id.toString().match(/^\$\d+$/)) {
+			++ci;
+			id = '_' + tn + id + ci;
+		}
+		this.uses[tn] = ci;
+		return id;
+	}
+	addNode(tp, id, title) {
+		var type = tp.type;
+		var params = tp.params;
+		var tn = type.name;
+		var node = {
+			type, id, title, params, name: id
+		}
+		this.nodes[id] = node;
+		if (type.inpType) this.addInp(node);
+		if (type.outType) this.addOut(node);
+		return id;
+	}
+	addInp(inp) {
+		inp.inpIdx = this.inpList.push(inp.id) - 1;
+		inp.inpType = inp.type.inpType;
+	}
+	addOut(out) {
+		out.outIdx = this.outList.push(out.id) - 1;
+		out.outType = out.type.outType;
+	}
+	addLayout(l) {
+		this.layouts.push(l);
+	}
+	addMelody(m) {
+		this.melodies.push(m);
+	}
+	getPlant() {
+		var res = ['@startuml'];
+		var links = [];
+		var used = {};
+		for (var ln in this.links) {
+			var li = this.links[ln];
+			//res.push(`${li.n0} "${li.e0}" --> "${li.e1}" ${li.n1}`);
+			var from = `${li.n0}.${li.e0}`;
+			var to = `${li.n1}.${li.e1}`;
+			// used[from] = 1;
+			// used[to] = 1;
+			if (li.e0 == this.nodes[li.n0].type.outList[0]) from = '[' + li.n0 + ']';
+			else {
+				used[from] = 1;
+				from = `(${from})`;
+			}
+			if (li.e1 == this.nodes[li.n1].type.inpList[0]) to = '[' + li.n1 + ']';
+			else {
+				used[to] = 1;
+				to = `(${to})`;
+			}
+			res.push(`${from} ---> ${to}`);
+		}
+		for (let nn in this.nodes) {
+			var n = this.nodes[nn];
+			var nc = n.type;
+			var label = n.title;
+			if (!label) {
+				if (n.type == 'Const') {
+					label = n.params.join(', ');
+				} else {
+					label = n.type;
+					if (n.params && n.params.length) {
+						label += '(' + n.params.join(', ') + ')';
+					}
+				}
+				if (n.name) label += ' ' + n.name;
+				if (n.inpType) label += ' <<' + n.inpType + '>>';
+				if (n.outType) label += ' <<' + n.outType + '>>';
+			}
+			res.push(`[${label}] as ${nn}`);
+			let e0 = nc.inpList[0];
+			for (let e of nc.inpList) {
+				//if (e == e0) continue;
+				if (!used[`${nn}.${e}`]) continue;
+				res.push(`(${e}) as (${nn}.${e})`);
+				res.push(`(${nn}.${e}) --* ${nn}`)
+			}
+			e0 = nc.outList[0];
+			for (let e of nc.outList) {
+				//if (e == e0) continue;
+				if (!used[`${nn}.${e}`]) continue;
+				res.push(`(${e}) as (${nn}.${e})`);
+				res.push(`${nn} --* (${nn}.${e})`)
+			}
+			// res.push(`}`);
+		}
+		return res.join('\n');
+	}
+	getDot() {
+		function dotName(nn) {
+			return 'n_' + nn.replace('$', '__');
+		}
+		
+		var res = [`digraph ${this.name} {`, 'node [width=0.1,height=0.1];', 'rankdir=LR;', 'size="10,10"'];
+		for (let nn in this.nodes) {
+			var n = this.nodes[nn];
+			var nc = n.type;
+			var label = n.title;
+			if (!label) {
+				if (n.type == 'Const') {
+					label = n.params.join(', ');
+				} else {
+					var t = n.type;
+					label = t.typeLabel || t;
+					if (n.params && n.params.length) {
+						label += '(' + n.params.join(', ') + ')';
+					}
+				}
+				if (n.name) label += ' ' + n.name;
+				// if (n.inpType) label += ' <<' + n.inpType + '>>';
+				// if (n.outType) label += ' <<' + n.outType + '>>';
+			}
+			var s = '{{';
+			s += nc.inpList.map(e => `<${dotName(e)}> ${e}`).join('|');
+			s += '}|' + label + '|{';
+			s += nc.outList.map(e => `<${dotName(e)}> ${e}`).join('|');
+			s += '}}';
+			res.push(`${dotName(nn)}[id="${nn}",shape=record,label="${s}"];`);
+		}
+		res.push('{ rank = source; ');
+		res.push(this.inpList.map(e => dotName(e)).join(';'));
+		res.push('};');
+		res.push('{ rank = sink; ');
+		res.push(this.outList.map(e => dotName(e)).join(';'));
+		res.push('};');
+		for (var ln in this.links) {
+			var li = this.links[ln];
+			res.push(`${dotName(li.n0)}:${dotName(li.e0)} -> ${dotName(li.n1)}:${dotName(li.e1)};`);
+		}
+		res.push('}');
+		return res.join('\n');
+	}
+}
+
+class MetaProc extends MetaModule {
+	constructor(proc) {
+		var name = `Proc_${++bcProcCount}`;
+		super(name);
+		this.typeLabel = proc.body;
+		this.proc = proc;
+		var i = 0;
+		for (var p of proc.params) {
+			if (!p.name) p.name = '$' + ++i;
+			this.addNode({type: bcMeta.PIN}, p.name);
+		}
+		this.addNode({type: bcMeta.POUT}, 'out');
+	}
+	getBase() {
+		return 'BC.Proc';
+	}
+	compileCons(res) {
+		var proc = this.proc;
+		var body = proc.body || '';
+		if (body.match(/return/)) body = `{ ${body} }`;
+		for (var n of Object.getOwnPropertyNames(Math)) {
+			if (body.indexOf(n) < 0) continue;
+			res.push(`\t\tvar ${n} = Math.${n};`);
+		}
+		var pns = [];
+		for (var p of proc.params) {
+			var agr = p.agr || '+';
+			var af = {
+				'+': ['a + b', 0],
+				'*': ['a * b', 1],
+				'_': ['Math.min(a, b)', 100000],
+				'^': ['Math.max(a, b)', -100000],
+			}[agr];
+			var def = p.def || af[1];
+			res.push(`\t\tthis.${p.name} = new PIN(${def}, (a, b) => ${af[0]}, ${af[1]})`);
+		}
+		if (!body) body = proc.params.map(p => p.name).join(' + ');
+		res.push('\t\tthis.out = new POUT();')
+		res.push(`\t\tthis.procFunc = (${proc.params.map(p => p.name).join(', ')}) => ${body}`);
+		res.push(`\t\tthis.out.plug(Kefir.zip([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], this.procFunc))`);
+	}
+}
+
+const mainName = 'Main';
+
+class MainMeta extends MetaModule {
+	constructor() {
+		super(mainName);
+	}
+}
+
+var newModule = function newCls(name) {
+	return new MetaModule(name);
+};
+
+var newProc = function newProc(proc) {
+	return new MetaProc(proc);
+};
+
+(function (types){
+	for (let t of types) {
+		newModule(t + 'IN').setOpt('inpType', t);
+		newModule(t + 'OUT').setOpt('outType', t);
+	}
+	for (let t of types) {
+		bcMeta[t + 'IN'].addNode({type: bcMeta[t + 'IN']}, 'inp');
+		bcMeta[t + 'IN'].addNode({type: bcMeta[t + 'OUT']}, 'out');
+		bcMeta[t + 'OUT'].addNode({type: bcMeta[t + 'IN']}, 'inp');
+		bcMeta[t + 'OUT'].addNode({type: bcMeta[t + 'OUT']}, 'out');
+	}
+})(['A', 'P', 'MIDI'])
+
+const mainMeta = new MainMeta();
+
+class MetaError {
+	constructor(message, location) {
+		this.message = message;
+		this.location = location;
+	}
+}
+
+function error(message, location) {
+	throw new MetaError(message, location);
+}
+
+global.BC.meta = {
+	Meta,
+	MetaModule,
+	MetaProc,
+	MetaError,
+
+	mainName,
+	main: mainMeta,
+	data: bcMeta,
+
+	newModule,
+	newProc,
+	error,
+	
+	byName(name) {
+		return this.data[name];
+	},
+	getMain() {
+		return this.byName(mainName);
+	},
+	compileAll() {
+		for (var c in bcMeta) {
+			var cls = bcMeta[c];
+			var cc = BC[c] || cls.compile();
+			cls.compiled = cc;
+			cc.__meta = cls;
+		}
+	},
+}
+
+})(this);
