@@ -1,0 +1,182 @@
+#-- basic
+
+Const {
+	AIN inp
+	AOUT out
+}
+
+@enum OscType {SINE, SIN = 0, SQUARE, SAW, TRI}
+Osc {
+	<OscType aType = SINE>
+	AIN detune, freq
+	AOUT out
+	PIN trigger
+	PIN<aType> type
+}
+
+ADSR {
+	<Time a = 0.1, Time b = 0.5, Num s = 0.5, Time r = 0.5>
+	AIN inp
+	AOUT out
+	PIN trigger
+	PIN attack, decay, sustain, release
+}
+
+Gain {
+	<Num aGain = 1>
+	AIN inp, gain
+	AOUT out
+}
+
+Delay {
+	AIN inp
+	AOUT out
+	AIN time
+}
+
+P2A {
+	PIN inp
+	AOUT out
+}
+
+Keyboard {
+	MIDIOUT out
+}
+
+MidiArpeggio {
+	MIDIIN inp
+	PIN clock
+	AOUT out
+	PIN octaves
+	PIN mode # up, down, updown, downup, random
+}
+
+@enum MidiTriggerMode { BOOL, RETRIG, COUNT }
+MidiTrigger {
+	<MidiTriggerMode = BOOL>
+	MIDIIN inp
+	POUT out
+	PIN mode
+}
+
+@enum MidiNodeMode {MAX, MIN, LAST, FIRST}
+MidiNote {
+	<MidiNoteMode = MAX>
+	MIDIIN inp
+	POUT out
+	PIN priority # min, max, first, last
+}
+
+@enum FilterMode {
+	LOWPASS, HIGHPASS, BANDPASS, LOWSHELF, HIGHSHELF, PEAKING, NOTCH, ALLPASS
+	, LP = 0, HP, BP, LS, HS
+}
+Filter {
+	<FilterMode aMode = LOWPASS>
+	AIN inp
+	AOUT out
+	PIN type
+	AIN freq
+	AIN q
+	AIN detune
+}
+
+Clock {
+	POUT out
+}
+
+Dest {
+	AIN inp
+	AIN volume
+	AOUT out
+}
+
+Pan {
+	AIN inp
+	AIN pan
+	AOUT out
+}
+
+Noise {
+	AOUT out
+}
+
+# -- Automation
+LFO {
+	PIN trigger
+	PIN freq
+	PIN form # sine, triangle, pulse
+	PIN skew
+	POUT out
+}
+
+Sel {
+	<Num items...>
+	PIN inp
+	POUT out
+}
+
+BinDemux {
+	PIN inp
+	POUT out$0-15
+}
+
+QDemux {
+	PIN inp
+	POUT out$0-15
+}
+
+Count {
+	PIN inp
+	PIN reset
+	POUT out
+}
+
+Curve {
+	PIN trigger
+	AOUT out
+}
+
+WebMidi {
+	MIDIOUT out
+}
+
+UIDial {
+	POUT out
+}
+
+UIDigits {
+	PIN inp
+}
+
+UIValue {
+	PIN inp
+}
+
+UILED {
+	PIN inp
+}
+
+UIButton {
+	POUT out
+}
+
+UIKeyboard {
+	MIDIIN inp
+	MIDIOUT out
+}
+
+MidiHub {
+	MIDIIN inp
+	MIDIOUT out
+}
+
+MidiPoly {
+	MIDIIN inp
+	MIDIOUT out$0-15
+}
+
+MidiCC {
+	MIDIIN inp
+	POUT out
+}
