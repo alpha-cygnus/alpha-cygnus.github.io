@@ -22,9 +22,9 @@ function _apply(fn) {
 
 class BaseNode {
 	constructor(parent) {
-		this.parent = parent;
+		this._parent = parent;
 	}
-	getConstant() {
+	getAudioBias() {
 		return Tone.Signal._constant;
 	}
 	getHTML() {
@@ -32,6 +32,18 @@ class BaseNode {
 	}
 	onStartUI() {
 		return;
+	}
+	getDefOut(t) {
+		if (!this.meta) return null;
+		var id = this.meta.getDeftOutId(t);
+		return this[id];
+	}
+	getDefPOUT() {
+		return this.getDefOut('P');
+	}
+	error(msg) {
+		debugger;
+		throw msg;
 	}
 }
 
@@ -99,13 +111,22 @@ class MIDIIN extends MIDIPort {
 
 // P(arametric/rocessing) IN/OUT
 class PPort extends Port {
-	constructor(parent, def, agrFun, agrInit) {
+	constructor(parent, [def], agrFun, agrInit) {
 		super(parent);
 		this.agrFun = agrFun || ((a, b) => a + b);
 		this.agrInit = agrInit || 0;
 		this.pool = Kefir.pool();
-		this.value = def || 0;
-		this.plugged = theCore.tickStream.map(t => this.value);
+		//this.value = def || 0;
+		var defStream;
+		if (def instanceof BaseNode) {
+			var pout = def.getDefPOUT();
+			if (!pout) this.error("Can't get default stream");
+			defStream = pout.stream;
+		} else {
+			this.value = (def || 0)*1;
+			defStream = theCore.tickStream.map(t => this.value);
+		}
+		this.plugged = defStream;
 		this.pool.plugStream(this.plugged);
 		this.inStreams = [];
 		this.outs = this.pool;
@@ -193,7 +214,7 @@ class PIN extends PPort {
 
 // Audio in/out
 class APort extends Port {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(parent);
 		this.gain = Tone.context.createGain();
 		if (typeof def != 'undefined') {
@@ -209,7 +230,7 @@ class APort extends Port {
 }
 
 class AOUT extends APort {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(def);
 	}
 	bind(node) {
@@ -223,11 +244,11 @@ class AOUT extends APort {
 }
 
 class AIN extends APort {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(1);
 		if (def) {
 			this.cg = Tone.context.createGain();
-			this.getConstant().connect(this.cg);
+			this.getAudioBias().connect(this.cg);
 			this.cg.gain.value = def;
 			this.cg.connect(this.gain);
 		}
@@ -326,10 +347,10 @@ class Core {
 const theCore = new Core();
 
 class MidiNotesBaseNode extends BaseNode { // abstract
-	constructor(parent, mode) {
+	constructor(parent, [mode]) {
 		super(parent);
-		this.inp = new MIDIIN();
-		this.out = new POUT();
+		this.inp = new MIDIIN(this);
+		this.out = new POUT(this);
 
 		this.noteSet = {};
 		this.noteList = {};
@@ -363,7 +384,7 @@ class MidiNotesBaseNode extends BaseNode { // abstract
 const M2TModes = ['bool', 'retrig', 'count']
 
 class MidiTrigger extends MidiNotesBaseNode {
-	constructor(parent, mode) {
+	constructor(parent, [mode]) {
 		super(parent);
 		this.smode = M2TModes[mode];
 	}
@@ -382,7 +403,7 @@ class MidiTrigger extends MidiNotesBaseNode {
 const M2NModes = ['max', 'min', 'last', 'first'];
 
 class MidiNote extends MidiNotesBaseNode {
-	constructor(parent, mode) {
+	constructor(parent, [mode]) {
 		super(parent);
 		this.smode = M2NModes[mode];
 	}
@@ -409,15 +430,15 @@ class MidiNote extends MidiNotesBaseNode {
 const P2AModes = ['set', 'linear', 'exp'];
 
 class P2A extends BaseNode {
-	constructor(parent, mode, lag) {
+	constructor(parent, [mode, lag]) {
 		super(parent);
 		this.smode = P2AModes[mode] || 'set';
 		this.lag = lag < 0 ? 0 : lag || 0;
-		this.inp = new PIN();
-		this.out = new AOUT();
+		this.inp = new PIN(this);
+		this.out = new AOUT(this);
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
-		this.constant = this.getConstant();
+		this.constant = this.getAudioBias();
 		this.constant.connect(this.out.gain);
 		
 		this.last = undefined;
@@ -446,21 +467,21 @@ class P2A extends BaseNode {
 }
 
 class ADSR extends BaseNode {
-	constructor(parent, a, d, s, r) {
+	constructor(parent, [a, d, s, r]) {
 		super(parent);
 
-		this.inp = new AIN(1);
-		this.out = new AOUT();
+		this.inp = new AIN(this, [1]);
+		this.out = new AOUT(this);
 		this.inp.gain.connect(this.out.gain);
 		this.pgain = this.out.gain.gain;
 		this.pgain.value = 0;
 
-		this.attack = new PIN(a || 0.1);
-		this.decay = new PIN(d || 0.5);
-		this.sustain = new PIN((s == undefined) ? 0.5 : s);
-		this.release = new PIN(r || 1);
+		this.attack = new PIN(this, [a || 0.1]);
+		this.decay = new PIN(this, [d || 0.5]);
+		this.sustain = new PIN(this, [(s == undefined) ? 0.5 : s]);
+		this.release = new PIN(this, [r || 1]);
 		
-		this.trigger = new PIN(0);
+		this.trigger = new PIN(this, [0]);
 		Kefir.zip([theCore.tickStream, this.trigger.triggerStream, this.attack.stream, this.decay.stream, this.sustain.stream, this.release.stream])
 			.onValue(_apply(
 				(time, trig, a, d, s, r) => {
@@ -482,14 +503,14 @@ class ADSR extends BaseNode {
 const OSCTypes = ['sine', 'square', 'sawtooth', 'triangle'];
 
 class Osc extends BaseNode {
-	constructor(parent, type) {
+	constructor(parent, [type]) {
 		super(parent);
-		this.trigger = new PIN(1);
+		this.trigger = new PIN(this, [1]);
 		this.stype = OSCTypes[type || 0];
 		this.osc = null;
-		this.out = new AOUT();
-		this.freq = new AIN(440);
-		this.detune = new AIN();
+		this.out = new AOUT(this);
+		this.freq = new AIN(this, [440]);
+		this.detune = new AIN(this);
 		Kefir.zip([theCore.tickStream, this.trigger.triggerStream])
 			.onValue(_apply(
 				(t, trig) => {
@@ -525,7 +546,7 @@ class Osc extends BaseNode {
 class Dest extends BaseNode {
 	constructor(parent) {
 		super(parent);
-		this.inp = new AIN();
+		this.inp = new AIN(this);
 		this.gain = global.mainGain || Tone.context.createGain();
 		global.mainGain = this.gain;
 		global.mainVolume = this.gain.gain;
@@ -535,74 +556,74 @@ class Dest extends BaseNode {
 }
 
 class Gain extends BaseNode {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(parent);
 		this.g = Tone.context.createGain();
 		this.g.gain.value = 0;
-		this.inp = new AIN().bind(this.g);
-		this.gain = new AIN(def).bind(this.g.gain);
-		this.out = new AOUT().bind(this.g);
+		this.inp = new AIN(this).bind(this.g);
+		this.gain = new AIN(this, [def]).bind(this.g.gain);
+		this.out = new AOUT(this).bind(this.g);
 	}
 }
 
 class Delay extends BaseNode {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(parent);
 		this.d = Tone.context.createDelay();
 		this.d.delayTime.value = 0;
-		this.inp = new AIN().bind(this.d);
-		this.time = new AIN(def).bind(this.d.delayTime);
-		this.out = new AOUT().bind(this.d);
+		this.inp = new AIN(this).bind(this.d);
+		this.time = new AIN(this, def).bind(this.d.delayTime);
+		this.out = new AOUT(this).bind(this.d);
 	}
 }
 
 class Pan extends BaseNode {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(parent);
 		this.p = Tone.context.createStereoPanner();
 		this.p.pan.value = 0;
-		this.inp = new AIN().bind(this.p);
-		this.pan = new AIN(def).bind(this.p.pan);
-		this.out = new AOUT().bind(this.p);
+		this.inp = new AIN(this).bind(this.p);
+		this.pan = new AIN(this, [def]).bind(this.p.pan);
+		this.out = new AOUT(this).bind(this.p);
 	}
 }
 
 class Const extends BaseNode {
-	constructor(parent, v) {
+	constructor(parent, [v]) {
 		super(parent);
-		this.c = this.getConstant();
+		this.c = this.getAudioBias();
 		this.g = Tone.context.createGain();
 		this.g.gain.value = v;
 		this.c.connect(this.g);
-		this.out = new AOUT(); //.bind(this.g);
-		this.inp = new AIN();
+		this.out = new AOUT(this); //.bind(this.g);
+		this.inp = new AIN(this);
 		this.g.connect(this.out.gain);
 		this.inp.gain.connect(this.out.gain);
 	}
 }
 
 class Noise extends BaseNode {
-	constructor(parent, def) {
+	constructor(parent, [def]) {
 		super(parent);
 		this.n = new Tone.Noise();
 		this.n.start();
-		this.out = new AOUT().bind(this.n);
+		this.out = new AOUT(this).bind(this.n);
 	}
 }
 
 const FLTTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'];
 
 class Filter extends BaseNode {
-	constructor(parent, type) {
+	constructor(parent, [type]) {
 		super(parent);
 		this.stype = FLTTypes[type || 0];
 		this.flt = Tone.context.createBiquadFilter();
 		this.flt.type = this.stype;
-		this.out = new AOUT().bind(this.flt);
-		this.inp = new AIN().bind(this.flt);
-		this.freq = new AIN(440).bind(this.flt.frequency);
-		this.detune = new AIN().bind(this.flt.detune);
-		this.q = new AIN().bind(this.flt.Q);
+		this.out = new AOUT(this).bind(this.flt);
+		this.inp = new AIN(this).bind(this.flt);
+		this.freq = new AIN(this, [440]).bind(this.flt.frequency);
+		this.detune = new AIN(this).bind(this.flt.detune);
+		this.q = new AIN(this).bind(this.flt.Q);
 	}
 }
 
@@ -610,8 +631,8 @@ class Clock extends BaseNode {
 	constructor(parent) {
 		super(parent);
 		this.value = 0;
-		this.trigger = new PIN(1);
-		this.out = new POUT();
+		this.trigger = new PIN(this, 1);
+		this.out = new POUT(this);
 		this.out.plugStream(
 			Kefir.zip([theCore.tickStream, this.trigger.triggerStream],
 				(t, trig) => {
@@ -628,10 +649,10 @@ class Clock extends BaseNode {
 class Count extends BaseNode {
 	constructor(parent) {
 		super(parent);
-		this.inp = new PIN();
-		this.reset = new PIN(1);
+		this.inp = new PIN(this);
+		this.reset = new PIN(this, 1);
 		this.value = 0;
-		this.out = new POUT();
+		this.out = new POUT(this);
 		this.out.plugStream(
 			Kefir.zip([this.inp.stream, this.inp.triggerStream, this.reset.triggerStream], (v, vt, t) => {
 				if (t > 0) {
@@ -646,12 +667,12 @@ class Count extends BaseNode {
 	}
 }
 
-class Sel extends BaseNode {
-	constructor(parent) {
+class Vec extends BaseNode {
+	constructor(parent, values) {
 		super(parent);
-		this.values = Array.from(arguments).slice(1);
-		this.inp = new PIN();
-		this.out = new POUT();
+		this.values = values;
+		this.inp = new PIN(this);
+		this.out = new POUT(this);
 		this.out.plugStream(
 			this.inp.stream.map((idx) => {
 				return this.values[(idx || 0) % this.values.length];
@@ -663,9 +684,9 @@ class Sel extends BaseNode {
 class BinDemux extends BaseNode {
 	constructor(parent) {
 		super(parent);
-		this.inp = new PIN();
+		this.inp = new PIN(this);
 		for (var i = 0; i < 16; i++) {
-			var out = this['out$' + i] = new POUT();
+			var out = this['out$' + i] = new POUT(this);
 			let bi = i;
 			let b = 1 << bi;
 			out.plugStream(
@@ -678,9 +699,9 @@ class BinDemux extends BaseNode {
 class QDemux extends BaseNode {
 	constructor(parent) {
 		super(parent);
-		this.inp = new PIN();
+		this.inp = new PIN(this);
 		for (var i = 0; i < 16; i++) {
-			var out = this['out$' + i] = new POUT();
+			var out = this['out$' + i] = new POUT(this);
 			let bi = i*2;
 			let b = 3 << bi;
 			out.plugStream(
@@ -732,11 +753,12 @@ $.extend(global.BC, {
 	Filter,
 	Clock,
 	Count,
-	Sel,
+	Vec,
 	BinDemux,
 	QDemux,
 	
 	Proc,
+	Module,
 	
 	_getObjId,
 	core: theCore,

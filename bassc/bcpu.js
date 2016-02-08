@@ -34,18 +34,49 @@
 		}
 	}
 	class Module extends SyntaxElem {
-		constructor(name, items) {
+		constructor(name, items, init) {
 			super();
+			this.init = init;
 			this.name = name;
 			this.items = items;
 		}
 		toMeta() {
-			var mod = BC.meta.byName(this.name);
-			if (mod) this.error(`${this.name} is already defined`);
-			mod = BC.meta.newModule(this.name);
+			var _cc = BC.meta.byName(this.name);
+			if (_cc) this.error(`${this.name} is already defined`);
+			_cc = BC.meta.newModule(this.name);
+			if (this.init) this.init.toMeta(_cc);
 			for (var item of this.items) {
-				item.toMeta(mod);
+				item.toMeta(_cc);
 			}
+		}
+	}
+	class ModuleInit extends SyntaxElem {
+		constructor(items) {
+			super();
+			this.items = items;
+		}
+		toMeta(_cc) {
+			for (var item of this.items) {
+				item.toMeta(_cc);
+			}
+		}
+	}
+	class ModuleInitItem extends SyntaxElem {
+		constructor(ids, cons) {
+			super();
+			this.ids = ids;
+			this.cons = cons;
+		}
+		toMeta(_cc) {
+			var _ct = this.cons.toMeta(_cc);
+			_ct.opts = { init: 1 };
+			var ids;
+			ids = this.ids.map(id => _cc.fixId(_ct, id, (msg) => this.error(msg)));
+			for (var id of ids) {
+				if (_cc.nodes[id]) this.error(id + " is already defined");
+				_cc.addNode(_ct, id);
+			}
+			//return {ids, _ct};
 		}
 	}
 	class EnumDef extends SyntaxElem {
@@ -70,12 +101,30 @@
 		}
 	}
 	class Layout extends SyntaxElem {
-		constructor(lyt) {
+		constructor(items) {
 			super();
-			this.layout = lyt;
+			this.items = items;
 		}
 		toMeta(_cc) {
-			_cc.addLayout(this.layout);
+			return _cc.addLayout(this.items.map(i => i.toMeta(_cc)).reduce((a, b) => a.concat(b), []));
+		}
+	}
+	class LayoutSub extends SyntaxElem {
+		constructor(items) {
+			super();
+			this.items = items;
+		}
+		toMeta(_cc, accum) {
+			return [this.items.map(i => i.toMeta(_cc)).reduce((a, b) => a.concat(b), [])];
+		}
+	}
+	class LayoutDecl extends SyntaxElem {
+		constructor(decl) {
+			super();
+			this.decl = decl;
+		}
+		toMeta(_cc) {
+			return this.decl.toMeta(_cc, {}).ids;
 		}
 	}
 	class Chain extends SyntaxElem {
@@ -111,32 +160,35 @@
 		}
 		toMeta(_cc, outs, inps) {
 			var linkOutInp = (out, inp) => {
-				let a0 = out.split('.');
-				let n0 = a0[0];
-				let e0 = a0[1];
+				let [n1, p1] = inp.split('.');
+				let c1 = _cc.nodes[n1].type;
+				if (!c1) debugger;
+				if (p1.match(/^\d+$/)) p1 = c1.inpList[p1];
+				let t1 = c1.nodes[p1] && c1.nodes[p1].inpType;
+				if (!t1) debugger;
+				if (!t1) this.error(`Input ${a1[1]} is not defined for ${n1}:${c1.name} in ${_cc.name}`);
+
+				let [n0, p0] = out.split('.');
 				let c0 = _cc.nodes[n0].type;
 				if (!c0) debugger;
-				if (e0.match(/^\d+$/)) e0 = c0.outList[e0];
-				let t0 = c0.nodes[e0] && c0.nodes[e0].outType;
+				if (p0 === '0') {
+					p0 = c0.getDefOutId(t1);
+				}
+				else if (p0.match(/^\d+$/)) {
+					p0 = c0.outList[p0];
+				}
+				let t0 = c0.nodes[p0] && c0.nodes[p0].outType;
 				if (!t0) debugger;
 				if (!t0) this.error(`Output ${a0[1]} is not defined for ${n0}:${c0.name} in ${_cc.name}`);
 				
-				let a1 = inp.split('.');
-				let n1 = a1[0];
-				let e1 = a1[1];
-				let c1 = _cc.nodes[n1].type;
-				if (!c1) debugger;
-				if (e1.match(/^\d+$/)) e1 = c1.inpList[e1];
-				let t1 = c1.nodes[e1] && c1.nodes[e1].inpType;
-				if (!t1) debugger;
-				if (!t1) this.error(`Input ${a1[1]} is not defined for ${n1}:${c1.name} in ${_cc.name}`);
 				if (t0 != t1) {
-					this.error(`Incompatible connection for ${n0}[${e0}](${t0})->[${e1}]${n1}(${t1}) in ${_cc.name}`);
+					this.error(`Incompatible connection for ${n0}[${p0}](${t0})->[${p1}]${n1}(${t1}) in ${_cc.name}`);
 				}
 
-				let lid = [n0, e0, e1, n1];
 
-				_cc.links[lid.join(',')] = { n0, n1, e0, e1, t: t0 };
+				let lid = [n0, p0, p1, n1];
+
+				_cc.links[lid.join(',')] = { n0, n1, p0, p1, t: t0 };
 			}
 			if (this.par) {
 				var olen = outs.length;
@@ -193,7 +245,8 @@
 				for (var co of _co) outs.push(id + '.' + co);
 			}
 			return {
-				inps, outs, _ci, _co, _ct
+				inps, outs,
+				state: {_ci, _co, _ct},
 			}
 		}
 	}
@@ -206,6 +259,10 @@
 		toMeta(_cc, state) {
 			var _ct = state._ct;
 			var title = this.title;
+			var ids = this.ids;
+			if (_ct) {
+				ids = ids.map(id => _cc.fixId(_ct, id, (msg) => this.error(msg)));
+			}
 			for (var id of this.ids) {
 				if (_ct) {
 					if (_cc.nodes[id]) this.error(id + " is already defined");
@@ -228,9 +285,9 @@
 			var title = this.title;
 			var ids;
 			if (this.ids) {
-				ids = this.ids.map(id => _cc.fixId(_ct, id));
+				ids = this.ids.map(id => _cc.fixId(_ct, id, (msg) => this.error(msg)));
 			} else {
-				ids = [_cc.fixId(_ct)];
+				ids = [_cc.fixId(_ct, null, (msg) => this.error(msg))];
 			}
 			for (var id of ids) {
 				if (_cc.nodes[id]) this.error(id + " is already defined");
@@ -251,8 +308,9 @@
 		toMeta(_cc) {
 			var m = BC.meta.byName(this.name);
 			if (!m) this.error(`Type ${this.name} not defined`);
-			var params = [];
-			return { type: m, params: (this.params || []).map(p => p.toMeta(_cc)) };
+			var _ct = { type: m };
+			_ct.params = (this.params || []).map(p => p.toMeta(_cc, _ct)).reduce((a, b) => a.concat(b), []);
+			return _ct;
 		}
 	}
 	class ConsConst extends ConsRef {
@@ -275,6 +333,16 @@
 			return { type: m, params: [] };
 		}
 	}
+	class ConsVec extends ConsRef {
+		constructor(params) {
+			super('Vec', params);
+		}
+	}
+	class ConsGlobal extends Cons {
+		toMeta(_cc) {
+			return {type: '@global', params: [], opts: { global: 1 }};
+		}
+	}
 	class Proc extends Cons {
 		constructor(params, body) {
 			super();
@@ -292,6 +360,9 @@
 	}
 	
 	class TypeParam extends SyntaxElem {
+		toMeta(_cc, _ct) {
+			return this.error('not implemented');
+		}
 	}
 	
 	class ParamNum extends TypeParam {
@@ -299,11 +370,19 @@
 			super();
 			this.value = v;
 		}
+		toMeta(_cc, _ct) {
+			return [this.value.toString()];
+		}
 	}
 	class ParamProc extends TypeParam {
 		constructor(proc) {
 			super();
 			this.proc = proc;
+		}
+		toMeta(_cc, _ct) {
+			var decl = new Decl(new ConsProc(this.proc));
+			var id = delc.toMeta(_cc).ids[0];
+			return [`this.${id}`];
 		}
 	}
 	class ParamRef extends TypeParam {
@@ -311,11 +390,20 @@
 			super();
 			this.ids = ids;
 		}
+		toMeta(_cc, _ct) {
+			return this.ids.map(id => `this.${id}`);
+		}
 	}
 	class ParamEnum extends TypeParam {
 		constructor(name) {
 			super();
 			this.name = name;
+		}
+		toMeta(_cc, _ct) {
+			if (this.name in _ct.type.values) {
+				return [_ct.type.values[this.name].toString()];
+			}
+			this.error(`this.name is not found in values of ${_ct.type.name}`);
 		}
 	}
 	
@@ -335,12 +423,16 @@
 		cls: {
 			SyntaxElem,
 			Module,
+			ModuleInit,
+			ModuleInitItem,
 			EnumDef,
 			EnumValDef,
 			Chain,
 			ChainLink,
 			ChainArrow,
 			Layout,
+			LayoutDecl,
+			LayoutSub,
 			Point,
 			Node,
 			Decl,
@@ -349,6 +441,7 @@
 			ConsConst,
 			ConsGain,
 			ConsProc,
+			ConsVec,
 			Proc,
 			ProcParam,
 			ParamNum,

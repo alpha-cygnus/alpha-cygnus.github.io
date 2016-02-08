@@ -12,14 +12,11 @@ statement = module
 
 module
 	= name:Id COPEN
-	items:(
-	values:values
-	/
-	layout:layout
-	/
-	chain:chain
-	)*
-	CCLOSE { return Module(name, items) }
+		init:(i:init ST_SEP+ { return i; })?
+		items:(i:module_item ST_SEP+ { return i; } )*
+		CCLOSE { return Module(name, items, init) }
+
+module_item = values / layout / chain
 
 values = ENUM head:v_val tail:(COMMA v:v_val { return v; })* {
 	return EnumDef([head].concat(tail));
@@ -28,13 +25,16 @@ v_val = name:Id val:(EQ v:INT {return v})? {
 	return EnumValDef(name, val);
 }
 
+init = INIT head:init_item tail:(COMMA ids:init_item { return ids; })* { return ModuleInit([head].concat(tail)); }
+init_item = ids:idr cons:(EQ cons:Cons { return cons; })? { return ModuleInitItem(ids, cons || ConsConst(0)); }
+
 //chains = head:chain tail:(SEMI c:chain { return c} )* { return [head].concat(tail); }
 
-layout = UI l:l_decls { return Layout(l); }
-l_decls = head:l_decl tail:(PIPE d:l_decl { return d })* { return [head].concat(tail) }
+layout = UI ls:l_decls { return Layout(ls); }
+l_decls = head:l_decl tail:(PIPE d:l_decl { return d })* { return [head].concat(tail); }
 l_decl
-	= COPEN ids:l_decls CCLOSE { return ids }
-	/ ids:decl
+	= COPEN decls:l_decls CCLOSE { return LayoutSub(decls); }
+	/ decl:declRef { return LayoutDecl(decl); }
 
 chain 
 	= head:point links:(a:arrow p:point { return ChainLink(a, p); })* {
@@ -47,14 +47,14 @@ arrow
 
 range = a:INT b:('-' i:INT { return i; })? { return makeRange(a, b) }
 
-idrng = '$' r:range { return r.map(i => '$' + i); }
+idr0 = '$' r:range { return r.map(i => '$' + i); }
 
 idr
-	= id:id r:idrng? {
+	= id:id r:idr0? {
 		if (!r) return [id];
 		return r.map(i => id + i);
 	}
-	/ r:idrng
+	/// r:idrng
 
 ports = BOPEN h:port1 t:(COMMA e:port1 {return e})* BCLOSE { return t.reduce((a, b) => a.concat(b), h); }
 port1
@@ -73,16 +73,18 @@ item
 
 //sub_chains = POPEN chains:chains PCLOSE { return chains; }
 
-node = inp:ports? decl:decl out:ports? {
-		return Node(inp, decl, out);
+node = inp:ports? declRef:declRef out:ports? {
+		return Node(inp, declRef, out);
 	}
 	
 
-decl
-	= type:Cons idr:idr? title:title? {
+declRef = declaration / reference
+
+declaration = type:Cons idr:(idr/idr0)? title:title? {
 		return Decl(type, idr, title);
 	}
-	/ idr:idr title:title? {
+
+reference = idr:idr title:title? {
 		return Ref(idr, title);
 	}
 
@@ -101,6 +103,14 @@ Cons
 	/
 	p:processing {
 		return ConsProc(p);
+	}
+	/
+	ps:params {
+		return ConsVec(ps);
+	}
+	/
+	GLOBAL {
+		return ConsGlobal();
 	}
 
 processing = COPEN params:proc_params body:(PIPE b:proc_body {return b})? CCLOSE { return Proc(params, body); }
@@ -172,8 +182,10 @@ STR2 "string2"
 	= ws '"' s:$([^"]*) '"' ws0 { return '"' + s + '"'; }
 NOTE = ws n:$([A-H] [#-b]? DIGIT?) ws0 { return n }
 TSEQ = ws s:$([x.]+) ws0 { return s.split('').map(c => c == 'x' ? 1 : 0) }
-ENUM = ws '@enum' ws0
-UI = ws '@' ('ui'/'UI') ws0
+ENUM = ws '@enum' !LETTER ws0
+UI = ws '@' ('ui'/'UI') !LETTER ws0
+INIT = ws '@' 'init' !LETTER ws0
+GLOBAL = ws '@' 'global' !LETTER ws0
 AGR = ws a:[*_^+] ws0 { return a }
 MUL = ws '*' ws0
 

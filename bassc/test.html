@@ -42,8 +42,8 @@ function run(actionName, source, parseFunc) {
 }
 Kefir.zip([
 	Kefir.fromPromise($.get('bc2.pegjs')),
-	Kefir.fromPromise($.get('prelude.bc')),
-	Kefir.fromPromise($.get('overture.bc')),
+	Kefir.fromPromise($.get('prelude2.bc')),
+	Kefir.fromPromise($.get('overture2.bc')),
 ], (bc2, prelude, overture) => {
 	var grammar = bc2.replace(/\t*"include BCPU";\n?/,
 		Object.keys(BCPU.cls)
@@ -60,6 +60,9 @@ Kefir.zip([
 	//console.log(grammar);
 	var parser = run('parsing grammar', grammar, s => PEG.buildParser(s));
 	// console.log(parser);
+	var preludeAST = run('parsing prelude', prelude, s => parser.parse(s));
+	console.log(preludeAST);
+	run('in prelude', preludeAST, s => s.toMeta());
 	var overtureAST = run('parsing overture', overture, s => parser.parse(s));
 	console.log(overtureAST);
 	run('in overture', overtureAST, s => s.toMeta());

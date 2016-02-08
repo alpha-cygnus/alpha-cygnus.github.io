@@ -38,8 +38,8 @@ class Meta {
 	}
 	compileToSource() {
 		var res = [`class ${this.name} extends ${this.getBase()} {`];
-		res.push('\tconstructor() {');
-		res.push('\t\tsuper();');
+		res.push('\tconstructor(parent, params) {');
+		res.push('\t\tsuper(parent);');
 		this.compileCons(res);
 		res.push('\t}');
 
@@ -54,14 +54,15 @@ class Meta {
 		this.compileAdditional(res);
 
 		res.push('}');
-		res.push(`BC.${this.name} = ${this.name};`)
+		//res.push(`BC.${this.name} = ${this.name};`)
 		return res.join('\n');
 	}
 	compile() {
 		var src = this.compileToSource();
 		var cc = eval(src);
 		this.cc = cc;
-		window[this.name] = cc;
+		BC[this.name] = cc;
+		cc.meta = this;
 	}
 	compileCons(res) {
 		return;
@@ -83,29 +84,39 @@ class MetaModule extends Meta {
 		this.links = {};
 		this.uses = {};
 		this.nodes = {};
+		this.initList = [];
 		this.inpList = [];
 		this.outList = [];
+		this.outByType = {P: [], A: [], MIDI: []};
 		this.layouts = [];
 		this.melodies = [];
 	}
 	compileCons(res) {
+		if (this.initList.length > 0) {
+			res.push('\t\t[' + this.initList.map(nn => `a\$${nn}`).join(', ') + '] = params;');
+		}
 		for (var nn in this.nodes) {
-			var t = this.nodes[nn];
-			var ps = t.params;
-			res.push(`\t\tthis.${nn} = new ${t.type}(${ps.join(', ')});`);
-			if (t.name) {
-				res.push(`\t\tthis.${nn}.name = '${t.name}';`);
+			var node = this.nodes[nn];
+			var ps = node.params;
+			if (node.opts.global) {
+				res.push(`\t\tthis.${nn} = BC.main.${nn};`);
 			}
-			if (t.title) {
-				res.push(`\t\tthis.${nn}.title = ${t.title};`);
+			else if (node.opts.init) {
+				res.push(`\t\tthis.${nn} = (typeof a\$${nn} === 'undefined') ? new ${node.type.name}(this, [${ps.join(', ')}]) : a\$${nn};`);
 			}
-			for (var na in t.opts) {
-				res.push(`\t\tthis.${nn}.${na} = ${t.opts[na]};`);
+			else {
+				res.push(`\t\tthis.${nn} = new ${node.type.name}(this, [${ps.join(', ')}]);`);
+				if (node.name && !node.name.match(/^_/)) {
+					res.push(`\t\tthis.${nn}.name = '${node.name}';`);
+				}
+				if (node.title) {
+					res.push(`\t\tthis.${nn}.title = ${node.title};`);
+				}
 			}
 		}
 		for (var ln in this.links) {
 			var li = this.links[ln];
-			res.push(`\t\tthis.${li.n0}.${li.e0}.connectTo(this.${li.n1}.${li.e1});`);
+			res.push(`\t\tthis.${li.n0}.${li.p0}.connectTo(this.${li.n1}.${li.p1});`);
 		}
 	}
 	compileGetHTML(res) {
@@ -131,13 +142,20 @@ class MetaModule extends Meta {
 	}
 	compileOnStartUI(res) {
 		for (var nn in this.nodes) {
-			var t = this.nodes[nn];
-			var ps = t.params;
+			var node = this.nodes[nn];
+			if (node.opts.global || node.opts.init) continue;
 			res.push(`\t\tthis.${nn}.onStartUI(this);`);
 		}
 	}
-	fixId(tp, id) {
+	fixId(tp, id, onError) {
 		var type = tp.type;
+		var opts = tp.opts || {};
+		if (opts.global) {
+			var mn = BC.meta.main.nodes[id];
+			if (!mn) {
+				return onError(`Global id not found: ${id}`);
+			}
+		}
 		var tn = type.name;
 		var ci = this.uses[tn] || 0;
 		if (!id) id = '_' + tn + '_' + (++ci);
@@ -151,13 +169,23 @@ class MetaModule extends Meta {
 	addNode(tp, id, title) {
 		var type = tp.type;
 		var params = tp.params;
-		var tn = type.name;
+		var opts = tp.opts || {};
+		if (opts.global) {
+			var mn = BC.meta.main.nodes[id];
+			if (mn) {
+				type = mn.type;
+				params = mn.params;
+			}
+		}
 		var node = {
-			type, id, title, params, name: id
+			type, id, title, params, opts, name: id
 		}
 		this.nodes[id] = node;
 		if (type.inpType) this.addInp(node);
 		if (type.outType) this.addOut(node);
+		if (opts.init) {
+			this.initList.push(node.id);
+		}
 		return id;
 	}
 	addInp(inp) {
@@ -167,6 +195,10 @@ class MetaModule extends Meta {
 	addOut(out) {
 		out.outIdx = this.outList.push(out.id) - 1;
 		out.outType = out.type.outType;
+		this.outByType[out.outType].push(out.id);
+	}
+	getDefOutId(type) {
+		return (this.outByType[type || 'P'] || [])[0];
 	}
 	addLayout(l) {
 		this.layouts.push(l);
@@ -387,9 +419,7 @@ global.BC.meta = {
 	compileAll() {
 		for (var c in bcMeta) {
 			var cls = bcMeta[c];
-			var cc = BC[c] || cls.compile();
-			cls.compiled = cc;
-			cc.__meta = cls;
+			var cc = cls.compile();
 		}
 	},
 }
