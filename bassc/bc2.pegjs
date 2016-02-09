@@ -47,7 +47,7 @@ arrow
 
 range = a:INT b:('-' i:INT { return i; })? { return makeRange(a, b) }
 
-idr0 = '$' r:range { return r.map(i => '$' + i); }
+idr0 = '_' r:range { return r.map(i => '_' + i); }
 
 idr
 	= id:id r:idr0? {
@@ -154,7 +154,7 @@ UPPER = [A-Z]
 LOWER = [a-z]
 LETTER = UPPER / LOWER
 DIGIT = [0-9]
-IDSYM = LETTER / DIGIT / '_'
+IDSYM = LETTER / DIGIT
 Id "Identifier" = ws id:$(UPPER IDSYM*) ws0 { return id; }
 id "ident" = ws id:$(LOWER IDSYM*) ws0 { return id; }
 INT "integer" = ws num:$(('+'/'-')? DIGIT+) ws0 { return parseInt(num, 10); }
@@ -182,10 +182,10 @@ STR2 "string2"
 	= ws '"' s:$([^"]*) '"' ws0 { return '"' + s + '"'; }
 NOTE = ws n:$([A-H] [#-b]? DIGIT?) ws0 { return n }
 TSEQ = ws s:$([x.]+) ws0 { return s.split('').map(c => c == 'x' ? 1 : 0) }
-ENUM = ws '@enum' !LETTER ws0
-UI = ws '@' ('ui'/'UI') !LETTER ws0
-INIT = ws '@' 'init' !LETTER ws0
-GLOBAL = ws '@' 'global' !LETTER ws0
+ENUM = ws '@enum' !IDSYM ws0
+UI = ws '@' ('ui'/'UI') !IDSYM ws0
+INIT = ws '@' 'init' !IDSYM ws0
+GLOBAL = ws '@' 'global' !IDSYM ws0
 AGR = ws a:[*_^+] ws0 { return a }
 MUL = ws '*' ws0
 

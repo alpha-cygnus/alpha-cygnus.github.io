@@ -93,7 +93,7 @@ class MetaModule extends Meta {
 	}
 	compileCons(res) {
 		if (this.initList.length > 0) {
-			res.push('\t\t[' + this.initList.map(nn => `a\$${nn}`).join(', ') + '] = params;');
+			res.push('\t\t[' + this.initList.map(nn => `a_${nn}`).join(', ') + '] = params;');
 		}
 		for (var nn in this.nodes) {
 			var node = this.nodes[nn];
@@ -102,7 +102,7 @@ class MetaModule extends Meta {
 				res.push(`\t\tthis.${nn} = BC.main.${nn};`);
 			}
 			else if (node.opts.init) {
-				res.push(`\t\tthis.${nn} = (typeof a\$${nn} === 'undefined') ? new ${node.type.name}(this, [${ps.join(', ')}]) : a\$${nn};`);
+				res.push(`\t\tthis.${nn} = (typeof a_${nn} === 'undefined') ? new ${node.type.name}(this, [${ps.join(', ')}]) : a_${nn};`);
 			}
 			else {
 				res.push(`\t\tthis.${nn} = new ${node.type.name}(this, [${ps.join(', ')}]);`);
@@ -159,9 +159,9 @@ class MetaModule extends Meta {
 		var tn = type.name;
 		var ci = this.uses[tn] || 0;
 		if (!id) id = '_' + tn + '_' + (++ci);
-		if (id.toString().match(/^\$\d+$/)) {
+		if (id.toString().match(/^_\d+$/)) {
 			++ci;
-			id = '_' + tn + id + ci;
+			id = '_' + tn + id + '_' + ci;
 		}
 		this.uses[tn] = ci;
 		return id;

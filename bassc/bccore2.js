@@ -686,7 +686,7 @@ class BinDemux extends BaseNode {
 		super(parent);
 		this.inp = new PIN(this);
 		for (var i = 0; i < 16; i++) {
-			var out = this['out$' + i] = new POUT(this);
+			var out = this['out_' + i] = new POUT(this);
 			let bi = i;
 			let b = 1 << bi;
 			out.plugStream(
@@ -701,7 +701,7 @@ class QDemux extends BaseNode {
 		super(parent);
 		this.inp = new PIN(this);
 		for (var i = 0; i < 16; i++) {
-			var out = this['out$' + i] = new POUT(this);
+			var out = this['out_' + i] = new POUT(this);
 			let bi = i*2;
 			let b = 3 << bi;
 			out.plugStream(
