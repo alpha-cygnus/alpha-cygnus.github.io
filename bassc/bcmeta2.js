@@ -349,8 +349,8 @@ class MetaProc extends MetaModule {
 		}
 		if (!body) body = proc.params.map(p => p.name).join(' + ');
 		res.push('\t\tthis.out = new POUT();')
-		res.push(`\t\tthis.procFunc = (${proc.params.map(p => p.name).join(', ')}) => ${body}`);
-		res.push(`\t\tthis.out.plug(Kefir.zip([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], this.procFunc))`);
+		res.push(`\t\tthis._procFunc = (${proc.params.map(p => p.name).join(', ')}) => ${body}`);
+		res.push(`\t\tthis.out.plug(Kefir.zip([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], this._procFunc))`);
 	}
 }
 

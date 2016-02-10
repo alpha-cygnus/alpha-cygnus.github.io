@@ -86,10 +86,12 @@ MidiPitchWheel {
 }
 MidiCC {
 	@init ccn
-	MIDIIN -> MidiFilter<{ccn,t,n|t == 'cc' && n == ccn}, ccn> -> MidiExtract[v] -> POUT
+	MIDIIN -> MidiFilter<{t,n|t == 'cc' && n == ccn}> -> MidiExtract[v] -> POUT
 }
 
-MidiFilter<{t,c,n,v|c == 0 && t in {on:1, off:1}}>
+{<x,y>a,b,c->d,e,f|[x,yy,xx]}<1, 2>
+
+MidiFilter<{<cn>t,c,n,v|c == 0 && t in {on:1, off:1}}>
 
 MidiExtract[v] 
 

@@ -113,7 +113,8 @@ Cons
 		return ConsGlobal();
 	}
 
-processing = COPEN params:proc_params body:(PIPE b:proc_body {return b})? CCLOSE { return Proc(params, body); }
+processing = COPEN init:proc_init? params:proc_params out:proc_out? body:(PIPE b:proc_body {return b})? CCLOSE { return Proc(params, body); }
+proc_init = AOPEN head:idr tail:(COMMA ids:idr { return ids; })* ACLOSE { return [head].concat(tail).reduce((a,b) => a.concat(b)); }
 proc_params = h:proc_param t:(COMMA p:proc_param {return p})* { return [h].concat(t); }
 proc_param = agr:AGR? name:id? def:(EQ v:num {return v})? { return ProcParam(agr, name, def); }
 proc_body = CODE
@@ -127,7 +128,7 @@ param = pval
 pval 
 	= n:num { return ParamNum(n); }
 	/ p:processing { return ParamProc(p); }
-	/ idr:idr { return ParamRef(ids); }
+	/ idr:idr { return ParamRef(idr); }
 	/// str
 	/// note
 	/ id:Id { return ParamEnum(id); }

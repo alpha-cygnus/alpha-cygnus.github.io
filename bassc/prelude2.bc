@@ -192,6 +192,7 @@ UIKeyboard {
 }
 
 MidiHub {
+	@init filterProc
 	MIDIIN inp
 	MIDIOUT out
 }

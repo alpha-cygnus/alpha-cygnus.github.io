@@ -21,8 +21,9 @@ function _apply(fn) {
 }
 
 class BaseNode {
-	constructor(parent) {
+	constructor(parent, params) {
 		this._parent = parent;
+		this._params = params || [];
 	}
 	getAudioBias() {
 		return Tone.Signal._constant;
@@ -33,9 +34,13 @@ class BaseNode {
 	onStartUI() {
 		return;
 	}
+	getMeta() {
+		return this.constructor.meta;
+	}
 	getDefOut(t) {
-		if (!this.meta) return null;
-		var id = this.meta.getDeftOutId(t);
+		var meta = this.getMeta();
+		if (!meta) return null;
+		var id = meta.getDeftOutId(t);
 		return this[id];
 	}
 	getDefPOUT() {
@@ -61,7 +66,7 @@ class Port extends BaseNode {
 
 class MIDIPort extends Port {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 		this.pool = Kefir.pool();
 		this.plugged = theCore.tickStream.map(t => []);
 		this.pool.plugStream(this.plugged);
@@ -77,7 +82,7 @@ class MIDIPort extends Port {
 		} else {
 			this.plugged = obs;
 		}
-		this.pool.plugStream(this.plugged);
+		this.pool.plug(this.plugged);
 		return this;
 	}
 	connectTo(port) {
@@ -112,7 +117,7 @@ class MIDIIN extends MIDIPort {
 // P(arametric/rocessing) IN/OUT
 class PPort extends Port {
 	constructor(parent, [def], agrFun, agrInit) {
-		super(parent);
+		super(...arguments);
 		this.agrFun = agrFun || ((a, b) => a + b);
 		this.agrInit = agrInit || 0;
 		this.pool = Kefir.pool();
@@ -215,7 +220,7 @@ class PIN extends PPort {
 // Audio in/out
 class APort extends Port {
 	constructor(parent, [def]) {
-		super(parent);
+		super(...arguments);
 		this.gain = Tone.context.createGain();
 		if (typeof def != 'undefined') {
 			this.gain.gain.value = def;
@@ -348,7 +353,7 @@ const theCore = new Core();
 
 class MidiNotesBaseNode extends BaseNode { // abstract
 	constructor(parent, [mode]) {
-		super(parent);
+		super(...arguments);
 		this.inp = new MIDIIN(this);
 		this.out = new POUT(this);
 
@@ -385,7 +390,7 @@ const M2TModes = ['bool', 'retrig', 'count']
 
 class MidiTrigger extends MidiNotesBaseNode {
 	constructor(parent, [mode]) {
-		super(parent);
+		super(...arguments);
 		this.smode = M2TModes[mode];
 	}
 	getValue() {
@@ -404,7 +409,7 @@ const M2NModes = ['max', 'min', 'last', 'first'];
 
 class MidiNote extends MidiNotesBaseNode {
 	constructor(parent, [mode]) {
-		super(parent);
+		super(...arguments);
 		this.smode = M2NModes[mode];
 	}
 	getEffectives() {
@@ -431,7 +436,7 @@ const P2AModes = ['set', 'linear', 'exp'];
 
 class P2A extends BaseNode {
 	constructor(parent, [mode, lag]) {
-		super(parent);
+		super(...arguments);
 		this.smode = P2AModes[mode] || 'set';
 		this.lag = lag < 0 ? 0 : lag || 0;
 		this.inp = new PIN(this);
@@ -443,32 +448,30 @@ class P2A extends BaseNode {
 		
 		this.last = undefined;
 		Kefir.zip([theCore.tickStream, this.inp.stream])
-			.onValue(_apply(
-				(t, v) => {
-					if (v === undefined) return;
-					if (isNaN(v)) return;
-					if (this.last != v) {
-						switch (this.smode) {
-							case 'set':
-								this.pgain.setValueAtTime(v, t + this.lag);
-								break;
-							case 'linear':
-								this.pgain.linearRampToValueAtTime(v, t + this.lag);
-								break;
-							case 'exp':
-								this.pgain.exponentialRampToValueAtTime(v, t + this.lag);
-								break;
-						}
+			.onValue(([t, v]) => {
+				if (v === undefined) return;
+				if (isNaN(v)) return;
+				if (this.last != v) {
+					switch (this.smode) {
+						case 'set':
+							this.pgain.setValueAtTime(v, t + this.lag);
+							break;
+						case 'linear':
+							this.pgain.linearRampToValueAtTime(v, t + this.lag);
+							break;
+						case 'exp':
+							this.pgain.exponentialRampToValueAtTime(v, t + this.lag);
+							break;
 					}
-					this.last = v;
 				}
-			));
+				this.last = v;
+			});
 	}
 }
 
 class ADSR extends BaseNode {
 	constructor(parent, [a, d, s, r]) {
-		super(parent);
+		super(...arguments);
 
 		this.inp = new AIN(this, [1]);
 		this.out = new AOUT(this);
@@ -504,7 +507,7 @@ const OSCTypes = ['sine', 'square', 'sawtooth', 'triangle'];
 
 class Osc extends BaseNode {
 	constructor(parent, [type]) {
-		super(parent);
+		super(...arguments);
 		this.trigger = new PIN(this, [1]);
 		this.stype = OSCTypes[type || 0];
 		this.osc = null;
@@ -545,7 +548,7 @@ class Osc extends BaseNode {
 
 class Dest extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 		this.inp = new AIN(this);
 		this.gain = global.mainGain || Tone.context.createGain();
 		global.mainGain = this.gain;
@@ -557,7 +560,7 @@ class Dest extends BaseNode {
 
 class Gain extends BaseNode {
 	constructor(parent, [def]) {
-		super(parent);
+		super(...arguments);
 		this.g = Tone.context.createGain();
 		this.g.gain.value = 0;
 		this.inp = new AIN(this).bind(this.g);
@@ -568,7 +571,7 @@ class Gain extends BaseNode {
 
 class Delay extends BaseNode {
 	constructor(parent, [def]) {
-		super(parent);
+		super(...arguments);
 		this.d = Tone.context.createDelay();
 		this.d.delayTime.value = 0;
 		this.inp = new AIN(this).bind(this.d);
@@ -579,7 +582,7 @@ class Delay extends BaseNode {
 
 class Pan extends BaseNode {
 	constructor(parent, [def]) {
-		super(parent);
+		super(...arguments);
 		this.p = Tone.context.createStereoPanner();
 		this.p.pan.value = 0;
 		this.inp = new AIN(this).bind(this.p);
@@ -590,7 +593,7 @@ class Pan extends BaseNode {
 
 class Const extends BaseNode {
 	constructor(parent, [v]) {
-		super(parent);
+		super(...arguments);
 		this.c = this.getAudioBias();
 		this.g = Tone.context.createGain();
 		this.g.gain.value = v;
@@ -604,7 +607,7 @@ class Const extends BaseNode {
 
 class Noise extends BaseNode {
 	constructor(parent, [def]) {
-		super(parent);
+		super(...arguments);
 		this.n = new Tone.Noise();
 		this.n.start();
 		this.out = new AOUT(this).bind(this.n);
@@ -615,7 +618,7 @@ const FLTTypes = ['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'p
 
 class Filter extends BaseNode {
 	constructor(parent, [type]) {
-		super(parent);
+		super(...arguments);
 		this.stype = FLTTypes[type || 0];
 		this.flt = Tone.context.createBiquadFilter();
 		this.flt.type = this.stype;
@@ -629,7 +632,7 @@ class Filter extends BaseNode {
 
 class Clock extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 		this.value = 0;
 		this.trigger = new PIN(this, 1);
 		this.out = new POUT(this);
@@ -648,7 +651,7 @@ class Clock extends BaseNode {
 
 class Count extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 		this.inp = new PIN(this);
 		this.reset = new PIN(this, 1);
 		this.value = 0;
@@ -669,7 +672,7 @@ class Count extends BaseNode {
 
 class Vec extends BaseNode {
 	constructor(parent, values) {
-		super(parent);
+		super(...arguments);
 		this.values = values;
 		this.inp = new PIN(this);
 		this.out = new POUT(this);
@@ -683,7 +686,7 @@ class Vec extends BaseNode {
 
 class BinDemux extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 		this.inp = new PIN(this);
 		for (var i = 0; i < 16; i++) {
 			var out = this['out_' + i] = new POUT(this);
@@ -698,7 +701,7 @@ class BinDemux extends BaseNode {
 
 class QDemux extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 		this.inp = new PIN(this);
 		for (var i = 0; i < 16; i++) {
 			var out = this['out_' + i] = new POUT(this);
@@ -714,13 +717,13 @@ class QDemux extends BaseNode {
 // abstract base for modules
 class Module extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 	}
 }
 // abstract base for proc nodes
 class Proc extends BaseNode {
 	constructor(parent) {
-		super(parent);
+		super(...arguments);
 	}
 }
 
