@@ -197,6 +197,11 @@ MidiHub {
 	MIDIOUT out
 }
 
+MidiExtract {
+	MIDIIN inp
+	POUT t, c, n, v
+}
+
 MidiPoly {
 	MIDIIN inp
 	MIDIOUT out_0-15

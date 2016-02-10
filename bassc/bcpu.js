@@ -344,10 +344,12 @@
 		}
 	}
 	class Proc extends Cons {
-		constructor(params, body) {
+		constructor(params, body, init, outs) {
 			super();
 			this.params = params;
 			this.body = body;
+			this.init = init;
+			this.outs = outs;
 		}
 	}
 	class ProcParam extends SyntaxElem {
@@ -381,7 +383,7 @@
 		}
 		toMeta(_cc, _ct) {
 			var decl = new Decl(new ConsProc(this.proc));
-			var id = delc.toMeta(_cc).ids[0];
+			var id = decl.toMeta(_cc).ids[0];
 			return [`this.${id}`];
 		}
 	}

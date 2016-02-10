@@ -39,7 +39,7 @@ class Meta {
 	compileToSource() {
 		var res = [`class ${this.name} extends ${this.getBase()} {`];
 		res.push('\tconstructor(parent, params) {');
-		res.push('\t\tsuper(parent);');
+		res.push('\t\tsuper(...arguments);');
 		this.compileCons(res);
 		res.push('\t}');
 
@@ -59,7 +59,8 @@ class Meta {
 	}
 	compile() {
 		var src = this.compileToSource();
-		var cc = eval(src);
+		var cc = BC[this.name];
+		if (!cc) cc = eval(src);
 		this.cc = cc;
 		BC[this.name] = cc;
 		cc.meta = this;
@@ -93,19 +94,19 @@ class MetaModule extends Meta {
 	}
 	compileCons(res) {
 		if (this.initList.length > 0) {
-			res.push('\t\t[' + this.initList.map(nn => `a_${nn}`).join(', ') + '] = params;');
+			res.push('\t\tvar [' + this.initList.map(nn => `a_${nn}`).join(', ') + '] = params;');
 		}
 		for (var nn in this.nodes) {
 			var node = this.nodes[nn];
-			var ps = node.params;
+			var ps = node.params || [];
 			if (node.opts.global) {
 				res.push(`\t\tthis.${nn} = BC.main.${nn};`);
 			}
 			else if (node.opts.init) {
-				res.push(`\t\tthis.${nn} = (typeof a_${nn} === 'undefined') ? new ${node.type.name}(this, [${ps.join(', ')}]) : a_${nn};`);
+				res.push(`\t\tthis.${nn} = (typeof a_${nn} === 'undefined') ? new BC.${node.type.name}(this, [${ps.join(', ')}]) : a_${nn};`);
 			}
 			else {
-				res.push(`\t\tthis.${nn} = new ${node.type.name}(this, [${ps.join(', ')}]);`);
+				res.push(`\t\tthis.${nn} = new BC.${node.type.name}(this, [${ps.join(', ')}]);`);
 				if (node.name && !node.name.match(/^_/)) {
 					res.push(`\t\tthis.${nn}.name = '${node.name}';`);
 				}
@@ -322,7 +323,18 @@ class MetaProc extends MetaModule {
 			if (!p.name) p.name = '$' + ++i;
 			this.addNode({type: bcMeta.PIN}, p.name);
 		}
-		this.addNode({type: bcMeta.POUT}, 'out');
+		if (proc.init) {
+			for (var nn of proc.init) {
+				this.addNode({type: bcMeta.PIN}, nn);
+			}
+		}
+		if (proc.outs) {
+			for (var out of proc.outs) {
+				this.addNode({type: bcMeta.POUT}, out);
+			}
+		} else {
+			this.addNode({type: bcMeta.POUT}, 'out');
+		}
 	}
 	getBase() {
 		return 'BC.Proc';
@@ -335,7 +347,17 @@ class MetaProc extends MetaModule {
 			if (body.indexOf(n) < 0) continue;
 			res.push(`\t\tvar ${n} = Math.${n};`);
 		}
-		var pns = [];
+		var initList = proc.init || [];
+		if (initList.length > 0) {
+			res.push('\t\tvar [' + initList.map(nn => `a_${nn}`).join(', ') + '] = params;');
+		}
+		var pins = [];
+		var pars = [];
+		for (var nn of initList) {
+			res.push(`\t\tthis.${nn} = new BC.PIN(this, [a_${nn}]);`);
+			pins.push(nn);
+			pars.push(nn);
+		}
 		for (var p of proc.params) {
 			var agr = p.agr || '+';
 			var af = {
@@ -345,12 +367,24 @@ class MetaProc extends MetaModule {
 				'^': ['Math.max(a, b)', -100000],
 			}[agr];
 			var def = p.def || af[1];
-			res.push(`\t\tthis.${p.name} = new PIN(${def}, (a, b) => ${af[0]}, ${af[1]})`);
+			res.push(`\t\tthis.${p.name} = new BC.PIN(this, [${def}], (a, b) => ${af[0]}, ${af[1]});`);
+			pins.push(p.name);
+			pars.push(p.name);
 		}
-		if (!body) body = proc.params.map(p => p.name).join(' + ');
-		res.push('\t\tthis.out = new POUT();')
-		res.push(`\t\tthis._procFunc = (${proc.params.map(p => p.name).join(', ')}) => ${body}`);
-		res.push(`\t\tthis.out.plug(Kefir.zip([${proc.params.map(p => 'this.' + p.name + '.stream').join(', ')}], this._procFunc))`);
+		if (!body) body = pins.join(' + ');
+		res.push(`\t\tthis._procFunc = ({${pars.join(', ')}}) => ${body};`);
+		res.push(`\t\tthis._procParams = [${pars.map(p => `'${p}'`).join(', ')}];`);
+		res.push(`\t\tvar stream
+			= Kefir.zip([${pins.map(p => `this.${p}.stream`).join(', ')}])
+				.map(([${pars.join(', ')}]) => {
+					var _res = this._procFunc({${pars.join(', ')}});
+					return $.isArray(_res) ? _res : [_res];
+				});`)
+		for (var i = 0; i < this.outByType.P.length; i++) {
+			var out = this.outByType.P[i];
+			res.push(`\t\tthis.${out} = new BC.POUT(this, []);`)
+			res.push(`\t\tthis.${out}.plugStream(stream.map(v => v[${i}] || 0));`);
+		}
 	}
 }
 

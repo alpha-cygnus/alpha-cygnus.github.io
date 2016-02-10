@@ -20,25 +20,25 @@ function showError(msg) {
 	$('#error').html($('#error').html() + msg + '<br />');
 }
 function run(actionName, source, parseFunc) {
-	//try {
+	try {
 		var result = parseFunc(source);
 		return result;
-	// }
-	// catch(e) {
-	// 	console.error(e);
-	// 	if (e.location && e.message) {
-	// 		var msg = `Error ${actionName} at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
-	// 		showError(msg);
-	// 		throw msg;
-	// 	} else {
-	// 		var msg = `Error ${actionName}`;
-	// 		if (e.message) msg += ': ' + e.message;
-	// 		msg += '<br />See console';
-	// 		showError(msg);
-	// 		debugger;
-	// 		parseFunc(source); // rethrow
-	// 	}
-	// }
+	}
+	catch(e) {
+		console.error(e);
+		if (e.location && e.message) {
+			var msg = `Error ${actionName} at ${e.location.start.line}:${e.location.start.column}: ${e.message}`;
+			showError(msg);
+			throw msg;
+		} else {
+			var msg = `Error ${actionName}`;
+			if (e.message) msg += ': ' + e.message;
+			msg += '<br />See console';
+			showError(msg);
+			debugger;
+			parseFunc(source); // rethrow
+		}
+	}
 }
 Kefir.zip([
 	Kefir.fromPromise($.get('bc2.pegjs')),

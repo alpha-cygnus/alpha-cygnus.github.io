@@ -1,5 +1,6 @@
 #include <ins/drums>
 
+{<a,b,c>d,e->f,g|[d*a,e*b + c]}
 
 Note2Detune {
 	PIN -> {n|(n - 69)*100} -> P2A -> AOUT
@@ -82,16 +83,16 @@ dmx[0-3] => (BD -> *5), (SN -> *1), (CHH -> *1), (OHH -> *1) -> *0.2 -> Dest
 @UI tv | dmx_0-3
 
 MidiPitchWheel {
-	MIDIIN -> MidiFilter<{t|t == 'pitch'}> -> MidiExtract[v] -> POUT
+	MIDIIN -> MidiHub<{t|t == 'pitch'}> -> MidiExtract[v] -> POUT
 }
-MidiCC {
+MidiGetCC {
 	@init ccn
-	MIDIIN -> MidiFilter<{t,n|t == 'cc' && n == ccn}> -> MidiExtract[v] -> POUT
+	MIDIIN -> MidiHub<{t,n|t == 'cc' && n == ccn}> -> MidiExtract[v] -> POUT
 }
 
-{<x,y>a,b,c->d,e,f|[x,yy,xx]}<1, 2>
+{<x,y>a,b,c->d,e,f|[x,yy,xx]}
 
-MidiFilter<{<cn>t,c,n,v|c == 0 && t in {on:1, off:1}}>
+MidiHub<{<cn>t,c,n,v|c == 0 && t in {on:1, off:1}}>
 
 MidiExtract[v] 
 
