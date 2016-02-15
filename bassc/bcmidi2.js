@@ -1,4 +1,7 @@
+(function(global) {
 "use strict";
+
+var midi = BC.midi;
 
 class MidiProc {
 	constructor() {
@@ -20,7 +23,7 @@ class MidiProc {
 	}
 	midiMessageHandler(mm) {
 		var v = this.decode(mm.data);
-		console.log('MIDI', mm.data, v);
+		//console.log('MIDI', mm.data, v);
 		if (!v) return;
 		for (let id in this.listeners) {
 			this.listeners[id](v);
@@ -30,24 +33,26 @@ class MidiProc {
 		var hi = data[0] >> 4;
 		var lo = data[0] & 0xF;
 		switch(hi) {
-			case 0x8:
-			case 0x9:
+			case midi.ON:
+			case midi.OFF:
 				return {
-					t: hi == 9 ? 'on' : 'off',
+					t: hi,
 					c: lo,
 					n: data[1],
 					v: data[2],
 				};
-			case 0xE:
+			case midi.PITCH:
+				var v = data[2]*128.0 + data[1] - 8192;
 				return {
-					t: 'pitch',
+					t: hi,
 					c: lo,
-					v: (data[2]*128.0 + data[1]) / 8192 - 1,
+					n: 0,
+					v: v > 0 ? v/8191 : v/8192,
 				}
-			case 0xB:
+			case midi.CC:
 				if (data[1] < 120) {
 					return {
-						t: 'cc',
+						t: hi,
 						c: lo,
 						n: data[1],
 						v: data[2]/127,
@@ -55,6 +60,22 @@ class MidiProc {
 				} else {
 					return; // TBD
 				}
+			case midi.PAT:
+				return {
+					t: hi,
+					c: lo,
+					n: data[1],
+					v: data[2]/127,
+				}
+			case midi.CAT:
+				return {
+					t: hi,
+					c: lo,
+					n: 0,
+					v: data[1]/127,
+				}
+			case midi.PC:
+				return 
 		}
 	}
 	addListener(fun) {
@@ -63,13 +84,98 @@ class MidiProc {
 	}
 }
 
-var theMidi = new MidiProc();
+const midi = {
+	OFF: 0x8,
+	ON: 0x9,
+	PAT: 0xA,
+	CC: 0xB,
+	PC: 0xC,
+	CAT: 0xD,
+	PITCH: 0xE,
+	proc = new MidiProc(),
+};
 
-function midiMessageHandler(mm) {
-	console.log('MIDI', mm.data);
+class MidiNotesBaseNode extends BC.BaseNode { // abstract
+	constructor(parent, [mode]) {
+		super(...arguments);
+		this.inp = new MIDIIN(this, []);
+		this.out = new POUT(this, []);
+
+		this.noteSet = {};
+		this.noteList = {};
+		this.nc = 0;
+		this.value = 0;
+		this.out.plugStream(
+			this.inp.stream.map(vs => {
+				for (var v of vs) {
+					if (v.t === midi.ON) {
+						if (this.noteSet[v.n]) continue;
+						this.nc++;
+						this.noteSet[v.n] = this.nc;
+						this.noteList[this.nc] = v.n;
+					}
+					if (v.t === midi.OFF) {
+						var nc = this.noteSet[v.n];
+						delete this.noteSet[v.n];
+						delete this.noteList[nc];
+					}
+				}
+				this.value = this.getValue();
+				return this.value;
+			})
+		)
+	}
+	getValue() {
+		throw "Define getValue";
+	}
 }
 
-	
+const MTModes = ['bool', 'retrig', 'count']
+
+class MidiTrigger extends MidiNotesBaseNode {
+	constructor(parent, [mode]) {
+		super(...arguments);
+		this.smode = MTModes[mode];
+	}
+	getValue() {
+		switch(this.smode) {
+			case 'count':
+				return Object.keys(this.noteSet).length;
+			case 'retrig':
+				return Object.keys(this.noteSet).length ? this.nc : 0;
+			default: return Object.keys(this.noteSet).length > 0 ? 1 : 0;
+		}
+		
+	}
+}
+
+const MNModes = ['max', 'min', 'last', 'first'];
+
+class MidiNote extends MidiNotesBaseNode {
+	constructor(parent, [mode]) {
+		super(...arguments);
+		this.smode = MNModes[mode];
+	}
+	getEffectives() {
+		switch(this.smode) {
+			case 'min': return [Math.min, this.noteSet];
+			case 'first': return [Math.min, this.noteList];
+			case 'last': return [Math.max, this.noteList];
+			default: return [Math.max, this.noteSet]; // defaults to max
+		}
+	}
+	getValue() {
+		var efs = this.getEffectives();
+		var f = efs[0], set = efs[1];
+		var lst = Object.keys(set);
+		if (lst.length < 1) return this.value;
+		var n = f.apply(Math, lst);
+		if (set === this.noteList) n = this.noteList[n];
+		this.value = n;
+		return n;
+	}
+}
+
 class MidiHub extends BC.BaseNode {
 	constructor(parent, [procFilter]) {
 		super(...arguments);
@@ -83,12 +189,24 @@ class MidiHub extends BC.BaseNode {
 	}
 }
 
+class MidiLog extends BC.BaseNode {
+	constructor(parent) {
+		super(...arguments);
+		this.inp = new MIDIIN();
+		this.inp.stream.onValue(vs => {
+			for (var v of vs) {
+				console.log('MidiLog.', this.name || '?', v);
+			}
+		});
+	}
+}
+
 class WebMidi extends BC.BaseNode {
 	constructor(parent) {
 		super(...arguments);
 		this.out = new MIDIOUT();
 		this.buffer = [];
-		theMidi.addListener(v => this.addToBuffer(v));
+		midi.proc.addListener(v => this.addToBuffer(v));
 		this.out.produceFromBuffer(this, 'buffer');
 	}
 	addToBuffer(v) {
@@ -200,7 +318,7 @@ class MidiCC extends BC.BaseNode {
 		this.out.plugStream(
 			this.inp.stream.scan((v, es) => {
 				for (var e of es) {
-					if (e.t == 'cc' && e.n == this.ccn) v = e.v;
+					if (e.t == midi.CC && e.n == this.ccn) v = e.v;
 				}
 				return v;
 			}, 0)
@@ -218,10 +336,70 @@ class MidiPitchWheel extends BC.BaseNode {
 		this.out.plugStream(
 			this.inp.stream.scan((v, es) => {
 				for (var e of es) {
-					if (e.t == 'pitch') v = e.v;
+					if (e.t == midi.PITCH) v = e.v;
 				}
 				return v;
 			}, 0)
 		);
 	}
 }
+
+class MidiFilter extends BC.BaseNode {
+	constructor(parent, [procFilter]) {
+		super(...arguments);
+		var filter = x => 1;
+		this.inp = new MIDIIN();
+		this.out = new MIDIOUT();
+		var stream = this.inp.stream;
+		if (procFilter instanceof BC.Proc) {
+			stream = Kefir.zip([this.inp.stream, procFilter.getFuncStream(['t', 'c', 'n', 'v'])], (ms, func) {
+				var res = [];
+				for (var m of ms) {
+					var {t, c, n, v} = m;
+					if (func(t, c, n, v)) {
+						res.push(m);
+					}
+				}
+				return res;
+			});
+		}
+		this.out.plugStream(stream);
+	}
+}
+
+class MidiExtract extends BC.BaseNode {
+	constructor(parent, [proc]) {
+		super(...arguments);
+		this.inp = new MIDIIN();
+		this.out = new MIDIOUT();
+		this.prev = 0;
+		var stream = this.inp.stream;
+		if (proc instanceof BC.Proc) {
+			stream = Kefir.zip([this.inp.stream, proc.getFuncStream(['t', 'c', 'n', 'v', 'prev'])], (ms, func) {
+				for (var m of ms) {
+					var {t, c, n, v} = m;
+					var res = func(t, c, n, v, this.prev);
+					this.prev = res;
+				}
+				if (!$.isArray(res)) res = [res];
+				return res[0];
+			});
+		}
+		this.out.plugStream(stream);
+	}
+}
+
+$.extend(BC, {
+	MidiHub,
+	WebMidi,
+	MidiPoly,
+	MidiLog,
+	MidiTrigger,
+	MidiNote,
+	MidiCC,
+	MidiPitchWheel,
+	MidiFilter,
+	MidiExtract,
+});
+
+})(this);

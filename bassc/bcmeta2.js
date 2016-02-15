@@ -351,13 +351,15 @@ class MetaProc extends MetaModule {
 		if (initList.length > 0) {
 			res.push('\t\tvar [' + initList.map(nn => `a_${nn}`).join(', ') + '] = params;');
 		}
-		var pins = [];
 		var pars = [];
 		for (var nn of initList) {
 			res.push(`\t\tthis.${nn} = new BC.PIN(this, [a_${nn}]);`);
-			pins.push(nn);
 			pars.push(nn);
 		}
+		if (!body) body = pins.join(' + ');
+		res.push(`\t\tthis._procFunc = ({${pars.join(', ')}}) => ${body};`);
+		res.push(`\t\tthis._procParams = [${pars.map(p => `'${p}'`).join(', ')}];`);
+		res.push(`\t\tthis._procAgr = {};`);
 		for (var p of proc.params) {
 			var agr = p.agr || '+';
 			var af = {
@@ -365,21 +367,19 @@ class MetaProc extends MetaModule {
 				'*': ['a * b', 1],
 				'_': ['Math.min(a, b)', 100000],
 				'^': ['Math.max(a, b)', -100000],
+				// '<': ['a === "0" ? b : a', "0"],
+				'$': ['b', 0],
 			}[agr];
 			var def = p.def || af[1];
 			res.push(`\t\tthis.${p.name} = new BC.PIN(this, [${def}], (a, b) => ${af[0]}, ${af[1]});`);
-			pins.push(p.name);
+			res.push(`\t\tthis._procAgr.${p.name} = [(a, b) => ${af[0]}, ${af[1]}, ${def}];`);
 			pars.push(p.name);
 		}
-		if (!body) body = pins.join(' + ');
-		res.push(`\t\tthis._procFunc = ({${pars.join(', ')}}) => ${body};`);
-		res.push(`\t\tthis._procParams = [${pars.map(p => `'${p}'`).join(', ')}];`);
-		res.push(`\t\tvar stream
-			= Kefir.zip([${pins.map(p => `this.${p}.stream`).join(', ')}])
-				.map(([${pars.join(', ')}]) => {
-					var _res = this._procFunc({${pars.join(', ')}});
-					return $.isArray(_res) ? _res : [_res];
-				});`)
+		res.push(`\t\tthis._pinStream = Kefir.zip([${pars.map(p => `this.${p}.stream`).join(', ')}], (${pars.join(', ')}) => { return {${pars.join(', ')}}});`);
+		res.push(`\t\tvar stream = this._pinStream.map(args => {
+				var _res = this._procFunc(args);
+				return $.isArray(_res) ? _res : [_res];
+			});`)
 		for (var i = 0; i < this.outByType.P.length; i++) {
 			var out = this.outByType.P[i];
 			res.push(`\t\tthis.${out} = new BC.POUT(this, []);`)

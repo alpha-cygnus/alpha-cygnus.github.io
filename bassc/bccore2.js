@@ -68,7 +68,7 @@ class MIDIPort extends Port {
 	constructor(parent) {
 		super(...arguments);
 		this.pool = Kefir.pool();
-		this.plugged = theCore.tickStream.map(t => []);
+		this.plugged = core.tickStream.map(t => []);
 		this.pool.plug(this.plugged);
 		this.inStreams = [];
 	}
@@ -99,7 +99,7 @@ class MIDIPort extends Port {
 class MIDIOUT extends MIDIPort {
 	produceFromBuffer(obj, field, onBeforeProduce) {
 		this.obj = obj;
-		var stream = theCore.tickStream.map(t => {
+		var stream = core.tickStream.map(t => {
 			if (onBeforeProduce) onBeforeProduce(t);
 			var vs = this.obj[field];
 			this.obj[field] = [];
@@ -129,7 +129,7 @@ class PPort extends Port {
 			defStream = pout.stream;
 		} else {
 			this.value = (def || 0)*1;
-			defStream = theCore.tickStream.map(t => this.value);
+			defStream = core.tickStream.map(t => this.value);
 		}
 		this.plugged = defStream;
 		this.pool.plug(this.plugged);
@@ -185,7 +185,7 @@ class POUT extends PPort {
 			last: undefined
 		};
 		this[field + 'Stream'];
-		var stream = theCore.tickStream.map(t => {
+		var stream = core.tickStream.map(t => {
 			if (onBeforeProduce) onBeforeProduce(t);
 			if (obj[field] !== state.last) {
 				state.last = obj[field];
@@ -198,7 +198,7 @@ class POUT extends PPort {
 		return this;
 	}
 	produceFromFunction(fun) {
-		var stream = theCore.tickStream.map(fun);
+		var stream = core.tickStream.map(fun);
 		this.plugStream(stream);
 		state.stream = stream;
 		obj[field + 'State'] = state;
@@ -288,8 +288,8 @@ class Core {
 			var fun = (t) => {
 				emitter.emit(t);
 			}
-			theCore.onProduce(fun);
-			return () => theCore.offProduce(fun);
+			core.onProduce(fun);
+			return () => core.offProduce(fun);
 		})
 	}
 	onProduce(fun) {
@@ -349,88 +349,7 @@ class Core {
 	}
 };
 
-const theCore = new Core();
-
-class MidiNotesBaseNode extends BaseNode { // abstract
-	constructor(parent, [mode]) {
-		super(...arguments);
-		this.inp = new MIDIIN(this, []);
-		this.out = new POUT(this, []);
-
-		this.noteSet = {};
-		this.noteList = {};
-		this.nc = 0;
-		this.value = 0;
-		this.out.plugStream(
-			this.inp.stream.map(vs => {
-				for (var v of vs) {
-					if (v.t === 'on') {
-						if (this.noteSet[v.n]) continue;
-						this.nc++;
-						this.noteSet[v.n] = this.nc;
-						this.noteList[this.nc] = v.n;
-					}
-					if (v.t === 'off') {
-						var nc = this.noteSet[v.n];
-						delete this.noteSet[v.n];
-						delete this.noteList[nc];
-					}
-				}
-				this.value = this.getValue();
-				return this.value;
-			})
-		)
-	}
-	getValue() {
-		throw "Define getValue";
-	}
-}
-
-const M2TModes = ['bool', 'retrig', 'count']
-
-class MidiTrigger extends MidiNotesBaseNode {
-	constructor(parent, [mode]) {
-		super(...arguments);
-		this.smode = M2TModes[mode];
-	}
-	getValue() {
-		switch(this.smode) {
-			case 'count':
-				return Object.keys(this.noteSet).length;
-			case 'retrig':
-				return Object.keys(this.noteSet).length ? this.nc : 0;
-			default: return Object.keys(this.noteSet).length > 0 ? 1 : 0;
-		}
-		
-	}
-}
-
-const M2NModes = ['max', 'min', 'last', 'first'];
-
-class MidiNote extends MidiNotesBaseNode {
-	constructor(parent, [mode]) {
-		super(...arguments);
-		this.smode = M2NModes[mode];
-	}
-	getEffectives() {
-		switch(this.smode) {
-			case 'min': return [Math.min, this.noteSet];
-			case 'first': return [Math.min, this.noteList];
-			case 'last': return [Math.max, this.noteList];
-			default: return [Math.max, this.noteSet]; // defaults to max
-		}
-	}
-	getValue() {
-		var efs = this.getEffectives();
-		var f = efs[0], set = efs[1];
-		var lst = Object.keys(set);
-		if (lst.length < 1) return this.value;
-		var n = f.apply(Math, lst);
-		if (set === this.noteList) n = this.noteList[n];
-		this.value = n;
-		return n;
-	}
-}
+const core = new Core();
 
 const P2AModes = ['set', 'linear', 'exp'];
 
@@ -447,7 +366,7 @@ class P2A extends BaseNode {
 		this.constant.connect(this.out.gain);
 		
 		this.last = undefined;
-		Kefir.zip([theCore.tickStream, this.inp.stream])
+		Kefir.zip([core.tickStream, this.inp.stream])
 			.onValue(([t, v]) => {
 				if (v === undefined) return;
 				if (isNaN(v)) return;
@@ -485,7 +404,7 @@ class ADSR extends BaseNode {
 		this.release = new PIN(this, [r || 1]);
 		
 		this.trigger = new PIN(this, [0]);
-		Kefir.zip([theCore.tickStream, this.trigger.triggerStream, this.attack.stream, this.decay.stream, this.sustain.stream, this.release.stream])
+		Kefir.zip([core.tickStream, this.trigger.triggerStream, this.attack.stream, this.decay.stream, this.sustain.stream, this.release.stream])
 			.onValue(_apply(
 				(time, trig, a, d, s, r) => {
 					//console.log('ADSR', time, trig, a, d, s, r);
@@ -514,7 +433,7 @@ class Osc extends BaseNode {
 		this.out = new AOUT(this, []);
 		this.freq = new AIN(this, [440]);
 		this.detune = new AIN(this, []);
-		Kefir.zip([theCore.tickStream, this.trigger.triggerStream])
+		Kefir.zip([core.tickStream, this.trigger.triggerStream])
 			.onValue(_apply(
 				(t, trig) => {
 					if (trig > 0) {
@@ -638,7 +557,7 @@ class Clock extends BaseNode {
 		this.trigger = new PIN(this, [1]);
 		this.out = new POUT(this, []);
 		this.out.plugStream(
-			Kefir.zip([theCore.tickStream, this.trigger.triggerStream],
+			Kefir.zip([core.tickStream, this.trigger.triggerStream],
 				(t, trig) => {
 					if (trig > 0) {
 						this.value = 0;
@@ -727,6 +646,26 @@ class Proc extends BaseNode {
 	constructor(parent) {
 		super(...arguments);
 	}
+	getFuncStream(argList) {
+		return this._pinStream.map(pins => {
+			var self = this;
+			return function() {
+				var args = pins;
+				for (var i = 0; i < argList.length; i++) {
+					var an = argList[i];
+					if (typeof an == 'number') an = self._procParams[an];
+					if (!an) continue;
+					var arg = arguments[i];
+					if ($.isArray(arg)) {
+						var af = self._procAgr[an] || [(a, b) => a + b, 0];
+						arg = arg.reduce(af[0], af[1]);
+					}
+					args[an] = arg;
+				};
+				return self._procFunc(args);
+			};
+		});
+	}
 }
 
 global.BC = global.BC || {};
@@ -743,9 +682,6 @@ $.extend(global.BC, {
 	AOUT,
 	AIN,
 	Core,
-	MidiNotesBaseNode,
-	MidiTrigger,
-	MidiNote,
 	P2A,
 	ADSR,
 	Osc,
@@ -766,7 +702,8 @@ $.extend(global.BC, {
 	Module,
 	
 	_getObjId,
-	core: theCore,
+	core,
+	midi,
 });
 
 })(this);
