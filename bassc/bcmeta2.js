@@ -139,13 +139,20 @@ class MetaModule extends Meta {
 			compileLayout(ly);
 			res.push(`\t\thtml.push('</div>');`)
 		}
-		res.push(`\t\treturn html.join('')`);
+		res.push(`\t\treturn html.join('');`);
 	}
 	compileOnStartUI(res) {
-		for (var nn in this.nodes) {
-			var node = this.nodes[nn];
-			if (node.opts.global || node.opts.init) continue;
-			res.push(`\t\tthis.${nn}.onStartUI(this);`);
+		function compileLayout(ly, isVert) {
+			for (var ln of ly) {
+				if ($.isArray(ln)) {
+					compileLayout(ln, !isVert);
+				} else {
+					res.push(`\t\tthis.${ln}.onStartUI();`);
+				}
+			}
+		}
+		for (var ly of this.layouts) {
+			compileLayout(ly);
 		}
 	}
 	fixId(tp, id, onError) {
@@ -348,18 +355,11 @@ class MetaProc extends MetaModule {
 			res.push(`\t\tvar ${n} = Math.${n};`);
 		}
 		var initList = proc.init || [];
-		if (initList.length > 0) {
-			res.push('\t\tvar [' + initList.map(nn => `a_${nn}`).join(', ') + '] = params;');
-		}
-		var pars = [];
-		for (var nn of initList) {
-			res.push(`\t\tthis.${nn} = new BC.PIN(this, [a_${nn}]);`);
-			pars.push(nn);
-		}
-		if (!body) body = pins.join(' + ');
-		res.push(`\t\tthis._procFunc = ({${pars.join(', ')}}) => ${body};`);
-		res.push(`\t\tthis._procParams = [${pars.map(p => `'${p}'`).join(', ')}];`);
 		res.push(`\t\tthis._procAgr = {};`);
+		var pars = initList.map((nn, i) => {
+			res.push(`\t\tthis.${nn} = new BC.PIN(this, [params[${i}]]);`);
+			return nn;
+		});
 		for (var p of proc.params) {
 			var agr = p.agr || '+';
 			var af = {
@@ -375,6 +375,10 @@ class MetaProc extends MetaModule {
 			res.push(`\t\tthis._procAgr.${p.name} = [(a, b) => ${af[0]}, ${af[1]}, ${def}];`);
 			pars.push(p.name);
 		}
+		if (!body) body = pars.join(' + ');
+		res.push(`\t\tthis._procFunc = ({${pars.join(', ')}}) => ${body};`);
+		res.push(`\t\tthis._procParams = [${pars.map(p => `'${p}'`).join(', ')}];`);
+
 		res.push(`\t\tthis._pinStream = Kefir.zip([${pars.map(p => `this.${p}.stream`).join(', ')}], (${pars.join(', ')}) => { return {${pars.join(', ')}}});`);
 		res.push(`\t\tvar stream = this._pinStream.map(args => {
 				var _res = this._procFunc(args);

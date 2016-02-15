@@ -7,13 +7,14 @@ Note2Detune {
 }
 
 SimpleSine {
-	MIDIIN inp -> Midi2Note -> Note2Detune ->[detune]Osc o
-	inp -> Midi2Trigger -> [trigger]ADSR adsr
-	o -> adsr -> AOUT out
+	MIDIIN inp -> MidiNote -> Note2Detune ->[detune]Osc o_0-5
+	inp -> MidiTrigger -> [trigger]ADSR adsr
+	o_0-5 => *1, *0.5, *0.3, *0.2, *0.7, *0.3 -> adsr -> AOUT out
+	-1200, 0, 1200, 2400, 3600, 4800 => [detune]o_0-5
 }
 
 Keyboard keys -> MidiHub allMidi
-UIKeyboard uiKeys -> allMidi -> uiKeys
+UIKeyboard uiKeys -> allMidi -> uiKeys, MidiLog midiLog
 
 @UI uiKeys
 
@@ -26,7 +27,7 @@ allMidi -> MidiPoly<8> poly[0-7] => SimpleSine ss_0-7 -> *0.1 -> Dest
 
 @UI UILED led_0-7
 
-poly[0-7] => Midi2Trigger mt_0-7 => led_0-7
+poly[0-7] => MidiTrigger mt_0-7 => led_0-7
 
 
 @UI UIButton btnPlay | UILED ledPlaying

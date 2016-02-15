@@ -1,6 +1,8 @@
 <html>
 <head>
 	<title>test bc2</title>
+<link href="../lib/bs/css/bootstrap.min.css" rel="stylesheet">
+<link href="main.css" rel="stylesheet" type="text/css" />
 <script src="../lib/jquery-2.1.1.js"></script>
 <script src="../lib/Tone.js"></script>
 <script src="../lib/kefir.js"></script>
@@ -10,6 +12,7 @@
 <script src="bcpu.js"></script>
 <script src="bcmeta2.js"></script>
 <script src="bcmidi2.js"></script>
+<script src="bcui2.js"></script>
 <!--script src="bcui.js"></script>
 <script src="bcabc.js"></script-->
 
@@ -66,11 +69,19 @@ Kefir.zip([
 	var overtureAST = run('parsing overture', overture, s => parser.parse(s));
 	console.log(overtureAST);
 	run('in overture', overtureAST, s => s.toMeta());
+
+	BC.meta.compileAll();
+	BC.main = new BC.Main();
+	$('#UI').html(BC.main.getHTML());
+	BC.main.onStartUI();
+	BC.ui.start();
+	BC.core.start();
 }).onValue(() => {
 })
 </script>
 </head>
 <body>
 <div id="error"></div>
+<div id="UI"></div>
 </body>
 </html>

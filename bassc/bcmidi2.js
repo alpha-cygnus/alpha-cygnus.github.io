@@ -1,8 +1,6 @@
 (function(global) {
 "use strict";
 
-var midi = BC.midi;
-
 class MidiProc {
 	constructor() {
 		navigator.requestMIDIAccess()
@@ -17,7 +15,7 @@ class MidiProc {
 		for (var inp of this.midi.inputs) {
 			var inpId = inp[0];
 			var input = inp[1];
-			console.log('MIDI Input', input.id, ':', input.name);
+			//console.log('MIDI Input', input.id, ':', input.name);
 			input.onmidimessage = mm => this.midiMessageHandler(mm);
 		}
 	}
@@ -92,14 +90,14 @@ const midi = {
 	PC: 0xC,
 	CAT: 0xD,
 	PITCH: 0xE,
-	proc = new MidiProc(),
+	proc: new MidiProc(),
 };
 
 class MidiNotesBaseNode extends BC.BaseNode { // abstract
 	constructor(parent, [mode]) {
 		super(...arguments);
-		this.inp = new MIDIIN(this, []);
-		this.out = new POUT(this, []);
+		this.inp = new BC.MIDIIN(this, []);
+		this.out = new BC.POUT(this, []);
 
 		this.noteSet = {};
 		this.noteList = {};
@@ -183,8 +181,8 @@ class MidiHub extends BC.BaseNode {
 		if (procFilter instanceof BC.Proc) {
 			
 		}
-		this.inp = new MIDIIN();
-		this.out = new MIDIOUT();
+		this.inp = new BC.MIDIIN(this, []);
+		this.out = new BC.MIDIOUT(this, []);
 		this.out.plugStream(this.inp.stream);
 	}
 }
@@ -192,10 +190,10 @@ class MidiHub extends BC.BaseNode {
 class MidiLog extends BC.BaseNode {
 	constructor(parent) {
 		super(...arguments);
-		this.inp = new MIDIIN();
+		this.inp = new BC.MIDIIN(this, []);
 		this.inp.stream.onValue(vs => {
 			for (var v of vs) {
-				console.log('MidiLog.', this.name || '?', v);
+				console.log('MidiLog', this.name || '?', v);
 			}
 		});
 	}
@@ -204,7 +202,7 @@ class MidiLog extends BC.BaseNode {
 class WebMidi extends BC.BaseNode {
 	constructor(parent) {
 		super(...arguments);
-		this.out = new MIDIOUT();
+		this.out = new BC.MIDIOUT(this, []);
 		this.buffer = [];
 		midi.proc.addListener(v => this.addToBuffer(v));
 		this.out.produceFromBuffer(this, 'buffer');
@@ -222,7 +220,7 @@ const MaxPolyVoices = 16;
 class MidiPoly extends BC.BaseNode {
 	constructor(parent, [vc]) {
 		super(...arguments);
-		this.inp = new MIDIIN();
+		this.inp = new BC.MIDIIN(this, []);
 		this.voices = {
 			fromNote: {},
 			list: [],
@@ -250,7 +248,7 @@ class MidiPoly extends BC.BaseNode {
 				var n = this.list[i - 1].note;
 				if (!noteOff) {
 					noteOff = {
-						t: 'off', n: n, v: 0,
+						t: midi.OFF, n: n, v: 0,
 					}
 				}
 				this.list[i - 1].buffer.push(noteOff);
@@ -262,7 +260,7 @@ class MidiPoly extends BC.BaseNode {
 			},
 		}
 		for (var i = 0; i < MaxPolyVoices; i++) {
-			this['out$' + i] = new MIDIOUT();
+			this['out_' + i] = new BC.MIDIOUT(this, []);
 			this.voices.list[i] = {
 				buffer: [],
 				note: 0,
@@ -278,14 +276,16 @@ class MidiPoly extends BC.BaseNode {
 		var scan = this.inp.stream.scan((vs, es) => {
 			for (var e of es) {
 				switch(e.t) {
-					case 'on':
+					case midi.ON:
 						vs.allocate(e);
 						break;
-					case 'off':
+					case midi.OFF:
 						vs.deallocate(vs.fromNote[e.n], e);
 						break;
-					case 'pitch':
-					case 'cc':
+					case midi.PITCH:
+					case midi.CC:
+					case midi.CAT:
+					case midi.PAT:
 						for (var i = 0; i < vc; i++) {
 							vs.list[i].buffer.push(e);
 						}
@@ -296,11 +296,11 @@ class MidiPoly extends BC.BaseNode {
 		}, this.voices);
 		for (var i = 0; i < MaxPolyVoices; i++) {
 			let ii = i;
-			this['out$' + i].plugStream(
+			this['out_' + i].plugStream(
 				scan.map(vs => {
 					var buf = vs.list[ii].buffer;
 					vs.list[ii].buffer = [];
-					if (buf.length > 0) console.log('out' + ii, buf);
+					//if (buf.length > 0) console.log('out_' + ii, buf);
 					return buf;
 				})
 			);
@@ -312,8 +312,8 @@ class MidiCC extends BC.BaseNode {
 	constructor(parent, [n]) {
 		super(...arguments);
 		this.ccn = n;
-		this.inp = new MIDIIN();
-		this.out = new POUT();
+		this.inp = new BC.MIDIIN(this, []);
+		this.out = new BC.POUT(this, []);
 		this.value = 0;
 		this.out.plugStream(
 			this.inp.stream.scan((v, es) => {
@@ -330,8 +330,8 @@ class MidiPitchWheel extends BC.BaseNode {
 	constructor(parent, [n]) {
 		super(...arguments);
 		this.ccn = n;
-		this.inp = new MIDIIN();
-		this.out = new POUT();
+		this.inp = new BC.MIDIIN(this, []);
+		this.out = new BC.POUT(this, []);
 		this.value = 0;
 		this.out.plugStream(
 			this.inp.stream.scan((v, es) => {
@@ -348,11 +348,11 @@ class MidiFilter extends BC.BaseNode {
 	constructor(parent, [procFilter]) {
 		super(...arguments);
 		var filter = x => 1;
-		this.inp = new MIDIIN();
-		this.out = new MIDIOUT();
+		this.inp = new BC.MIDIIN(this, []);
+		this.out = new BC.MIDIOUT(this, []);
 		var stream = this.inp.stream;
 		if (procFilter instanceof BC.Proc) {
-			stream = Kefir.zip([this.inp.stream, procFilter.getFuncStream(['t', 'c', 'n', 'v'])], (ms, func) {
+			stream = Kefir.zip([this.inp.stream, procFilter.getFuncStream(['t', 'c', 'n', 'v'])], (ms, func) => {
 				var res = [];
 				for (var m of ms) {
 					var {t, c, n, v} = m;
@@ -370,12 +370,12 @@ class MidiFilter extends BC.BaseNode {
 class MidiExtract extends BC.BaseNode {
 	constructor(parent, [proc]) {
 		super(...arguments);
-		this.inp = new MIDIIN();
-		this.out = new MIDIOUT();
+		this.inp = new BC.MIDIIN(this, []);
+		this.out = new BC.MIDIOUT(this, []);
 		this.prev = 0;
 		var stream = this.inp.stream;
 		if (proc instanceof BC.Proc) {
-			stream = Kefir.zip([this.inp.stream, proc.getFuncStream(['t', 'c', 'n', 'v', 'prev'])], (ms, func) {
+			stream = Kefir.zip([this.inp.stream, proc.getFuncStream(['t', 'c', 'n', 'v', 'prev'])], (ms, func) => {
 				for (var m of ms) {
 					var {t, c, n, v} = m;
 					var res = func(t, c, n, v, this.prev);
@@ -400,6 +400,7 @@ $.extend(BC, {
 	MidiPitchWheel,
 	MidiFilter,
 	MidiExtract,
+	midi,
 });
 
 })(this);

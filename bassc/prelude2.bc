@@ -52,7 +52,7 @@ Note2CV {
 	AOUT out
 }
 
-Midi2Arpeggio {
+MidiArpeggio {
 	MIDIIN inp
 	PIN clock
 	AOUT out
@@ -60,14 +60,14 @@ Midi2Arpeggio {
 	PIN mode # up, down, updown, downup, random
 }
 
-Midi2Trigger {
+MidiTrigger {
 	@enum BOOL, RETRIG, COUNT
 	MIDIIN inp
 	POUT out
 	PIN mode
 }
 
-Midi2Note {
+MidiNote {
 	@enum MAX, MIN, LAST, FIRST
 	MIDIIN inp
 	POUT out
@@ -210,4 +210,8 @@ MidiPoly {
 MidiCC {
 	MIDIIN inp
 	POUT out
+}
+
+MidiLog {
+	MIDIIN inp
 }

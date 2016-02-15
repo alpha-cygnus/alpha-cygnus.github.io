@@ -703,7 +703,6 @@ $.extend(global.BC, {
 	
 	_getObjId,
 	core,
-	midi,
 });
 
 })(this);
