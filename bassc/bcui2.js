@@ -61,34 +61,49 @@ function getDialValue(elem) {
 	return $(elem).data('value') || 0;
 }
 
-function startUI() {
-	$('.UIDial').on('mousedown', e => {
-		var elem = e.target;
-		mouseCapturer = {
-			elem,
-			x0: e.screenX, y0: e.screenY,
-			v0: getDialValue(elem),
-			move(e) {
-				var dy = this.y0 - e.screenY;
-				var dv = dy/100;
-				setDialValue(this.elem, this.v0 + dv);
+class UIManager {
+	constructor() {
+		this.drawers = [];
+	}
+	start() {
+		$('.UIDial').on('mousedown', e => {
+			var elem = e.target;
+			mouseCapturer = {
+				elem,
+				x0: e.screenX, y0: e.screenY,
+				v0: getDialValue(elem),
+				move(e) {
+					var dy = this.y0 - e.screenY;
+					var dv = dy/100;
+					setDialValue(this.elem, this.v0 + dv);
+				}
 			}
-		}
-	});
-	$(document).on('mousemove', e => {
-		if (mouseCapturer) {
-			mouseCapturer.move(e);
-		}
-	});
-	$(document).on('mouseup', e => {
-		if (mouseCapturer) {
-			mouseCapturer.move(e);
-			if (mouseCapturer.up) {
-				mouseCapturer.up(e);
+		});
+		$(document).on('mousemove', e => {
+			if (mouseCapturer) {
+				mouseCapturer.move(e);
 			}
-			mouseCapturer = null;
+		});
+		$(document).on('mouseup', e => {
+			if (mouseCapturer) {
+				mouseCapturer.move(e);
+				if (mouseCapturer.up) {
+					mouseCapturer.up(e);
+				}
+				mouseCapturer = null;
+			}
+		});
+		this.draw();
+	}
+	addDrawer(func) {
+		this.drawers.push(func);
+	}
+	draw() {
+		requestAnimationFrame(() => this.draw());
+		for (var func of this.drawers) {
+			func();
 		}
-	});
+	}
 }
 
 class UIBasis extends BC.BaseNode {
@@ -418,9 +433,50 @@ class UIButton extends UIBasis {
 	}
 }
 
-BC.ui = {
-	start: startUI,
+class UISpectrograph extends UIBasis {
+	constructor() {
+		super(...arguments);
+		this.inp = new BC.AIN(this, []);
+		this.lyser = Tone.context.createAnalyser();
+		this.inp.bind(this.lyser);
+		this.dataArray = new Uint8Array(this.lyser.frequencyBinCount);
+		this.height = this.dataArray.length;
+		this.width = this.height;
+	}
+	get value() {
+		if (!this.elem) return 0;
+		return $(this.elem).hasClass('on');
+	}
+	getHTML() {
+		return `<canvas class="UI UISpectrograph UICanvas" id="${this.getId()}"
+			width="${this.width}" height="${this.height}"></canvas>`;
+	}
+	onStartUI() {
+		this.elem = document.getElementById(this.getId());
+		this.ctx = this.elem.getContext('2d');
+		this.ctx.stroke = 'black';
+		this.ctx.fill = 'black';
+		this.ctx.fillRect(0, 0, this.width, this.height);
+		this.imageData = this.ctx.createImageData(1, this.height);
+		BC.ui.addDrawer(() => this.draw());
+		this.cx = 0;
+		this.dx = 1;
+	}
+	draw() {
+		this.lyser.getByteFrequencyData(this.dataArray);
+		for (var i = 0; i < this.dataArray.length; i++) {
+			this.imageData.data[i*4] = this.dataArray[i];
+			this.imageData.data[i*4 + 1] = this.dataArray[i];
+			this.imageData.data[i*4 + 2] = this.dataArray[i]; //this.dataArray[i];
+			this.imageData.data[i*4 + 3] = 255;
+		};
+		this.ctx.putImageData(this.imageData, Math.floor(this.cx), 0);
+		this.cx += this.dx;
+		if (this.cx >= this.width) this.cx -= this.width;
+	}
 }
+
+BC.ui = new UIManager();
 
 Object.assign(BC, {
 	UIBasis,
@@ -431,6 +487,7 @@ Object.assign(BC, {
 	Keyboard,
 	UIKeyboard,
 	UIButton,
+	UISpectrograph,
 });
 
 })(this);

@@ -191,6 +191,10 @@ UIKeyboard {
 	MIDIOUT out
 }
 
+UISpectrograph {
+	AIN inp
+}
+
 MidiHub {
 	@init filterProc
 	MIDIIN inp

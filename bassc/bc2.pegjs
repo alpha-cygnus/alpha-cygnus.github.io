@@ -98,7 +98,7 @@ Cons
 	}
 	/
 	MUL n:num? {
-		return ConsGain(n);
+		return ConsGain(n === null ? 1 : n);
 	}
 	/
 	p:processing {
