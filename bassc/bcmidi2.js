@@ -34,7 +34,7 @@ class MidiProc {
 			case midi.ON:
 			case midi.OFF:
 				return {
-					t: hi,
+					t: data[2] > 0 ? hi : midi.OFF,
 					c: lo,
 					n: data[1],
 					v: data[2],
@@ -73,7 +73,12 @@ class MidiProc {
 					v: data[1]/127,
 				}
 			case midi.PC:
-				return 
+				return {
+					t: hi,
+					c: lo,
+					n: 0,
+					v: data[1]/127,
+				}
 		}
 	}
 	addListener(fun) {
@@ -193,9 +198,50 @@ class MidiLog extends BC.BaseNode {
 		this.inp = new BC.MIDIIN(this, []);
 		this.inp.stream.onValue(vs => {
 			for (var v of vs) {
-				console.log('MidiLog', this.name || '?', v);
+				console.log(this.name || 'MidiLog',  this.msgToString(v));
 			}
 		});
+	}
+	msgToString(m) {
+		function noteString(n) {
+			return 'CCDDEFFGGAAB'[n%12] + '-#-#--#-#-#-'[n%12] + Math.floor(n/12);
+		}
+		function chanString(c) {
+			return c.toString(16);
+		}
+		function hexString(n) {
+			var res = n.toString(16);
+			if (res.length < 2) res = '0' + res;
+			return res
+		}
+		function ccnString(n) {
+			return hexString(n);
+		}
+		function byteString(v) {
+			return hexString(v);
+		}
+		m.c = m.c || 0;
+		m.t = m.t || 0;
+		m.n = m.n || 0;
+		m.v = m.v || 0;
+		switch(m.t) {
+			case midi.ON:
+				return `[${chanString(m.c)}] ON ${noteString(m.n)} ${byteString(m.v*127)}`;
+			case midi.OFF:
+				return `[${chanString(m.c)}] FF ${noteString(m.n)} ${byteString(m.v*127)}`;
+			case midi.PITCH:
+				return `[${chanString(m.c)}] PITCH ${m.v}`;
+			case midi.CC:
+				return `[${chanString(m.c)}] CC ${ccnString(m.n)} ${byteString(m.v*127)}`;
+			case midi.PAT:
+				return `[${chanString(m.c)}] AT ${noteString(m.n)} ${byteString(m.v*127)}`;
+			case midi.CAT:
+				return `[${chanString(m.c)}] AT ${byteString(m.v*127)}`;
+			case midi.PC:
+				return `[${chanString(m.c)}] PC ${byteString(m.v*127)}`;
+			default:
+				return JSON.stringify(m);
+		}
 	}
 }
 
@@ -389,7 +435,7 @@ class MidiExtract extends BC.BaseNode {
 	}
 }
 
-$.extend(BC, {
+Object.assign(BC, {
 	MidiHub,
 	WebMidi,
 	MidiPoly,

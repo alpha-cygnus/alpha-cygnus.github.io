@@ -327,7 +327,7 @@ class Core {
 		if (ppqn) this.setPpqn(ppqn);
 		if (this.intId) stop();
 		var prevT = 0;
-		var cT = 4;
+		var cT = 2;
 		this.intId = setInterval(() => {
 			var dT = 1/this.tps;
 			if (window.stopped) return;
@@ -669,7 +669,7 @@ class Proc extends BaseNode {
 }
 
 global.BC = global.BC || {};
-$.extend(global.BC, {
+Object.assign(global.BC, {
 	BaseNode,
 	Port,
 	MIDIPort,

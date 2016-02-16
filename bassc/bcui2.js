@@ -266,9 +266,10 @@ function isMidiKeys(keyNoteStream) {
 			// else delete noteOns[note];
 			return {
 				t: v.down ? BC.midi.ON : BC.midi.OFF,
+				c: 0,
 				n: note + this.octave*12,
-				o: this.octave,
-				v: 127,
+				//o: this.octave,
+				v: 64/127,
 			};
 		})
 		.onValue(v => {
@@ -421,7 +422,7 @@ BC.ui = {
 	start: startUI,
 }
 
-$.extend(BC, {
+Object.assign(BC, {
 	UIBasis,
 	UIDial,
 	UIDigits,
