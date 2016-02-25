@@ -195,6 +195,14 @@ UISpectrograph {
 	AIN inp
 }
 
+UISamplograph {
+	AIN inp
+}
+
+UIScope {
+	AIN inp
+}
+
 MidiHub {
 	@init filterProc
 	MIDIIN inp
