@@ -97,6 +97,6 @@ MidiHub<{<cn>t,c,n,v|c == 0 && t in {on:1, off:1}}>
 
 MidiExtract[v] 
 
-@UI {UISpectrograph spg | UISamplograph sag} | UIScope sc
+@UI {UISpectrum sp | UISpectrograph spg} | {UIScope sc | UISamplograph sag}
 
-preDest -> spg, sag, sc
+preDest -> spg, sag, sc, sp

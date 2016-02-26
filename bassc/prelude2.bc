@@ -203,6 +203,10 @@ UIScope {
 	AIN inp
 }
 
+UISpectrum {
+	AIN inp
+}
+
 MidiHub {
 	@init filterProc
 	MIDIIN inp

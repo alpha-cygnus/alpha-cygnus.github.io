@@ -327,7 +327,7 @@ class Core {
 		if (ppqn) this.setPpqn(ppqn);
 		if (this.intId) stop();
 		var prevT = 0;
-		var cT = 2;
+		var cT = 10;
 		this.intId = setInterval(() => {
 			var dT = 1/this.tps;
 			if (window.stopped) return;
