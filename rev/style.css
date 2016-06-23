@@ -1,0 +1,30 @@
+.cell {
+	width: 20px;
+	height: 20px;
+	box-sizing: border-box;
+	display: inline-block;
+	text-align: center;
+	border-right: 1px solid black;
+	border-bottom: 1px solid black;
+}
+
+.cell.top {
+	border-top: 1px solid black;
+}
+.cell.left {
+	border-left: 1px solid black;
+}
+
+.field.cell:hover {
+	background: yellow;
+}
+.field.cell.possible:hover {
+	background: red;
+	cursor: pointer;
+}
+
+#field {
+	margin: 0px;
+	padding: 0px;
+	box-sizing: border-box;
+}
