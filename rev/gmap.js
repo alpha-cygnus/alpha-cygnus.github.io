@@ -7,7 +7,7 @@ define(function() {
 			yield f(x);
 		}
 	}
-	function *mapGen(f, g) {
+	function *gmap(f, g) {
 		if (!g) g = this;
 		for (let x of g) {
 			yield *f(x);
@@ -69,13 +69,28 @@ define(function() {
 			}
 		}
 	}
+	function *filter(f, g) {
+		if (!g) g = this;
+		if (typeof f != 'function') f = x => x;
+		for (var x of g) {
+			if (f(x)) yield x;
+		}
+	}
+	function length(g) {
+		if (!g) g = this;
+		return foldl((a, _) => a + 1, 0, g);
+	}
 	var genProto = range(0, 1).__proto__.__proto__;
-	genProto.map = map;
-	genProto.mapGen = mapGen;
-	genProto.take = take;
-	genProto.foldl = foldl;
-	genProto.zip = zip;
-	genProto.mul = mul;
+	Object.assign(genProto, {
+		map,
+		gmap,
+		take,
+		foldl,
+		zip,
+		mul,
+		filter,
+		length,
+	});
 	return {
 		map,
 		foldl,
