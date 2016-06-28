@@ -44,7 +44,12 @@
 }
 
 .cell span.token.two {
-	border-color: green;
+	border-color: blue;
+}
+
+.cell span.token.three {
+	border-left-color: blue;
+	border-right-color: blue;
 }
 
 .cell.possible span {
@@ -54,6 +59,10 @@
 	border-radius: 5px;
 }
 
+.cell.start {
+	cursor: pointer;
+}
+
 .cell.header {
 	background: #EEE;
 }
@@ -61,4 +70,12 @@
 .cell.header span.header {
 	position: relative;
 	top: 10px;
+}
+
+.cell.header.wide {
+	width: 80px;
+}
+
+#winInfo {
+	display: none;
 }

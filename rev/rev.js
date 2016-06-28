@@ -117,31 +117,55 @@ define(['gmap'], function(gmap) {
 				yield * this.genDirs(x, y).map(({cnt, dx, dy}) => [x, y, cnt, dx, dy]);
 			}
 		}
-		gatherMoves() {
-			return this.genPossibleMoves().foldl(
+		getXYKey(x, y) {
+			return '' + y + x;
+		}
+		_gatherMoves() {
+			this.allMoves = this.genPossibleMoves().foldl(
 				(a, [x, y, cnt, dx, dy]) => {
-					var key = '' + y + x;
+					var key = this.getXYKey(x, y);
 					a[key] = (a[key] || {x, y, dirs: []});
 					a[key].dirs.push({cnt, dx, dy});
 					return a;
 				}
 				, {});
+			return this.allMoves;
 		}
-		makeMove(x, y, dirs) {
-			var c = this.colorToMove;
-			if (!dirs) dirs = this.genDirs(c, x, y);
-			var any = false;
-			for (var {cnt, dx, dy} of dirs) {
-				for (var i = 1; i <= cnt; i++) this.putAt(x + i*dx, y + i*dy, c);
-				any = true;
+		anyMoves() {
+			for (var k in this.allMoves) {
+				return true;
 			}
-			if (any) this.putAt(x, y, c);
-			this.colorToMove = 3 - this.colorToMove;
-			return this;
+			return false;
 		}
-		passMove() {
-			this.colorToMove = 3 - this.colorToMove;
-			return this;
+		makeMove(x, y) {
+			var c = this.colorToMove;
+			var move = this.getMove(x, y);
+			if (!move && this.anyMoves()) throw 'Illegal move';
+			var any = false;
+			var that = this.clone();
+			if (move) {
+				var dirs = move.dirs;
+				for (var {cnt, dx, dy} of dirs) {
+					for (var i = 1; i <= cnt; i++) that.putAt(x + i*dx, y + i*dy, c);
+					any = true;
+				}
+				if (any) that.putAt(x, y, c);
+			}
+			that.colorToMove = 3 - that.colorToMove;
+			that._gatherMoves();
+			return that;
+		}
+		*moves() {
+			for (var key in this.allMoves) {
+				var {x, y, dirs} = this.allMoves[key];
+				yield {key, x, y, dirs};
+			}
+		}
+		getMove(x, y) {
+			return this.allMoves[this.getXYKey(x, y)];
+		}
+		isLegalMove(x, y) {
+			return !!this.getMove(x, y);
 		}
 		clone() {
 			return new FieldState(this);
@@ -153,12 +177,49 @@ define(['gmap'], function(gmap) {
 					this.putAt(x, y, (x & 14) == 4 && (y & 14) == 4 ? ((x + y) & 1) + 1 : 0);
 				}
 			}
+			this._gatherMoves();
 			return this;
 		}
 		draw() {
 			return [...range(1, 8).map(y => {
 				return [...range(1, 8).map(x => '.xo*'[this.getAt(x, y)])].join('') + '\n'
 			})].join('');
+		}
+		
+		chooseMove(chooser) {
+			var move = chooser.choose(this);
+			if (!move) return {x: 0, y: 0};
+			return move;
+		}
+	}
+	
+	class MoveChooser {
+		constructor() {
+		}
+		choose(fs) {
+			var maxW = -10000;
+			if (!fs.anyMoves()) return;
+			var moves = fs.moves().foldl((a, move) => {
+				var w = this.moveWeight(move, fs);
+				a[w] = (a[w] || []).concat([move]);
+				if (maxW < w) maxW = w;
+				return a;
+			}, {});
+			return moves[maxW][Math.floor(moves[maxW].length*Math.random())];
+		}
+		moveWeight(move, fs) {
+			return 1;
+		}
+	}
+	
+	class GreedyMoveChooser extends MoveChooser {
+		constructor() {
+			super();
+		}
+		moveWeight({x, y, dirs}) {
+			var e = {1: 1, 2: -1, 7: -1, 8: 1};
+			var cnt = gen(dirs).foldl((a, b) => a + b.cnt, 0);
+			return ((e[x] || 0) + (e[y] || 0))*100 + cnt;
 		}
 	}
 	
@@ -168,5 +229,7 @@ define(['gmap'], function(gmap) {
 		start,
 		test,
 		FieldState,
+		MoveChooser,
+		GreedyMoveChooser,
 	}
 });
