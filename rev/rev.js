@@ -52,8 +52,8 @@ define(['gmap'], function(gmap) {
 			}
 		}
 		getIntPos(x, y) {
-			if (x < 0 || x > 8) return -1;
-			if (y < 0 || y > 8) return -1;
+			if (x < 1 || x > 8) return {p: -1};
+			if (y < 1 || y > 8) return {p: -1};
 			var pos = (y - 1)*8 + x - 1;
 			var p = pos >> 3;
 			var s = 2*(7 - pos&7);
@@ -142,6 +142,7 @@ define(['gmap'], function(gmap) {
 			var move = this.getMove(x, y);
 			if (!move && this.anyMoves()) throw 'Illegal move';
 			var any = false;
+			this.toMove = {x, y};
 			var that = this.clone();
 			if (move) {
 				var dirs = move.dirs;

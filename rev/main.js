@@ -59,11 +59,12 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 	function renderField() {
 		var fs = fss[0];
 		
+		$('.hover').removeClass('hover');
 		$('#undo').prop('disabled', fss.length < 2);
 			
 		[...range(1, 8).gmap(x => range(1, 8).map(y => $(`#cell-${y}-${x}`).html(cellHtml[fs.getAt(x, y)])))];
 		$('#cell-0-0').html(cellHtml[fs.colorToMove]);
-		$('.cell.possible').off('click').removeClass('possible');
+		$('.cell.possible').off('mouseenter mouseleave click').removeClass('possible');
 		for (var {key, x, y, dirs} of fs.moves()) {
 			$(`#cell-${y}-${x}`).html(cellHtml.possible).addClass('possible').data('x', x).data('y', y).data('k', key);
 		}
@@ -79,9 +80,24 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 			renderField();
 		}
 		
-		$('.cell.possible').on('click', function() {
-			doMove($(this).data());
-		});
+		$('.cell.possible')
+			.on('click', function() {
+				doMove($(this).data());
+			})
+			.hover(function() {
+				var {x, y} = $(this).data();
+				var move = fs.getMove(x, y);
+				for (var dir of move.dirs) {
+					for (var i = 1; i <= dir.cnt; i++) {
+						var xx = x + i*dir.dx;
+						var yy = y + i*dir.dy;
+						$(`#cell-${yy}-${xx}`).addClass('hover');
+					}
+				}
+			}, function() {
+				$('.hover').removeClass('hover');
+			})
+			;
 		
 		if (!fs.anyMoves() && !fs.makeMove().anyMoves()) {
 			if (c1c > c2c) {

@@ -24,6 +24,22 @@
 	cursor: pointer;
 }
 
+div.field.cell.hover span {
+	/*background: grey;*/
+	top: 3px;
+	border-width: 16px;
+	border-radius: 16px;
+	opacity: 0.5;
+}
+
+div.field.cell.hover span.one {
+	border-color: blue;
+}
+
+div.field.cell.hover span.two {
+	border-color: red;
+}
+
 #field {
 	margin: 0px;
 	padding: 0px;
