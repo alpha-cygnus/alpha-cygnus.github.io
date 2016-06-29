@@ -42,6 +42,21 @@ div.field.cell.two.hover span {
 	border-color: red;
 }
 
+.cell.button {
+	cursor: pointer;
+	-webkit-user-select: none;  /* Chrome all / Safari all */
+	-moz-user-select: none;     /* Firefox all */
+	-ms-user-select: none;      /* IE 10+ */
+	user-select: none;
+}
+.cell.button.disabled {
+	cursor: inherit;
+}
+.cell.button.disabled span {
+	opacity: 0.3;
+	-webkit-filter: blur(2px);
+}
+
 #field {
 	margin: 0px;
 	padding: 0px;
@@ -100,7 +115,7 @@ div.field.cell.two.hover span {
 }
 
 div.cell.lastMove {
-	background: #CFC;
+	background: #BFB;
 }
 
 div.cell.lastMove span.token {

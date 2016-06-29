@@ -21,16 +21,17 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		yield `<div class="row control" id="control">`
 		yield `<div class="cell header left top wide"><span class="header">Start:</span></div>`
 		yield * range(0, 3).map(c =>
-			`<div class="cell header top start ${tokenClass[c]}" data-c="${c}"><span class="token">&nbsp;</span></div>`
+			`<div class="cell header ${!c ? 'left' : ''} top start ${tokenClass[c]}" data-c="${c}"><span class="token">&nbsp;</span></div>`
 		);
 		yield `</div>`
 		
 		yield `<div class="row info">`;
-		yield * range(1, 2).map(c =>
-			`<div class="cell header left top ${tokenClass[c]}"><span class="token">&nbsp;</span></div><div class="cell header top"><span class="header" id="count${c}"></span></div>`
-		);
-		yield `<button id="undo" disabled="disabled">UNDO</button>`;
-		yield `<button id="pass" disabled="disabled">PASS</button>`;
+		yield `<div class="cell header left top ${tokenClass[1]}"><span class="token">&nbsp;</span></div><div class="cell header top"><span class="header" id="count1"></span></div>`
+		yield `<div class="cell header left top ${tokenClass[2]}"><span class="token">&nbsp;</span></div><div class="cell header top"><span class="header" id="count2"></span></div>`
+		yield `<div class="cell header left top wide button disabled" id="undo"><span class="header">UNDO</span></div>`
+		yield `<div class="cell header left top wide button disabled" id="pass"><span class="header">PASS</span></div>`
+		// yield `<button id="undo" disabled="disabled">UNDO</button>`;
+		// yield `<button id="pass" disabled="disabled">PASS</button>`;
 		yield `</div>`;
 		
 		yield `<div class="row">`;
@@ -65,8 +66,17 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		var fs = fss[0];
 		var fs1 = fss[1];
 		
+		function disable(q, d) {
+			if (d) {
+				$(q).addClass('disabled');
+			} else {
+				$(q).removeClass('disabled');
+			}
+		}
+		
 		$('.hover').removeClass('hover');
-		$('#undo').prop('disabled', fss.length < 2);
+		//$('#undo').prop('disabled', fss.length < 2);
+		disable('#undo', fss.length < 2);
 		
 		$('.cell.possible').off('mouseenter mouseleave click').removeClass('possible');
 		$('.field.cell.lastMove').removeClass('lastMove');
@@ -87,7 +97,8 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 				$(`#cell-${y}-${x}`).addClass('possible').data('x', x).data('y', y).data('k', key);
 			}
 		}
-		$('#pass').prop('disabled', fs.anyMoves());
+		//$('#pass').prop('disabled', fs.anyMoves());
+		disable('#pass', fs.anyMoves());
 		// var all = fs.genAll();
 		var c1c = fs.genAll().filter(({c}) => c == 1).length();
 		var c2c = fs.genAll().filter(({c}) => c == 2).length();
@@ -131,7 +142,7 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 				$('#winner').removeClass(tokenClasses).addClass(tokenClass[3]);
 				$('#winRes').html(`DRAW`);
 			}
-			$('#pass').prop('disabled', true);
+			disable('#pass', true);
 			$('#winInfo').show(300);
 		} else {
 			$('#winInfo').hide(300);
@@ -143,6 +154,7 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		}
 	}
 	$('#pass').click(function() {
+		if ($(this).hasClass('disabled')) return;
 		fss.unshift(fss[0].makeMove());
 		renderField();
 	});
@@ -160,6 +172,7 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 	}
 
 	$('#undo').click(function() {
+		if ($(this).hasClass('disabled')) return;
 		doUndo(autoColor ? 2 : 1);
 	});
 	
