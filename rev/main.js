@@ -69,10 +69,10 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		$('#undo').prop('disabled', fss.length < 2);
 		
 		$('.cell.possible').off('mouseenter mouseleave click').removeClass('possible');
-		$('.cell.lastMove').removeClass('lastMove');
+		$('.field.cell.lastMove').removeClass('lastMove');
 		if (fs1 && fs1.toMove) {
 			var {x, y} = fs1.toMove;
-			$(`#cell-${y}-${x}`).addClass('lastMove');
+			if (x && y) $(`#cell-${y}-${x}`).addClass('lastMove');
 		}
 
 		for (var {x, y, c} of fs.genAll()) {
@@ -82,8 +82,10 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		// [...range(1, 8).gmap(x => range(1, 8).map(y => $(`#cell-${y}-${x} span.token`).html(cellHtml[fs.getAt(x, y)])))];
 		//$('#cell-0-0').html(cellHtml[fs.colorToMove]);
 		$('#cell-0-0').removeClass(tokenClasses).addClass(tokenClass[fs.colorToMove]);
-		for (var {key, x, y, dirs} of fs.moves()) {
-			$(`#cell-${y}-${x}`).addClass('possible').data('x', x).data('y', y).data('k', key);
+		if (fs.colorToMove != autoColor) {
+			for (var {key, x, y, dirs} of fs.moves()) {
+				$(`#cell-${y}-${x}`).addClass('possible').data('x', x).data('y', y).data('k', key);
+			}
 		}
 		$('#pass').prop('disabled', fs.anyMoves());
 		// var all = fs.genAll();
@@ -171,6 +173,9 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		} else {
 			autoColor = sc;
 		}
+		$('#control .lastMove').removeClass('lastMove');
+		console.log(`#control div[data-c=${autoColor}]`);
+		$(`#control div[data-c=${autoColor}]`).addClass('lastMove');
 		console.log('Starting', sc);
 		fss = [new FieldState().initStartState()];
 		window.fss = fss;
