@@ -24,19 +24,21 @@
 	cursor: pointer;
 }
 
-div.field.cell.hover span {
+div.field.cell.hover span.token {
 	/*background: grey;
 	top: 3px;
 	border-width: 16px;
 	border-radius: 16px;*/
 	opacity: 0.5;
+	transition-duration: 0.1s;
+	transition-timing-function: linear;
 }
 
-div.field.cell.hover span.one {
+div.field.cell.one.hover span {
 	border-color: blue;
 }
 
-div.field.cell.hover span.two {
+div.field.cell.two.hover span {
 	border-color: red;
 }
 
