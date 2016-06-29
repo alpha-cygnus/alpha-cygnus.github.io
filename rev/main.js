@@ -4,32 +4,37 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 	// test();
 	// start();
 	
-	var cellHtml = {
-		0: '&nbsp;',
-		1: '<span class="token one">&nbsp;</span>',
-		2: '<span class="token two">&nbsp;</span>',
-		3: '<span class="token three">&nbsp;</span>',
-		possible: '<span class="token">&nbsp;</span>',
-	};
+	// var cellHtml = {
+	// 	0: '<span class="token zero">&nbsp;</span>',
+	// 	1: '<span class="token one">&nbsp;</span>',
+	// 	2: '<span class="token two">&nbsp;</span>',
+	// 	3: '<span class="token three">&nbsp;</span>',
+	// 	possible: '<span class="token">&nbsp;</span>',
+	// };
+	//cellHtml = 
+	var tokenClass = {
+		0: 'zero', 1: 'one', 2: 'two', 3: 'three', possible: 'possible',
+	}
+	var tokenClasses = Object.keys(tokenClass).map(k => tokenClass[k]).join(' ');
 
 	var html = [...(function*() {
 		yield `<div class="row control" id="control">`
 		yield `<div class="cell header left top wide"><span class="header">Start:</span></div>`
 		yield * range(0, 3).map(c =>
-			`<div class="cell header top start" data-c="${c}">${cellHtml[c]}</div>`
+			`<div class="cell header top start ${tokenClass[c]}" data-c="${c}"><span class="token">&nbsp;</span></div>`
 		);
 		yield `</div>`
 		
 		yield `<div class="row info">`;
 		yield * range(1, 2).map(c =>
-			`<div class="cell header left top">${cellHtml[c]}</div><div class="cell header top"><span class="header" id="count${c}"></span></div>`
+			`<div class="cell header left top ${tokenClass[c]}"><span class="token">&nbsp;</span></div><div class="cell header top"><span class="header" id="count${c}"></span></div>`
 		);
 		yield `<button id="undo" disabled="disabled">UNDO</button>`;
 		yield `<button id="pass" disabled="disabled">PASS</button>`;
 		yield `</div>`;
 		
 		yield `<div class="row">`;
-		yield `<div class="header cell left top" id="cell-0-0">&nbsp;</div>`
+		yield `<div class="header cell left top" id="cell-0-0"><span class="token">&nbsp;</span></div>`
 		yield * range(1, 8).map(x =>
 			`<div class="header cell top"><span class="header">${x}</span></div>`
 		);
@@ -37,11 +42,11 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		yield * range(1, 8).gmap(function * (y) {
 			yield `<div class="row">`;
 			yield `<div class="header cell left"><span class="header">${y}</span></div>`
-			yield * range(1, 8).map(x => `<div class="field cell" id="cell-${y}-${x}">&nbsp;</div>`);
+			yield * range(1, 8).map(x => `<div class="field cell" id="cell-${y}-${x}"><span class="token">&nbsp;</span></div>`);
 			yield `</div>`;
 		});
 		yield `<div class="row" id="winInfo">`
-		yield `<div class="cell header left top" id="winner"></div><div class="cell header top wide"><span class="header" id="winRes">64:64</span></div>`;
+		yield `<div class="cell header left top" id="winner"><span class="token">&nbsp;</span></div><div class="cell header top wide"><span class="header" id="winRes">64:64</span></div>`;
 		yield `</div>`
 	})()].join('');
 	$('#field').html(html);
@@ -58,15 +63,27 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 	
 	function renderField() {
 		var fs = fss[0];
+		var fs1 = fss[1];
 		
 		$('.hover').removeClass('hover');
 		$('#undo').prop('disabled', fss.length < 2);
-			
-		[...range(1, 8).gmap(x => range(1, 8).map(y => $(`#cell-${y}-${x}`).html(cellHtml[fs.getAt(x, y)])))];
-		$('#cell-0-0').html(cellHtml[fs.colorToMove]);
+		
 		$('.cell.possible').off('mouseenter mouseleave click').removeClass('possible');
+		$('.cell.lastMove').removeClass('lastMove');
+		if (fs1 && fs1.toMove) {
+			var {x, y} = fs1.toMove;
+			$(`#cell-${y}-${x}`).addClass('lastMove');
+		}
+
+		for (var {x, y, c} of fs.genAll()) {
+			$(`#cell-${y}-${x}`).removeClass(tokenClasses).addClass(tokenClass[c]);
+		}
+
+		// [...range(1, 8).gmap(x => range(1, 8).map(y => $(`#cell-${y}-${x} span.token`).html(cellHtml[fs.getAt(x, y)])))];
+		//$('#cell-0-0').html(cellHtml[fs.colorToMove]);
+		$('#cell-0-0').removeClass(tokenClasses).addClass(tokenClass[fs.colorToMove]);
 		for (var {key, x, y, dirs} of fs.moves()) {
-			$(`#cell-${y}-${x}`).html(cellHtml.possible).addClass('possible').data('x', x).data('y', y).data('k', key);
+			$(`#cell-${y}-${x}`).addClass('possible').data('x', x).data('y', y).data('k', key);
 		}
 		$('#pass').prop('disabled', fs.anyMoves());
 		// var all = fs.genAll();
@@ -101,24 +118,25 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		
 		if (!fs.anyMoves() && !fs.makeMove().anyMoves()) {
 			if (c1c > c2c) {
-				$('#winner').html(cellHtml[1]);
+				$('#winner').removeClass(tokenClasses).addClass(tokenClass[1]);
 				$('#winRes').html(`${c1c} to ${c2c}`);
 			}
 			if (c1c < c2c) {
-				$('#winner').html(cellHtml[2]);
+				$('#winner').removeClass(tokenClasses).addClass(tokenClass[2]);
 				$('#winRes').html(`${c2c} to ${c1c}`);
 			}
 			if (c1c == c2c) {
-				$('#winner').html('');
+				$('#winner').removeClass(tokenClasses).addClass(tokenClass[3]);
 				$('#winRes').html(`DRAW`);
 			}
 			$('#pass').prop('disabled', true);
 			$('#winInfo').show(300);
 		} else {
 			$('#winInfo').hide(300);
-			
+			$('#winner').removeClass(tokenClasses).addClass(tokenClass[0]);
 			if (fs.colorToMove == autoColor) {
-				doMove(fs.chooseMove(mc));
+				setTimeout(() => doMove(fs.chooseMove(mc)), 1000);
+				
 			}
 		}
 	}

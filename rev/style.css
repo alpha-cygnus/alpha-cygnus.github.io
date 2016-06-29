@@ -25,10 +25,10 @@
 }
 
 div.field.cell.hover span {
-	/*background: grey;*/
+	/*background: grey;
 	top: 3px;
 	border-width: 16px;
-	border-radius: 16px;
+	border-radius: 16px;*/
 	opacity: 0.5;
 }
 
@@ -48,31 +48,68 @@ div.field.cell.hover span.two {
 
 .cell span.token {
 	position: relative;
-	top: 4px;
 	margin-left: -50%;
 	margin-right: -50%;
 	padding: 0px;
 	width: 0px;
 	height: 0px;
-	border: 15px solid red;
+	border-style: solid;
+	border-color: transparent;
+	top: 4px;
 	border-radius: 15px;
+	border-width: 15px;
 	display: inline-block;
+	transform: scale(0);
+	transition-duration: 0.5s;
+	/*transition-timing-function: linear;*/
+	transition-property: border-width, border-color, top, border-radius, transform;
 }
 
-.cell span.token.two {
+.cell.one span.token {
+	/*
+	top: 4px;
+	border-radius: 15px;
+	border-width: 15px;
+	*/
+	border-color: red;
+	transform: scale(1);
+}
+
+.cell.two span.token {
+	transform: scale(-1, 1);
 	border-color: blue;
 }
 
-.cell span.token.three {
+.cell.three span.token {
+	transform: scale(1);
+	border-top-color: red;
+	border-bottom-color: red;
 	border-left-color: blue;
 	border-right-color: blue;
 }
 
-.cell.possible span {
-	top: 14px;
+.cell.possible span.token {
 	border-color: black;
+	transform: scale(0.3);
+	/*
+	top: 14px;
 	border-width: 5px;
-	border-radius: 5px;
+	border-radius: 5px;*/
+}
+
+.cell.lastMove {
+	background: #CFC;
+}
+
+div.cell.lastMove span.token {
+	transform: scale(1.0);
+	transition-duration: 0.8s;
+	transition-timing-function: cubic-bezier(0,.63,.14,2); /*cubic-bezier(0.175, 0.885, 0.32, 1.275);*/
+	/*
+	top: 2px;
+	border-width: 17px;
+	border-radius: 17px;
+	*/
 }
 
 .cell.start {
