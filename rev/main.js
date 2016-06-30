@@ -195,6 +195,8 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 		renderField();
 	}
 	
+	start(3);
+	
 	//console.log([...range(1, 8).mul(range(1, 8)).map(([x, y]) => $(`#cell-${y}-${x}`).html(fs.getAt(x, y)))]);
 	
 	return {};
