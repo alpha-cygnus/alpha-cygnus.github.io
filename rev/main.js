@@ -1,6 +1,14 @@
 "use strict";
-define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMoveChooser}, {gen, range}) {
+define(['gmap', 'rev', 'mmc'], function(
+		gmap, 
+		rev,
+		mmc
+	) {
 	console.log('required main');
+	
+	var {gen, range} = gmap;
+	var {FieldState, MoveChooser, GreedyMoveChooser} = rev;
+	var {MMChooser} = mmc;
 	// test();
 	// start();
 	
@@ -56,7 +64,8 @@ define(['rev', 'gmap'], function({start, test, FieldState, MoveChooser, GreedyMo
 
 	var fss;
 	window.fss = fss;
-	var mc = new GreedyMoveChooser;
+	//var mc = new GreedyMoveChooser;
+	var mc = new MMChooser(3);
 	var autoColor = 0;
 	
 	// var c1 = Math.floor(Math.random()*2) + 1;

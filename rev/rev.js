@@ -41,6 +41,8 @@ define(['gmap'], function(gmap) {
 		console.log('F\n' + fs.draw());
 	}
 	
+	var _cacheMoves = {};
+	
 	class FieldState {
 		constructor(cloneFrom) {
 			if (cloneFrom) {
@@ -50,6 +52,9 @@ define(['gmap'], function(gmap) {
 				this.state = new Uint16Array(8);
 				this.colorToMove = 1;
 			}
+		}
+		getFieldKey() {
+			return this.colorToMove + ',' + this.state.toString();
 		}
 		getIntPos(x, y) {
 			if (x < 1 || x > 8) return {p: -1};
@@ -121,14 +126,22 @@ define(['gmap'], function(gmap) {
 			return '' + y + x;
 		}
 		_gatherMoves() {
-			this.allMoves = this.genPossibleMoves().foldl(
-				(a, [x, y, cnt, dx, dy]) => {
-					var key = this.getXYKey(x, y);
-					a[key] = (a[key] || {x, y, dirs: []});
-					a[key].dirs.push({cnt, dx, dy});
-					return a;
-				}
-				, {});
+			var k = this.getFieldKey();
+			var cam = _cacheMoves[k];
+			if (cam) {
+				this.allMoves = cam;
+			} else {
+				_cacheMoves[k]
+					= this.allMoves
+					= this.genPossibleMoves().foldl(
+						(a, [x, y, cnt, dx, dy]) => {
+							var key = this.getXYKey(x, y);
+							a[key] = (a[key] || {x, y, dirs: []});
+							a[key].dirs.push({cnt, dx, dy});
+							return a;
+						}
+						, {});
+			}
 			return this.allMoves;
 		}
 		anyMoves() {
@@ -225,6 +238,7 @@ define(['gmap'], function(gmap) {
 	}
 	
 	window.FieldState = FieldState;
+	window._cacheMoves = _cacheMoves;
 	
 	return {
 		start,

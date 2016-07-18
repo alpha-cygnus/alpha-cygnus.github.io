@@ -80,6 +80,14 @@ define(function() {
 		if (!g) g = this;
 		return foldl((a, _) => a + 1, 0, g);
 	}
+	function max(g) {
+		if (!g) g = this;
+		return foldl((a, b) => a === null ? b : Math.max(a, b), null, g);
+	}
+	function min(g) {
+		if (!g) g = this;
+		return foldl((a, b) => a === null ? b : Math.min(a, b), null, g);
+	}
 	var genProto = range(0, 1).__proto__.__proto__;
 	Object.assign(genProto, {
 		map,
@@ -90,6 +98,8 @@ define(function() {
 		mul,
 		filter,
 		length,
+		min,
+		max,
 	});
 	return {
 		map,
