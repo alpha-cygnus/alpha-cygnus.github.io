@@ -115,22 +115,22 @@ function makeThrottled(n, f) {
 ``` javascript
 function find10s(a) {
 	var res = [];
-	
 	function f10(c, cs, i0) {
 		if (cs === 10) res.push(c);
 		for (var i = i0; i < a.length; i++) {
 			f10(c.concat([a[i]]), cs + a[i], i + 1);
 		}
 	}
-	
-	f10([], 0, 0);
-	
+	f10([], 0, 0);	
 	return res;
 }
 ```
 
+
 ### 4.
+
 > Реализуйте на Node.js простой сервер раздачи статических файлов по запрошенному URL (например, http://localhost/page.css). При этом не используйте другие библиотеки.
+
 
 ```javascript
 const http = require('http');
