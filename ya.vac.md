@@ -213,7 +213,9 @@ https://yandex.ru/jobs/vacancies/dev/dev_java_market/
 -	сортированный java.util.LinkedList<E> 
 
 ### 3.
+
 > Перечислите все проблемы, которые вы видите в данном коде:
+
 ```java
   public abstract class Digest {
       private Map<byte[], byte[]> cache = new HashMap<byte[], byte[]>();
