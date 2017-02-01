@@ -1,0 +1,105 @@
+<html>
+<head>
+	<title>TZ</title>
+	<link rel="stylesheet" type="text/css" href="tiles.css" />
+	<script src="https://unpkg.com/react@15/dist/react.js"></script>
+	<script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.18.1/babel.min.js"></script>
+	<script type="text/babel">
+	const range = len => Array.from(new Array(len));
+	const Plan = ({children}) => <div className="plan">{children}</div>
+	const Tile = ({type}) => <div className={'tile ' + type} title={type}></div>
+	const Row = ({width, height, children}) => <div className="row" style={{width}}>{children}</div>
+	const Block = ({children}) => <div className="block">{children}</div>
+	const Wall = ({width, height, children}) => <div className="wall" style={{width}}>{children}</div>
+	
+	const ThePlan = () => <Plan>
+		<Wall width="250cm">
+			<Row>{range(9).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="x694"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD1"/>)}</Row>
+			<Row>
+				<Block>
+					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+				</Block>
+				<Tile type="P703"/><Tile type="P703"/>
+				<Block>
+					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+				</Block>
+			</Row>
+			<Row>{range(8).map(_ => <Tile type="GD1"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="x694"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+		</Wall>
+		<Wall width="500cm">
+			{[
+				['GD1', 'GD3', 'GD4', 'GD5', 'GD7', 'GD8'],
+			 	['x694', 'x695', 'x692', 'x693'],
+			 	['D692', 'D693', 'D694', 'D695', 'D696', 'D697', 'D698'],
+			 	['D692a', 'D693a', 'D694a', 'D695a', 'D696a', 'D697a', 'D699'],
+			 	['D700', 'D701', 'D702', 'D711', 'D710'],
+			 	['P703', 'P704']
+			 ].map(r => <Row>{r.map(t => <Tile type={t}/>)}</Row>)
+			}
+		</Wall>
+	</Plan>
+	</script>
+</head>
+<body>
+	<div id="destination"></div>
+	<script type="text/babel">
+      ReactDOM.render(<ThePlan />, document.getElementById('destination'));
+    </script>
+	<!--div class="plan">
+		<div class="wall" style="width:500cm">
+<div class="tile GD1" title="GD1"></div>
+<div class="tile GD3" title="GD3"></div>
+<div class="tile GD4" title="GD4"></div>
+<div class="tile GD5" title="GD5"></div>
+<div class="tile GD7" title="GD7"></div>
+<div class="tile GD8" title="GD8"></div>
+<div class="tile 694" title="694"></div>
+<div class="tile 695" title="695"></div>
+<div class="tile 692" title="692"></div>
+<div class="tile 693" title="693"></div>
+<div class="tile D692" title="D692"></div>
+<div class="tile D692a" title="D692a"></div>
+<div class="tile D693" title="D693"></div>
+<div class="tile D693a" title="D693a"></div>
+<div class="tile D694" title="D694"></div>
+<div class="tile D694a" title="D694a"></div>
+<div class="tile D695" title="D695"></div>
+<div class="tile D695a" title="D695a"></div>
+<div class="tile D696" title="D696"></div>
+<div class="tile D696a" title="D696a"></div>
+<div class="tile D697" title="D697"></div>
+<div class="tile D697a" title="D697a"></div>
+<div class="tile D698" title="D698"></div>
+<div class="tile D699" title="D699"></div>
+<div class="tile D700" title="D700"></div>
+<div class="tile D701" title="D701"></div>
+<div class="tile D702" title="D702"></div>
+<div class="tile D711" title="D711"></div>
+<div class="tile D710" title="D710"></div>
+<div class="tile P703" title="P703"></div>
+<div class="tile P704" title="P704"></div>
+		</div>
+		<br />
+		<div class="wall" style="width:240cm">
+			<div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div>
+			<div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div>
+			<div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div>
+			<div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div><div class="tile GD8"></div>
+		</div>
+	</div-->
+</body>
+</html>
