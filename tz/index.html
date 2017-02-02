@@ -5,40 +5,61 @@
 	<script src="https://unpkg.com/react@15/dist/react.js"></script>
 	<script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.18.1/babel.min.js"></script>
-	<script type="text/babel">
+	<script type="text/babel" data-presets="react">
+	const Tile = ({type}) => <div className={'tile ' + type} title={type}></div>
+	function * tileGen(children) {
+		if (typeof children === 'string') children = [children];
+		for (let child of children) {
+			if (typeof child === 'object') {
+				yield child; continue;
+			}
+			if (typeof child === 'string') {
+				console.log(child);
+				for (let s of child.split(/[,;\s]+/)) {
+					if (!s) continue;
+					let m;
+					if (m = s.match(/^\s*(\w+\d+)(?:\*(\d)+)?\s*$/)) {
+						for (let i = 0; i < (m[2] || 1); i++) yield <Tile type={m[1]}/>;
+						continue;
+					}
+				}
+			}
+		}
+	}
+
 	const range = len => Array.from(new Array(len));
 	const Plan = ({children}) => <div className="plan">{children}</div>
-	const Tile = ({type}) => <div className={'tile ' + type} title={type}></div>
-	const Row = ({width, height, children}) => <div className="row" style={{width}}>{children}</div>
+	const Row = ({width, height, children}) => <div className="row" style={{width}}>{[...tileGen(children)]}</div>
 	const Block = ({children}) => <div className="block">{children}</div>
 	const Wall = ({width, height, children}) => <div className="wall" style={{width}}>{children}</div>
 	
 	const ThePlan = () => <Plan>
 		<Wall width="250cm">
-			<Row>{range(9).map(_ => <Tile type="GD8"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="x694"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD1"/>)}</Row>
+			<Row>GD8*8</Row>
+			<Row>GD8*8</Row>
+			<Row>GD8*8</Row>
+			<Row>GD8*8</Row>
+			<Row>x694*8</Row>
+			<Row>GD1*8</Row>
 			<Row>
 				<Block>
-					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
-					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
-					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+					<Row>GD1*3</Row>
+					<Row>GD1*3</Row>
+					<Row>GD1*3</Row>
 				</Block>
-				<Tile type="P703"/><Tile type="P703"/>
+				P703*2
 				<Block>
-					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
-					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
-					<Row>{range(3).map(_ => <Tile type="GD1"/>)}</Row>
+					<Row>GD1*3</Row>
+					<Row>GD1*3</Row>
+					<Row>GD1*3</Row>
 				</Block>
 			</Row>
-			<Row>{range(8).map(_ => <Tile type="GD1"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="x694"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
-			<Row>{range(8).map(_ => <Tile type="GD8"/>)}</Row>
+			<Row>GD1*8</Row>
+			<Row>x694*8</Row>
+			<Row>GD8*8</Row>
+			<Row>GD8*8</Row>
+			<Row>GD8*8</Row>
+			<Row>GD8*8</Row>
 		</Wall>
 		<Wall width="140cm">
 		</Wall>
