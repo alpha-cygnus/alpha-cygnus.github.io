@@ -14,11 +14,12 @@
 	height: 250cm;
 	width: 240cm;
 	overflow-y: hidden;
+	overflow-x: hidden;
 	flex: none;
 }
 .row {
 	display: flex;
-	align-content: flex-start;
+	align-content: flex-end;
 	flex-direction: row;
 	flex-wrap: nowrap;
 	overflow-x: hidden;
