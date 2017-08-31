@@ -54,7 +54,7 @@ class Fld {
 	constructor(hlens, vlens, css) {
 		this.hlens = hlens;
 		this.vlens = vlens;
-		this.css = css;
+		this.css = css || [];
 	}
 	getCS(i) {
 		const {cant = 0, should = 0} = this.css[i] || {};
@@ -90,7 +90,7 @@ class Fld {
 			for (let j = 0; j < maxw; j++) {
 				if (hasBit(cant, j)) s += ' . ';
 				else if (hasBit(should, j)) s += ' * ';
-				else s += '  ';
+				else s += '   ';
 			}
 			console.log(('  ' + i).slice(-3), (padder + hlens[i].toString()).slice(-10), '|' + s + '|');
 		}
@@ -107,7 +107,8 @@ class Fld {
 		return this;
 	}
 	solveStep(out = {}) {
-		const {hlens, vlens, css} = this;
+		const {hlens, vlens, css: oldCss} = this;
+		const css = [...oldCss]
 		const maxh = hlens.length;
 		const maxw = vlens.length;
 		out.changes = 0;
@@ -118,7 +119,7 @@ class Fld {
 			if (should != newShould) out.changes++;
 			css[i] = {cant: newCant, should: newShould};
 		}
-		return this;
+		return new Fld(hlens, vlens, css);
 	}
 	solveIt(max = 100) {
 		const c1 = {};
@@ -196,6 +197,55 @@ window.testFld2 = new Fld([
 	[2, 4, 2, 1],
 	[1, 6, 1, 2],
 ], []);
+
+window.testFld3 = new Fld([
+	[2, 5],
+	[4, 3],
+	[5, 3],
+	[3, 2, 1],
+	[1, 2],
+	[2, 2],
+	[1, 2, 2],
+	[2, 2],
+	[2, 1],
+	[2, 1, 2],
+], [
+	[5, 3],
+	[4, 4],
+	[3],
+	[2, 1],
+	[1, 2, 1],
+	[1, 1, 2],
+	[1, 2, 3],
+	[3, 2, 1],
+	[3, 2],
+	[4, 1]
+], []);
+
+window.testFld4 = new Fld([
+	[2, 2],
+	[2, 1, 1],
+	[2, 6],
+	[2, 4],
+	[2, 1],
+	[2, 7],
+	[3, 4, 1],
+	[3, 1, 1, 1],
+	[4, 1, 1],
+	[5],
+], [
+	[10],
+	[10],
+	[4],
+	[2, 2],
+	[2, 2, 1],
+	[2, 3],
+	[1, 2, 2],
+	[1, 2, 4],
+	[2, 1],
+	[2, 4]
+], []);
+
 </script>
 </head>
 <body>
