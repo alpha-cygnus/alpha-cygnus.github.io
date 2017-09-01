@@ -38,9 +38,9 @@ uniform float time;
 void main() {
   vec2 uv = (gl_FragCoord.xy - resolution / 2.0) / min(resolution.x, resolution.y) * 2.0;
   float r = sqrt(uv.x*uv.x + uv.y*uv.y);
-  float cr = sin(r * 12.2 - time);
-  float cg = sin(r * 12.2 - time*2.0);
-  float cb = sin(r * 12.2 - time*3.0);
+  float cr = sin(r * 12.2 - time*2.0);
+  float cg = sin(r * 12.2 - time*1.1);
+  float cb = sin(r * 12.2 - time*3.14);
 
   gl_FragColor = vec4( vec3(cr, cg, cb) / 2.0 + 0.5, 1.0 );
 }
