@@ -22,52 +22,161 @@
 <body>
 <canvas id="c"></canvas>
 <script src="lib/twgl-full.js"></script>
-<script id="vs" type="notjs">
-attribute vec4 position;
+<script id="vs-i" type="notjs">
+precision mediump float;
+
+attribute float idx;
+
+uniform float dotCount;
+
+uniform float time;
+
+float aFunc(float x) {
+  return sin(x*25.0*3.1415926 + sin(time/10.0)*20.0)*exp(-x*x);
+}
 
 void main() {
-  gl_Position = position;
+  float x = ((idx + 0.5) / dotCount) * 1.98 - 0.99;
+  float y = aFunc(x);
+  gl_Position = vec4(x, y, 0, 1);
 }
 </script>
-<script id="fs" type="notjs">
+<script id="fs-i" type="notjs">
 precision mediump float;
 
 uniform vec2 resolution;
 uniform float time;
 
 void main() {
-  vec2 uv = (gl_FragCoord.xy - resolution / 2.0) / min(resolution.x, resolution.y) * 2.0;
-  float r = sqrt(uv.x*uv.x + uv.y*uv.y);
-  float cr = sin(r * 12.2 - time*2.0);
-  float cg = sin(r * 12.2 - time*1.1);
-  float cb = sin(r * 12.2 - time*3.14);
+  vec2 uv = (gl_FragCoord.xy/resolution.xy - 0.5) * 2.0;
+  gl_FragColor = vec4(1, 1, 1, 1)*(1.0 - uv.x*uv.x*uv.x*uv.x)*(1.0 - uv.y*uv.y*uv.y*uv.y);
+}
+</script>
 
-  gl_FragColor = vec4( vec3(cr, cg, cb) / 2.0 + 0.5, 1.0 );
+<script id="vs-o" type="notjs">
+attribute vec4 position;
+
+void main() {
+  gl_Position = position;
+}
+</script>
+<script id="fs-o" type="notjs">
+precision mediump float;
+
+#define ksize 3
+#define ksz2 7
+
+uniform vec2 resolution;
+uniform float time;
+uniform sampler2D inp;
+uniform float blur;
+uniform float krnl[ksz2*ksz2];
+uniform float disp;
+
+float rand(vec2 co) {
+   return fract(sin(dot(co.xy,vec2(12.9898,78.233)) + time) * 43758.5453);
+}
+
+void main() {
+  // vec2 uv = (gl_FragCoord.xy - resolution / 2.0) / min(resolution.x, resolution.y) * 2.0;
+  // float r = sqrt(uv.x*uv.x + uv.y*uv.y);
+  // float cr = sin(r * 12.2 - time*2.0);
+  // float cg = sin(r * 12.2 - time*1.1);
+  // float cb = sin(r * 12.2 - time*3.14);
+
+  vec2 pix1 = vec2(1, 1)/resolution;
+  vec2 xy = gl_FragCoord.xy;
+  vec2 uvr = (xy + vec2(sin(xy.y/resolution.y*6.28 + time/1.1)*disp, 0))/resolution;
+  vec2 uvg = (xy + vec2(sin(xy.y/resolution.y*6.28 + time/2.1)*disp, 0))/resolution;
+  vec2 uvb = (xy + vec2(sin(xy.y/resolution.y*6.28 + time/3.1)*disp, 0))/resolution;
+
+  vec3 cc = vec3(0, 0, 0);
+  int sz2 = ksize*2 + 1;
+  for (int dx = -ksize; dx <= ksize; dx++) {
+    for (int dy = -ksize; dy <= ksize; dy++) {
+      vec2 dd = vec2(dx, dy)*pix1;
+      cc += vec3(
+        texture2D(inp, uvr + dd).r,
+        texture2D(inp, uvg + dd).g,
+        texture2D(inp, uvb + dd).b
+      )*krnl[(dy + ksize)*ksz2 + dx + ksize];
+    }
+  }
+  float rnd = rand(uvr);
+
+  gl_FragColor = vec4(vec3(rnd, rnd, rnd)*0.35 + vec3(cc/blur) - (sin(xy.yyy*3.1415926*0.5) + 1.0) / 3.0, 1.0 );
 }
 </script>
 
 <script>
   var gl = document.getElementById("c").getContext("webgl");
-  var programInfo = twgl.createProgramInfo(gl, ["vs", "fs"]);
-
-  var arrays = {
-    position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
+  var programInfoI = twgl.createProgramInfo(gl, ["vs-i", "fs-i"]);
+  var programInfoO = twgl.createProgramInfo(gl, ["vs-o", "fs-o"]);
+  const dotCount = gl.canvas.width*10;
+  var arraysI = {
+    idx: {numComponents: 1, data: [...new Array(dotCount).keys()]},
   };
-  var bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+  var bufferInfoI = twgl.createBufferInfoFromArrays(gl, arraysI);
+
+  twgl.resizeCanvasToDisplaySize(gl.canvas);
+  const fboI = twgl.createFramebufferInfo(gl, null, gl.canvas.width, gl.canvas.height);
+
+  const arraysO = {
+    position: {numComponents: 3, data: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]},
+  };
+  var bufferInfoO = twgl.createBufferInfoFromArrays(gl, arraysO);
+
+  function gkrnl(blur, size) {
+    const krnl = [];
+    const sz2 = size*2 + 1;
+    for (let dx = -size; dx <= size; dx++) {
+      for (let dy = -size; dy <= size; dy++) {
+        krnl[sz2 * (dy + size) + dx + size] = Math.exp(-(dx*dx+dy*dy)/blur);
+      }
+    }
+    return krnl;
+  }
 
   function render(time) {
     twgl.resizeCanvasToDisplaySize(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-    var uniforms = {
+    twgl.bindFramebufferInfo(gl, fboI);
+
+    var uniformsI = {
       time: time * 0.001,
       resolution: [gl.canvas.width, gl.canvas.height],
+      dotCount,
     };
 
-    gl.useProgram(programInfo.program);
-    twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
-    twgl.setUniforms(programInfo, uniforms);
-    twgl.drawBufferInfo(gl, bufferInfo);
+    gl.useProgram(programInfoI.program);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    twgl.setBuffersAndAttributes(gl, programInfoI, bufferInfoI);
+    twgl.setUniforms(programInfoI, uniformsI);
+    gl.lineWidth(1.0);
+    twgl.drawBufferInfo(gl, bufferInfoI, gl.LINE_STRIP);
+
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    const blur = (Math.sin(time/1000) + 1.1) * 6;
+    const ksize = 3;
+
+    const uniformsO = {
+      time: time * 0.001,
+      resolution: [gl.canvas.width, gl.canvas.height],
+      inp: fboI.attachments[0],
+      blur,
+      krnl: gkrnl(blur, ksize),
+      disp: (Math.sin(time/1000/3.1) + 1) * 2,
+    };
+    uniformsO.krnl.push(uniformsO.krnl.reduce((a, x) => a + x));
+    window.uniformsO = uniformsO;
+
+    gl.useProgram(programInfoO.program);
+    twgl.setBuffersAndAttributes(gl, programInfoO, bufferInfoO);
+    twgl.setUniforms(programInfoO, uniformsO);
+    twgl.drawBufferInfo(gl, bufferInfoO);
 
     requestAnimationFrame(render);
   }
