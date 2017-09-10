@@ -4,7 +4,30 @@
 	<script type="text/javascript" src="kefir.js"></script>
 	<script type="text/javascript" src="main.js"></script>
 </head>
+<style>
+#pressme {
+	background:#F88;
+	border: yellow solid;
+	display: inline-block;
+	padding: 4px;
+}
+</style>
 <body>
-
+<div id="pressme">
+	PRESS ME
+</div>
+<script type="text/javascript">
+	const b2 = new B2(new AudioContext);
+	const o = b2.makeNode('Oscillator');
+	const g = b2.makeGain(0.0);
+	b2.connect(o, g);
+	b2.connect(g, b2.context.destination);
+	const btn = document.getElementById('pressme');
+	const downs = Kefir.fromEvents(btn, 'mousedown', _ => 1);
+	const ups = Kefir.fromEvents(btn, 'mouseup', _ => 0);
+	const trig = Kefir.merge([downs, ups]);
+	trig.log();
+	b2.connect(trig, g.gain);
+</script>
 </body>
 </html>
