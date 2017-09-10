@@ -63,28 +63,31 @@ class B2 {
 		const func = this.getConnector(from, to);
 		func.call(this, from, to);
 	}
+	get currentTime() {
+		return this.context.currentTime;
+	}
 	normVal(val) {
-		const ct = this.context.currentTime;
+		const ct = this.currentTime;
 		if (val && typeof val === 'object') {
-			const {t = ct, v = 0, k = ''} = val;
-			return {t, v, k};
+			const {t = ct, v = 0, c = ''} = val;
+			return {t, v, c};
 		}
 		if (typeof val === 'number') return {t: ct, v: val};
-		return {t: ct, v: 0};
+		return {t: ct, v: 0, c: ''};
 	}
 	setValueToParam(val, param) {
-		let {t, v, k} = this.normVal(val);
-		if (!t) t = this.context.currentTime;
-		switch (k) {
+		let {t, v, c} = this.normVal(val); // time, value, command
+		switch (c) {
 			case 'l':
-				param.linearRampToValueAtTime(v, t);
+				return param.linearRampToValueAtTime(v, t);
 			case 'e':
 			case 'x':
-				param.exponentialRampToValueAtTime(v, t);
+				return param.exponentialRampToValueAtTime(v, t);
+			case 'c':
+				return param.cancelAndHoldAtTime(t);
 			case 's':
 			default:
-				param.setValueAtTime(v, t);
-				return;
+				return param.setValueAtTime(v, t);
 		}
 	}
 	makeNode(nodeType, options = {}) {

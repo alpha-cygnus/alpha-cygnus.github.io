@@ -26,8 +26,22 @@
 	const downs = Kefir.fromEvents(btn, 'mousedown', _ => 1);
 	const ups = Kefir.fromEvents(btn, 'mouseup', _ => 0);
 	const trig = Kefir.merge([downs, ups]);
-	trig.log();
-	b2.connect(trig, g.gain);
+	//trig.log();
+	//b2.connect(trig, g.gain);
+	const env = trig.withHandler((emitter, {type, value}) => {
+		if (type === 'value') {
+			const {v, t} = b2.normVal(value);
+			emitter.emit({c: 'c', t});
+			if (v > 0) {
+				emitter.emit({c: 'l', t: t + 0.1, v: 1});
+				emitter.emit({c: 'l', t: t + 0.5, v: 0.5});
+			} else {
+				emitter.emit({c: 'l', t: t + 1, v: 0});
+			}
+		}
+	});
+	env.log();
+	b2.connect(env, g.gain);
 </script>
 </body>
 </html>
