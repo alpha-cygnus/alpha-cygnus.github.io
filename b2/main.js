@@ -69,14 +69,16 @@ class B2 {
 	normVal(val) {
 		const ct = this.currentTime;
 		if (val && typeof val === 'object') {
-			const {t = ct, v = 0, c = ''} = val;
-			return {t, v, c};
+			const {t = ct, v = 0, c = '', a = []} = val;
+			return {t, v, c, a};
 		}
 		if (typeof val === 'number') return {t: ct, v: val};
-		return {t: ct, v: 0, c: ''};
+		return {t: ct, v: 0, c: '', a: []};
 	}
 	setValueToParam(val, param) {
-		let {t, v, c} = this.normVal(val); // time, value, command
+		let {t, v, c, a} = this.normVal(val); // time, value, command, additional params
+		a = a || [];
+		if (!Array.isArray(a)) a = [a];
 		switch (c) {
 			case 'l':
 				return param.linearRampToValueAtTime(v, t);
@@ -85,6 +87,10 @@ class B2 {
 				return param.exponentialRampToValueAtTime(v, t);
 			case 'c':
 				return param.cancelAndHoldAtTime(t);
+				//return param.cancelScheduledValues(t);
+			case 't':
+				console.log('setTargetAtTime', v, t, a[0] || 0);
+				return param.setTargetAtTime(v, t, a[0] || 0);
 			case 's':
 			default:
 				return param.setValueAtTime(v, t);
