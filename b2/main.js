@@ -22,6 +22,7 @@ class B2 {
 		this.nodeTypes = {};
 		this.onCreate = {
 			Oscillator: (node, b2) => node.start(),
+			ConstantSource: (node, b2) => node.start(),
 		};
 	}
 	getNodeKinds(node) {
@@ -76,6 +77,10 @@ class B2 {
 		return {t: ct, v: 0, c: '', a: []};
 	}
 	setValueToParam(val, param) {
+		if (Array.isArray(val)) {
+			for (let v of val) this.setValueToParam(v, param);
+			return;
+		}
 		let {t, v, c, a} = this.normVal(val); // time, value, command, additional params
 		a = a || [];
 		if (!Array.isArray(a)) a = [a];
@@ -96,18 +101,22 @@ class B2 {
 				return param.setValueAtTime(v, t);
 		}
 	}
-	makeNode(nodeType, options = {}) {
-		const nodeCons = this.nodeTypes[nodeType] || window[`${nodeType}Node`];
-		if (!nodeCons) throw `known node type: ${nodeType}`;
-		const node = new nodeCons(this.context, options);
+	create(nodeType, ...args) {
+		let creator = null;
+		if (this.nodeTypes[nodeType]) creator = (...args) => new this.nodeTypes[nodeType](this, ...args);
+		else if (this.context[`create${nodeType}`]) creator = (...args) => this.context[`create${nodeType}`](...args);
+		if (!creator) throw `unknown node type: ${nodeType}`;
+		const node = creator(...args);
 		if (this.onCreate[nodeType]) this.onCreate[nodeType](node, this);
 		return node;
 	}
-	makeConst(v) {
-		return this.makeNode('ConstantSource', {offset: v});
+	createConst(v) {
+		return this.create('ConstantSource', v);
 	}
-	makeGain(g) {
-		return this.makeNode('Gain', {gain: g});
+	createGain(v) {
+		const g = this.create('Gain');
+		g.gain.value = v;
+		return g;
 	}
 	connect_kefir2aparam(from, to) {
 		from.onValue(v => this.setValueToParam(v, to));
