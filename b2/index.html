@@ -19,18 +19,82 @@
 <script type="text/javascript">
 	const b2 = new B2(new AudioContext);
 
-	function createADSR(b2, trig, a, d, s, r) {
-		return trig.map(value => {
-			const {v, t} = b2.normVal(value);
-			const res = [{c: 'c', t}];
-			if (v > 0) {
-				res.push({c: 't', t: t, v: 1, a: [a/4]});
-				res.push({c: 't', t: t + a, v: s, a: [d/4]});
-			} else {
-				res.push({c: 't', t: t, v: 0, a: [r/4]});
+	function handleValues(from, mapper) {
+		return from.withHandler((emitter, event) => {
+			if (event.type === 'value') {
+				mapper(v => emitter.emit(v), event.value);
 			}
-			return res;
+		})
+	}
+	function mapValue(b2, from, mapper) {
+		return from.map(value => {
+			const val = b2.normVal(value);
+			val.v = mapper(val.v);
+			return val;
+		})
+	}
+
+	function createADSR(b2, trig, a, d, s, r) {
+		return handleValues(trig, (emit, value) => {
+			const {v, t} = b2.normVal(value);
+			emit({c: 'c', t});
+			if (v > 0) {
+				emit({c: 't', t: t, v: 1, a: [a/4]});
+				emit({c: 't', t: t + a, v: s, a: [d/4]});
+			} else {
+				emit({c: 't', t: t, v: 0, a: [r/4]});
+			}
 		});
+	}
+
+	function createTicker(b2, tps, minDelay, maxDelay) {
+		const msInt = 1000/tps;
+		const sInt = 1/tps;
+		const startTime = b2.context.currentTime;
+		let nextTime = 0;
+		return Kefir.withInterval(msInt, emitter => {
+			const ct = b2.context.currentTime;
+			if (ct + minDelay > nextTime) {
+				nextTime = ct + minDelay;
+			}
+			while(nextTime < ct + maxDelay) {
+				emitter.emit({t: nextTime, v: nextTime})
+				nextTime += sInt;
+			}
+		});
+	}
+
+	function createDivider(b2, from, divs) {
+		if (!Array.isArray(divs)) divs = [divs];
+		let divIndex = -1;
+		let divValue = 0;
+		return handleValues(from, (emit, value) => {
+			if (divValue <= 0) {
+				emit(value);
+				divIndex = (divIndex + 1) % divs.length;
+				divValue = divs[divIndex];
+			}
+			divValue--;
+		});
+	}
+
+	function createSequencer(b2, ticker, iterable) {
+		const iter = iterable[Symbol.iterator]();
+		return handleValues(ticker, (emit, {t}) => {
+			const iv = iter.next();
+			if (iv.done) return;
+			const val = b2.normVal(iv.value);
+			val.t = t;
+			emit(val);
+		});
+	}
+
+	function * loop(values) {
+		for (;;) {
+			for (value of values) {
+				yield value;
+			}
+		}
 	}
 
 	const o = b2.create('Oscillator');
@@ -40,12 +104,23 @@
 	const btn = document.getElementById('pressme');
 	const downs = Kefir.fromEvents(btn, 'mousedown', _ => 1);
 	const ups = Kefir.fromEvents(btn, 'mouseup', _ => 0);
-	const trig = Kefir.merge([downs, ups]);
+
+	const tckr = createTicker(b2, 10, 0.1, 0.5);
+	const divs = createDivider(b2, tckr, [5, 4, 3, 2, 1]);
+	const trig = Kefir.merge([
+		downs,
+		ups,
+		mapValue(b2, divs, () => 1),
+	]);
 	//trig.log();
 	//b2.connect(trig, g.gain);
-	const env = createADSR(b2, trig, 0.01, 0.3, 0.5, 1);
-	env.log();
+	const env = createADSR(b2, trig, 0.01, 0.2, 0.5, 0.5);
+	env.log('env');
 	b2.connect(env, g.gain);
+	const seq = createSequencer(b2, divs, loop([0, 200, 400, 800, 1200]));
+	seq.log('seq');
+	divs.log('divs');
+	b2.connect(seq, o.detune);
 
 	`
 		Osc o
@@ -56,6 +131,8 @@
 		ADSR(0.01, 0.3, 0.5, 1) adsr
 		[o, ([ups, downs] -> trig)] -> g -> destination
 	`
+
+	//divs.log();
 </script>
 </body>
 </html>
