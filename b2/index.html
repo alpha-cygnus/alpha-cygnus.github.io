@@ -1,22 +1,10 @@
 <html>
 <head>
-	<title>b2</title>
-	<script type="text/javascript" src="kefir.js"></script>
-	<script type="text/javascript" src="main.js"></script>
-</head>
-<style>
-#pressme {
-	background:#F88;
-	border: yellow solid;
-	display: inline-block;
-	padding: 4px;
-}
-</style>
-<body>
-<div id="pressme">
-	PRESS ME
-</div>
-<script type="text/javascript">
+<title>b2</title>
+<script type="text/javascript" src="kefir.js"></script>
+<script type="module" src="main.js"></script>
+<script type="module">
+	import {B2} from './main.js';
 	const b2 = new B2(new AudioContext);
 
 	function handleValues(from, mapper) {
@@ -91,7 +79,7 @@
 
 	function * loop(values) {
 		for (;;) {
-			for (value of values) {
+			for (const value of values) {
 				yield value;
 			}
 		}
@@ -134,5 +122,18 @@
 
 	//divs.log();
 </script>
+</head>
+<style>
+#pressme {
+	background:#F88;
+	border: yellow solid;
+	display: inline-block;
+	padding: 4px;
+}
+</style>
+<body>
+<div id="pressme">
+	PRESS ME
+</div>
 </body>
 </html>

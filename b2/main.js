@@ -1,4 +1,3 @@
-(() => {
 class BaseNode {
 	constructor(b2) {
 		this.b2 = b2;
@@ -16,7 +15,7 @@ class Attr extends BaseNode {
 		this.set = (val) => node[name] = b2.normVal(val).v;
 	}
 }
-class B2 {
+export class B2 {
 	constructor (context) {
 		this.context = context || new AudioContext();
 		this.nodeTypes = {};
@@ -163,6 +162,3 @@ class B2 {
 		this.connect(from.getOutput(), to.getInput());
 	}
 }
-
-window.B2 = B2;
-})();
