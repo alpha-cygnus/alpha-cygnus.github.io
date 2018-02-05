@@ -1,29 +1,63 @@
 import { h, app } from './hyperapp/index.js';
 
-const state = {
-  count: 0,
-  circles: 
-  [
-    {
-      cx: 100, cy: 100, r: 10,
-      fill: 'black',
-    },
-    {
-      cx: 20, cy: 20, r: 20,
-      fill: 'black',
-    },
-  ].reduce((res, c, _i) => ({...res, [_i]: {...c, _i}}), {}),
-};
-
 for (const tag of 'div,h1,button,svg,path,circle'.split(',')) {
   window['h' + tag] = (props, ...children) => h(tag, props, children);
 }
 
+const snap = (x, to = 1) => Math.round(x / to)*to;
+
+const nodeCount = Math.round(50 + Math.random(150));
+const elems = {};
+for (let i = 0; i < nodeCount; i++) {
+  elems['c' + i] = {
+    _t: 'Circle', x: snap(Math.random()*600) + 100, y: snap(Math.random()*600) + 100,
+    r: Math.random()*20 + 10, fill: ['red', 'green', 'blue'][Math.floor(Math.random()*3)],
+  };
+}
+
+for (let i = 0; i < Math.random()*nodeCount*nodeCount; i++) {
+  const f = Math.floor(Math.random()*nodeCount);
+  const t = Math.floor(Math.random()*nodeCount);
+  elems[`l${f}_${t}`] = {
+    _t: 'DirectLink', from: `c${f}`, to: `c${t}`,
+  };
+}
+
+const state = {
+  count: 0,
+  // elems: {
+  //   c0: {
+  //     _t: 'Circle',
+  //     x: 20, y: 20,
+  //     r: 20, fill: 'green',
+  //   },
+  //   c1: {
+  //     _t: 'Circle',
+  //     x: 50, y: 100,
+  //     r: 10, fill: 'blue',
+  //   },
+  //   c2: {
+  //     _t: 'Circle',
+  //     x: 120, y: 20,
+  //     r: 20, fill: 'green',
+  //   },
+  //   l1_2: {
+  //     _t: 'DirectLink',
+  //     from: 'c1', to: 'c2',
+  //   },
+  //   l0_2: {
+  //     _t: 'DirectLink',
+  //     from: 'c0', to: 'c2',
+  //   },
+  // }
+  elems,
+};
+
 const actions = {
   down: value => state => ({ count: state.count - value }),
   up: value => state => ({ count: state.count + value }),
-  circles: {
-    setIt: ({_i, ...it}) => state => ({...state, [_i]: {...state[_i], ...it}}),
+  elems: {
+    setIt: ({_id, ...it}) => state => ({...state, [_id]: {...state[_id], ...it}}),
   },
 };
 
@@ -37,40 +71,97 @@ const startDragOnMouseDown = (ondown, onmove, onup) => e => {
   }
 }
 
-const Circle = ({_i, cx, cy, r, fill}, {setIt}) =>
-  hcircle({cx, cy, r, fill,
-    onmousedown: startDragOnMouseDown(
+
+class Elem {
+  constructor (_id, all) {
+    this._id = _id;
+    this.state = all[_id];
+    this.all = all;
+  }
+  renderSVG(actions) {
+  }
+}
+
+class Node extends Elem {
+  constructor (_id, all) {
+    super(_id, all);
+    this.x = this.state.x;
+    this.y = this.state.y;
+    this.dragging = this.state.dragging;
+    this.layer = 1;
+  }
+  dragMouseDown({setIt}) {
+    const {_id, x, y} = this;
+    return startDragOnMouseDown(
       e => {
-        const [dx, dy] = [cx - e.x, cy - e.y];
-        console.log(e, dx, dy);
-        setIt({_i, fill: 'green'});
+        const [dx, dy] = [x - e.x, y - e.y];
+        setIt({_id, dragging: true});
         return {dx, dy};
       },
       (e, {dx, dy}) => {
-        console.log(e, dx, dy);
-        setIt({_i, cx: dx + e.x, cy: dy + e.y});
+        setIt({_id, x: snap(dx + e.x), y: snap(dy + e.y)});
       },
       e => {
-        console.log(e);
-        setIt({_i, fill: 'black'})
+        setIt({_id, dragging: false})
       }
-    ),
-  })
-;
+    );
+  }
+}
 
+class Circle extends Node {
+  renderSVG(actions) {
+    const {r, fill} = this.state;
+    const {_id, x, y, dragging} = this;
+    return hcircle({id: _id, cx: x, cy: y, r, fill, stroke: dragging ? 'red' : 'white',
+      onmousedown: this.dragMouseDown(actions)
+    });
+  }
+}
 
+class Link extends Elem {
+  constructor (_id, all) {
+    super(_id, all);
+    this.from = this.state.from;
+    this.to = this.state.to;
+    this.layer = 0;
+  }
+}
 
-const view = ({count, circles}, actions) =>
-  hdiv({},
-    hh1({}, state.count),
-    hbutton({ onclick: () => actions.down(1) }, "-"),
-    hbutton({ onclick: () => actions.up(1) }, "+"),
-    hsvg({width: '200px', height: '200px', style: 'border: 1px solid red'},
-      hpath({d: 'M0 0 l 100 100', stroke: 'black', fill: 'none'}),
-      Object.entries(circles).map(([_i, c]) => Circle(c, actions.circles)),
+class DirectLink extends Link {
+  renderSVG(actions) {
+    const [from, to] = [this.all[this.from], this.all[this.to]];
+    return hpath({
+      d: `M${from.x} ${from.y} C${from.x + 100} ${from.y} ${to.x - 100} ${to.y} ${to.x} ${to.y}`,
+      stroke: from.dragging || to.dragging ? 'red' : 'black', fill: 'none'
+    });
+  }
+}
+
+const ELEM_CLASSES = {
+  Circle,
+  DirectLink,
+};
+
+const view = ({count, elems}, actions) => {
+  const all = {...elems};
+  for (const [_id, {_t, ...elem}] of Object.entries(elems)) {
+    all[_id] = new ELEM_CLASSES[_t](_id, all);
+  }
+  return hdiv({},
+    hsvg({width: '800px', height: '800px', style: 'border: 1px solid red'},
+      h('g', {transform: 'translate(0.5, 0.5)'},
+        [0, 1].map(layer => 
+          h('g', {},
+            Object.keys(elems)
+              .map(_id => all[_id])
+              .filter(elem => elem.layer === layer)
+              .map(elem => elem.renderSVG(actions.elems)),
+          )
+        )
+      )
     )
   );
+}
 
 app(state, actions, view, document.getElementById('test'));
-
 
