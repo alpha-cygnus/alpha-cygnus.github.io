@@ -6,7 +6,7 @@ for (const tag of 'div,h1,button,svg,path,circle'.split(',')) {
 
 const snap = (x, to = 1) => Math.round(x / to)*to;
 
-const nodeCount = Math.round(50 + Math.random(150));
+const nodeCount = Math.round(500 + Math.random(1500));
 const elems = {};
 for (let i = 0; i < nodeCount; i++) {
   elems['c' + i] = {
@@ -80,6 +80,9 @@ class Elem {
   }
   renderSVG(actions) {
   }
+  getLayer() {
+    return this.layer || 0;
+  }
 }
 
 class Node extends Elem {
@@ -106,6 +109,12 @@ class Node extends Elem {
       }
     );
   }
+  isDragging() {
+    return this.dragging;
+  }
+  getLayer() {
+    return this.isDragging() ? 3 : 1;
+  }
 }
 
 class Circle extends Node {
@@ -125,14 +134,22 @@ class Link extends Elem {
     this.to = this.state.to;
     this.layer = 0;
   }
+  isDragging() {
+    const [from, to] = [this.all[this.from], this.all[this.to]];
+    return from.dragging || to.dragging;
+  }
+  getLayer() {
+    return this.isDragging() ? 2 : 0;
+  }
 }
 
 class DirectLink extends Link {
   renderSVG(actions) {
     const [from, to] = [this.all[this.from], this.all[this.to]];
+    const dragging = this.isDragging();
     return hpath({
       d: `M${from.x} ${from.y} C${from.x + 100} ${from.y} ${to.x - 100} ${to.y} ${to.x} ${to.y}`,
-      stroke: from.dragging || to.dragging ? 'red' : 'black', fill: 'none'
+      stroke: dragging ? 'black' : 'grey', fill: 'none', 'stroke-width': dragging ? 2 : 1,
     });
   }
 }
@@ -150,11 +167,11 @@ const view = ({count, elems}, actions) => {
   return hdiv({},
     hsvg({width: '800px', height: '800px', style: 'border: 1px solid red'},
       h('g', {transform: 'translate(0.5, 0.5)'},
-        [0, 1].map(layer => 
+        [0, 1, 2, 3].map(layer => 
           h('g', {},
             Object.keys(elems)
               .map(_id => all[_id])
-              .filter(elem => elem.layer === layer)
+              .filter(elem => elem.getLayer() === layer)
               .map(elem => elem.renderSVG(actions.elems)),
           )
         )
