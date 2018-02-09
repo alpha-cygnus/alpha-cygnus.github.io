@@ -12,10 +12,10 @@ const pick = arr => arr[rnd(arr.length)];
 const nodeCount = rnd(10, 10);
 const elems = {};
 for (let i = 0; i < nodeCount; i++) {
-  elems['c' + i] = {
-    _t: 'Circle', x: snap(rnd(600)) + 100, y: snap(rnd(600)) + 100,
+  elems['c' + i] = ['Circle', {
+    x: snap(rnd(600)) + 100, y: snap(rnd(600)) + 100,
     r: rnd(20, 10), fill: pick(['red', 'green', 'blue']),
-  };
+  }];
 }
 
 for (let i = 0; i < Math.random()*nodeCount*nodeCount; i++) {
@@ -23,68 +23,77 @@ for (let i = 0; i < Math.random()*nodeCount*nodeCount; i++) {
   const fi = pick([2, 3]);
   const t = Math.floor(Math.random()*nodeCount);
   const ti = pick([0, 1]);
-  elems[`l${f}.${fi}-${t}.${ti}`] = {
-    _t: 'DirectLink', from: `c${f}`, to: `c${t}`, fromPort: fi, toPort: ti,
-  };
+  elems[`l${f}.${fi}-${t}.${ti}`] = ['DirectLink', {
+    from: `c${f}`, to: `c${t}`, fromPort: fi, toPort: ti,
+  }];
 }
 
 const state = {
   elems: {
     ...elems,
-    __topState: {_t: 'TopState'},
+    __topState: ['TopState', {title: 'Random graph', scale: 1.5, tx: 0, ty: 0, currentElem: '__topState'}],
   }
 };
 
 const actions = {
   elems: {
-    setIt: ({_id, ...it}) => state => {
-      return {...state, [_id]: {...state[_id], ...it}};
+    setIt: ({id, ...it}) => state => {
+      return {...state, [id]: [state[id][0], {...state[id][1], ...it}]};
     },
-    newOne: ({_id, ...it}) => state => ({...state, [_id]: {...state[_id], ...it}}),
+    newOne: ([_t, {id, ...it}]) => state => ({...state, [id]: [_t, it]}),
     setPortOver: (port) => (state, actions) => {
-      console.log('setPortOver', port);
+      // console.log('setPortOver', port);
       if (port) {
-        const {parent: {_id}, name} = port;
-        //return {...state, __topState: {...state.__topState, portOverParent: _id, portOverName: name}};
-        return actions.setTopState({portOverParent: _id, portOverName: name});
+        const {parent: {id}, name} = port;
+        return actions.setTopState({portOverParent: id, portOverName: name});
       } else {
-        return {...state, __topState: {...state.__topState, portOverParent: null, portOverName: null}};
+        return actions.setTopState({portOverParent: null, portOverName: null});
       }
     },
-    setTopState: (it) => state => {
-      console.log('topState', it);
-      return {...state, __topState: {...state.__topState, ...it}}
+    setTopState: (it) => (state, actions) => {
+      // console.log('topState', it);
+      return actions.setIt({id: '__topState', ...it});
     },
     newLink: ({from, fromPort}) => (state, actions) => {
-      const topState = state.__topState;
+      const topState = state.__topState[1];
       const {portOverParent, portOverName} = topState;
       if (portOverParent) {
         const [to, toPort] = [portOverParent, portOverName];
-        return actions.setIt({_id: `l${from}.${fromPort}-${to}.${toPort}`,
-          _t: 'DirectLink', from, fromPort, to, toPort
-        });
+        const state = {
+          id: `l${from}.${fromPort}-${to}.${toPort}`,
+          from, fromPort, to, toPort,
+        };
+        // console.log('creating new link', state);
+        return actions.newOne(['DirectLink', state]);
       }
       return state;
     },
-    deleteOne: ({_id}) => state => ({...state, [_id]: undefined}),
+    deleteOne: ({id}) => state => ({...state, [id]: undefined}),
+    selectOne: ({id}) => (state, actions) => {
+      if (!id) id = '__topState';
+      actions.setTopState({currentElem: id})
+    },
   },
 };
 
-const startDragOnMouseDown = (ondown, onmove, onup) => e => {
-  const data = ondown(e);
-  document.onmousemove = e => onmove(e, data);
+const startDragOnMouseDown = (ondown, onmove, onup, mangle = e => e) => e => {
+  const data = ondown(mangle(e));
+  document.onmousemove = e => onmove(mangle(e), data);
   document.onmouseup = e => {
-    onup(e, data);
+    onup(mangle(e), data);
     document.onmousemove = null;
     document.onmouseup = null;
   }
 }
 
+const mangleScale = scale => e => {
+  return {...e, x: e.x/scale, y: e.y/scale}
+};
 
 class Elem {
-  constructor (_id, all) {
-    this._id = _id;
-    this.state = all[_id];
+  constructor ({id, state, all}) {
+    this.id = id;
+    this.state = state;
     this.all = all;
   }
   renderSVG(actions) {
@@ -93,11 +102,47 @@ class Elem {
     return this.layer || 0;
   }
   isSelected() {
-    return this.all.__topState.state.currentElem === this._id;
+    return this.getTopState().currentElem === this.id;
+  }
+  onDelete({deleteOne, selectOne}) {
+    const {id} = this;
+    deleteOne({id});
+    selectOne({id: null}); 
+  }
+  getTopState() {
+    return this.all.__topState.state;
+  }
+  renderEditor(actions) {
+    return hdiv({},
+      h('h1', {}, this.id),
+      h('button', {
+        onclick: e => {
+          this.onDelete(actions);
+          actions.selectOne({id: null});
+        },
+      }, 'DEL'),
+    );
   }
 }
 
 class TopState extends Elem {
+  constructor(data) {
+    super(data);
+    Object.assign(this, this.state);
+  }
+  onDelete() {}
+  renderEditor({setTopState}) {
+    const {scale} = this;
+    return hdiv({},
+      h('h1', {}, this.title),
+      h('button', {
+        onclick: e => setTopState({scale: scale * 2})
+      }, '+'),
+      h('button', {
+        onclick: e => setTopState({scale: scale / 2})
+      }, '-'),
+    );
+  }
 }
 
 class Port {
@@ -116,46 +161,52 @@ class Port {
     this.fill = this.state.fill || (this.state.isOver ? 'red' : 'white');
     this.stroke = this.state.isOver ? 'black' : 'grey';
     this.name = this.state.name;
-    this._id = parent._id + '.' + this.name;
+    this.id = parent.id + '.' + this.name;
   }
-  renderSVG({setIt, deleteOne, setPortOver, newLink}) {
-    const {_id, x, y, fill, stroke, parent, name} = this;
-    return hcircle({'class': 'port', id: _id, cx: x, cy: y, r: 5, fill, stroke,
+  renderSVG({setIt, newOne, deleteOne, setPortOver, newLink}) {
+    const {id, x, y, fill, stroke, parent, name} = this;
+    const {scale} = this.parent.getTopState();
+    return hcircle({'class': 'port', id: id, cx: x, cy: y, r: 5, fill, stroke,
       //onmousedown: this.dragMouseDown(actions)
       onmouseover: e => {
-        console.log({_id: parent._id, portOver: name});
-        setIt({_id: parent._id, portOver: name});
+        // console.log({id: parent.id, portOver: name});
+        setIt({id: parent.id, portOver: name});
         setPortOver(this);
       },
       onmouseout: e => {
-        setIt({_id: parent._id, portOver: null});
+        setIt({id: parent.id, portOver: null});
         setPortOver(null);
       },
       onmousedown: startDragOnMouseDown(
         e => {
           const [dx, dy] = [x - e.x, y - e.y];
-          console.log('port down!', this);
-          setIt({_id: '__fakeNode', _t: 'FakeNode', dragging: true, x, y, r: 10});
-          setIt({_id: '__newLink', _t: 'DirectLink', from: parent._id, fromPort: name, to: '__fakeNode'})
+          // console.log('port down!', this);
+          newOne(['FakeNode', {
+            id: '__fakeNode', dragging: true, x, y, r: 10
+          }]);
+          newOne(['DirectLink', {
+            id: '__newLink', from: parent.id, fromPort: name, to: '__fakeNode'
+          }]);
           return {dx, dy};
         },
         (e, {dx, dy}) => {
-          setIt({_id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
+          setIt({id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
         },
         e => {
-          const [from, fromPort] = [this.parent._id, this.name];
+          const [from, fromPort] = [this.parent.id, this.name];
           newLink({from, fromPort});
-          deleteOne({_id: '__fakeNode'});
-          deleteOne({_id: '__newLink'});
-        }
+          deleteOne({id: '__fakeNode'});
+          deleteOne({id: '__newLink'});
+        },
+        mangleScale(scale),
       ),
     });
   }
 }
 
 class Node extends Elem {
-  constructor (_id, all) {
-    super(_id, all);
+  constructor (data) {
+    super(data);
     const {x, y, dragging, portOver} = this.state;
     Object.assign(this, {x, y, dragging, portOver});
     this.ports = [];
@@ -165,44 +216,38 @@ class Node extends Elem {
     //console.log({name, po: this.portOver, a: name === this.portOver});
     this.ports.push(new Port(this, {...state, name, isOver: name === this.portOver}));
   }
-  dragMouseDown({setIt, setTopState, deleteOne}) {
-    const {_id, x, y} = this;
+  dragMouseDown({setIt, selectOne, deleteOne}) {
+    const {id, x, y} = this;
+    const {scale} = this.getTopState();
     return startDragOnMouseDown(
       e => {
         const [dx, dy] = [x - e.x, y - e.y];
-        setIt({_id, dragging: true});
+        setIt({id, dragging: true});
         return {dx, dy};
       },
       (e, {dx, dy}) => {
-        setIt({_id, x: snap(dx + e.x), y: snap(dy + e.y)});
+        setIt({id, x: snap(dx + e.x), y: snap(dy + e.y)});
       },
       (e, {dx, dy}) => {
-        setIt({_id, dragging: false});
+        setIt({id, dragging: false});
         const [dx1, dy1] = [x - e.x, y - e.y];
         if (dx1 === dx && dy1 === dy) {
-          console.log(this._id, 'click');
-          if (!e.shiftKey) setTopState({currentElem: _id});
+          console.log(this.id, 'click');
+          selectOne({id});
           if (e.shiftKey) {
-            deleteOne({_id: this._id});
-            Object.values(this.all)
-              .filter(elem => elem instanceof Link)
-              .map(deleteOne)
           }
         }
-      }
+      },
+      mangleScale(scale),
     );
   }
-  mainClick({setTopState}) {
-    return e => {
-      console.log(this._id, 'click');
-      if (!e.shiftKey) setTopState({currentElem: _id});
-      if (e.shiftKey) {
-        deleteOne({_id: this._id});
-        Object.values(this.all)
-          .filter(elem => elem instanceof Link)
-          .map(deleteOne)
-      }
-    }
+  onDelete({deleteOne, selectOne}) {
+    const {id} = this;
+    deleteOne({id});
+    selectOne({id: null}); 
+    Object.values(this.all)
+      .filter(elem => elem instanceof Link && elem.from === id || elem.to === id)
+      .map(deleteOne)
   }
   isDragging() {
     return this.dragging;
@@ -216,8 +261,8 @@ class Node extends Elem {
 }
 
 class FakeNode extends Node {
-  constructor (_id, all) {
-    super(_id, all);
+  constructor (data) {
+    super(data);
     this.portOver = 0;
     this.addPort({dx: 0, dy: -2, fill: 'none'});
   }
@@ -233,8 +278,8 @@ class FakeNode extends Node {
 }
 
 class Circle extends Node {
-  constructor(_id, all) {
-    super(_id, all);
+  constructor(data) {
+    super(data);
     const {r, fill} = this.state;
     Object.assign(this, {r, fill});
     this.addPort({dx: -r, dy: 0});
@@ -243,21 +288,21 @@ class Circle extends Node {
     this.addPort({dx: 0, dy: +r});
   }
   renderSVG(actions) {
-    const {_id, x, y, r, fill, dragging} = this;
+    const {id, x, y, r, fill, dragging} = this;
     return hg({}, 
-      hcircle({id: _id, cx: x, cy: y, r, fill, stroke: dragging ? 'black' : '#444', 'stroke-width': this.isSelected() ? 5 : dragging ? 2 : 1,
+      hcircle({id: id, cx: x, cy: y, r, fill, stroke: dragging ? 'black' : '#444', 'stroke-width': this.isSelected() ? 5 : dragging ? 2 : 1,
         onmousedown: this.dragMouseDown(actions),
         onclick: e => console.log(e), //this.mainClick(actions),
       }),
-      htext({'text-anchor': 'middle', x, y, dy: 0, textLength: 2*r, 'dominant-baseline': 'middle'}, '. ' + _id + ' .'),
+      htext({'text-anchor': 'middle', x, y, dy: 0, textLength: 2*r, 'dominant-baseline': 'middle'}, '. ' + id + ' .'),
       this.ports.map(port => port.renderSVG(actions)),
     );
   }
 }
 
 class Link extends Elem {
-  constructor (_id, all) {
-    super(_id, all);
+  constructor (data) {
+    super(data);
     this.from = this.state.from;
     this.to = this.state.to;
     this.fromPort = this.state.fromPort;
@@ -274,8 +319,8 @@ class Link extends Elem {
 }
 
 class DirectLink extends Link {
-  renderSVG({setIt, deleteOne}) {
-    const {_id, state: {over}} = this;
+  renderSVG({setIt, selectOne}) {
+    const {id, state: {over}} = this;
     const [from, to] = [
       this.all[this.from].getPort(this.fromPort),
       this.all[this.to].getPort(this.toPort),
@@ -283,21 +328,20 @@ class DirectLink extends Link {
     const dragging = this.isDragging();
     return hg({},
       hpath({
-        id: _id, 'marker-mid': 'url(#markerCross)',
+        id: id, 'marker-mid': 'url(#markerCross)',
         d: `M${from.x} ${from.y} C${from.x + from.dx} ${from.y + from.dy}
         ${to.x + to.dx} ${to.y + to.dy} ${to.x} ${to.y}`,
-        stroke: dragging ? 'black' : 'grey', fill: 'none', 'stroke-width': dragging || over ? 2 : 1,
+        stroke: dragging ? 'black' : 'grey', fill: 'none', 'stroke-width': this.isSelected() ? 5 : dragging || over ? 2 : 1,
         onmouseover: e => {
-          console.log('path.over');
-          setIt({_id, over: true})
+          setIt({id, over: true})
         },
-        onmouseout: e => setIt({_id, over: false}),
+        onmouseout: e => setIt({id, over: false}),
         onclick: e => {
-          if (e.shiftKey) deleteOne({_id});
+          selectOne({id});
         },
       }),
       htext({'text-anchor': 'middle', dy: -2},
-        htextPath({startOffset: '50%', href: '#' + this._id}, this._id)
+        htextPath({startOffset: '50%', href: '#' + this.id}, this.id)
       ),
     );
   }
@@ -310,16 +354,35 @@ const ELEM_CLASSES = {
   TopState,
 };
 
-const view = ({count, elems}, actions) => {
-  const all = {...elems};
-  for (const [_id, data] of Object.entries(elems)) {
+const view = ({elems}, actions) => {
+  // console.log({elems});
+  const all = {};
+  for (const [id, data] of Object.entries(elems)) {
     if (!data) continue;
-    const {_t, ...elem} = data;
+    const [_t, state = {}] = data;
     const Cls = ELEM_CLASSES[_t];
-    if (!Cls) console.error({_t, _id});
-    all[_id] = new Cls(_id, all);
+    if (!Cls) console.error({_t, id});
+    all[id] = new Cls({id, state, all});
   }
-  return hdiv({},
+  const {tx, ty, scale, currentElem} = all.__topState;
+  const {selectOne, setTopState} = actions.elems;
+  document.onkeydown = e => {
+    // console.log('dkd', e);
+    if (e.key === 'Backspace') {
+      const elemId = all.__topState.currentElem;
+      if (elemId) {
+        const elem = all[elemId];
+        elem.onDelete(actions.elems);
+      }
+    }
+  }
+  return hdiv({
+      id: 'theDIV',
+      onkeydown: e => console.log('kd', e),
+    },
+    hdiv({id: 'editor'},
+      all[currentElem].renderEditor(actions.elems),
+    ),
     hsvg({width: '800px', height: '800px', style: 'border: 1px solid red'},
       hdefs({},
         hmarker({id: 'markerCross', viewBox: '0 0 20 20', refX: 10, refY: 10, markerWidth: 20, markerHeight: 10},
@@ -327,12 +390,33 @@ const view = ({count, elems}, actions) => {
           hpath({d: 'M3 3 L17 17 M3 17 L17 3', fill: 'none', stroke: 'yellow'}),
         )
       ),
-      h('rect', {x: 0, y: 0, width: 800, height: 800, fill: '#EEE', stroke: 'black', onclick: e => actions.elems.setTopState({currentElem: null})}),
-      hg({transform: 'translate(0.5, 0.5)'},
+      h('rect', {
+        x: 0, y: 0, width: 800, height: 800, fill: '#EEE', stroke: 'black',
+        // onclick: e => selectOne({id: null}),
+        // onkeydown: e => console.log(e),
+        onmousedown: startDragOnMouseDown(
+          e => {
+            const [dx, dy] = [tx - e.x, ty - e.y];
+            return {dx, dy};
+          },
+          (e, {dx, dy}) => {
+            setTopState({tx: e.x + dx, ty: e.y + dy});
+          },
+          (e, {dx, dy}) => {
+            const [dx1, dy1] = [tx - e.x, ty - e.y];
+            console.log(dx1, dy1, dx, dy);
+            if (dx1 === dx && dy1 === dy) {
+              console.log('select none');
+              selectOne({id: null});
+            }
+          },
+        )
+      }),
+      hg({transform: `translate(${tx + 0.5}, ${ty + 0.5}) scale(${scale})`},
         [0, 1, 2, 3].map(layer => 
           hg({},
             Object.keys(elems)
-              .map(_id => all[_id])
+              .map(id => all[id])
               .filter(x => x)
               .filter(elem => elem.getLayer() === layer)
               .map(elem => elem.renderSVG(actions.elems)),
