@@ -11,40 +11,17 @@
         pointer-events: none;
         font-family: monospace;
     }
+    #divMain {
+        display: flex;
+    }
+    #divProps {
+        width: 400px;
+        padding: 8px;
+        background: #CCC;
+        border: 1px solid black;
+    }
 </style>
 </head>
 <body>
-    <div id="test"></div>
-    <svg xmlns="http://www.w3.org/2000/svg"
-        width="600" height="200" viewBox="0 0 600 200">
-        <g id="svgDest">
-        </g>
-    </svg>
-    <svg xmlns="http://www.w3.org/2000/svg"
-        width="600" height="200" viewBox="0 0 600 200">
-        <defs>
-        <marker id="Square" markerWidth="10" markerHeight="10"
-                refX="5" refY="5" orient="auto">
-            <path d="M 5,1 L 9,5 5,9 1,5 z" fill="#6a9100"/>
-        </marker>
-        <marker id="Circle" markerWidth="10" markerHeight="10"
-                refX="5" refY="5" orient="auto">
-            <circle cx="5" cy="5" r="2" fill="dodgerblue"/>
-        </marker>
-        </defs>
-    
-        <path d="M 100,50 C 100,250 500,-50 300,150" marker-end="url(#Square)"
-            fill="none" stroke="deeppink" stroke-width="3">
-        <marker href="#Square" position="0"/>
-        <marker href="#Square" position="100%"/>
-        <marker href="#Circle" position="50px"/>
-        <marker href="#Circle" position="calc(100% - 50px)"/>
-        <marker refX="5" refY="5" position="50%">
-            <!-- the cross -->
-            <path d="M 3,3 L 7,7 M 3,7 L 7,3"
-                fill="none" stroke="black" stroke-width="2"/>
-        </marker>
-        </path>
-    </svg>
 </body>
 </html>
