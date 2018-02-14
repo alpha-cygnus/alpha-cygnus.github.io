@@ -22,6 +22,7 @@ export class Port {
   }
   renderSVG(h, {setIt, newOne, deleteOne, setPortOver, newLink}) {
     const {id, cx, cy, r, fill, stroke, parent, name} = this;
+    const all = this.parent.all;
     const {scale} = this.parent.getTopState();
     return h('circle', {'class': 'port', id: id, cx, cy, r, fill, stroke,
       onmouseover: e => {
@@ -48,7 +49,7 @@ export class Port {
         },
         e => {
           const [from, fromPort] = [this.parent.id, this.name];
-          newLink({from, fromPort});
+          newLink({from, fromPort, all});
           deleteOne({id: '__fakeNode'});
           deleteOne({id: '__newLink'});
         },
@@ -57,8 +58,9 @@ export class Port {
     });
   }
   connectError(otherPort) {
-    if (otherPort.kind == this.kind && otherPort.dir != this.dir) return '';
-    return 'cannot connect';
+    if (otherPort.kind !== this.kind) return 'kind mismatch';
+    if (otherPort.dir === this.dir) return 'int/out mismatch';
+    return '';
   }
 }
 

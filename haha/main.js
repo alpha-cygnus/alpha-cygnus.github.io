@@ -56,11 +56,13 @@ const actions = {
       if (portOverParent) {
         const [to, toPort] = [portOverParent, portOverName];
         let can = true;
+        console.log('newLink', all);
         if (all) {
           const src = all[from].getPort(fromPort);
           const dst = all[to].getPort(toPort);
           const connectError = src && dst && src.connectError(dst);
           if (connectError) {
+            console.error(connectError);
             return actions.setTopState({lastError: connectError});
           }
         }
@@ -89,7 +91,7 @@ const view = ({elems}, actions) => {
     if (!Cls) console.error({_t, id});
     all[id] = new Cls({id, state, all});
   }
-  const {tx, ty, scale, currentElem} = all.__topState;
+  const {tx, ty, scale, currentElem, lastError} = all.__topState;
   const {selectOne, setTopState} = actions.elems;
   document.onkeydown = e => {
     if (e.key === 'Backspace') {
@@ -100,46 +102,54 @@ const view = ({elems}, actions) => {
       }
     }
   }
-  return h('div', {
-      id: 'divMain',
-      onkeydown: e => console.log('kd', e),
-    },
-    h('svg', {width: '801px', height: '801px', viewBox: '-400 -400 800 800', style: 'border: 1px solid red'},
-      h('rect', {
-        x: -400, y: -400, width: 800, height: 800, fill: '#EEE', stroke: 'black',
-        onmousedown: startDragOnMouseDown(
-          e => {
-            const [dx, dy] = [tx - e.x, ty - e.y];
-            return {dx, dy};
-          },
-          (e, {dx, dy}) => {
-            setTopState({tx: e.x + dx, ty: e.y + dy});
-          },
-          (e, {dx, dy}) => {
-            const [dx1, dy1] = [tx - e.x, ty - e.y];
-            console.log(dx1, dy1, dx, dy);
-            if (dx1 === dx && dy1 === dy) {
-              console.log('select none');
-              selectOne({id: null});
-            }
-          },
-        )
-      }),
-      h('g', {transform: `translate(${tx + 0.5}, ${ty + 0.5}) scale(${scale})`},
-        [0, 1, 2, 3].map(layer => 
-          h('g', {},
-            Object.keys(elems)
-              .map(id => all[id])
-              .filter(x => x)
-              .filter(elem => elem.getLayer() === layer)
-              .map(elem => elem.renderSVG(h, actions.elems)),
+  let status = h('span');
+  if (lastError) {
+    status = [h('span', {}, 'x'), h('span', {}, lastError)];
+  }
+  return h('div', {},
+    h('div',
+      {
+        id: 'divMain',
+        onkeydown: e => console.log('kd', e),
+      },
+      h('svg', {width: '801px', height: '801px', viewBox: '-400 -400 800 800', style: 'border: 1px solid red'},
+        h('rect', {
+          x: -400, y: -400, width: 800, height: 800, fill: '#EEE', stroke: 'black',
+          onmousedown: startDragOnMouseDown(
+            e => {
+              const [dx, dy] = [tx - e.x, ty - e.y];
+              return {dx, dy};
+            },
+            (e, {dx, dy}) => {
+              setTopState({tx: e.x + dx, ty: e.y + dy});
+            },
+            (e, {dx, dy}) => {
+              const [dx1, dy1] = [tx - e.x, ty - e.y];
+              console.log(dx1, dy1, dx, dy);
+              if (dx1 === dx && dy1 === dy) {
+                console.log('select none');
+                selectOne({id: null});
+              }
+            },
+          )
+        }),
+        h('g', {transform: `translate(${tx + 0.5}, ${ty + 0.5}) scale(${scale})`},
+          [0, 1, 2, 3].map(layer => 
+            h('g', {},
+              Object.keys(elems)
+                .map(id => all[id])
+                .filter(x => x)
+                .filter(elem => elem.getLayer() === layer)
+                .map(elem => elem.renderSVG(h, actions.elems)),
+            )
           )
         )
-      )
+      ),
+      h('div', {id: 'divProps'},
+        all[currentElem].renderEditor(h, actions.elems),
+      ),
     ),
-    h('div', {id: 'divProps'},
-      all[currentElem].renderEditor(h, actions.elems),
-    ),
+    h('div', {id: 'divStatus'}, status),
   );
 }
 
