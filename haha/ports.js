@@ -62,5 +62,9 @@ export class Port {
     if (otherPort.dir === this.dir) return 'int/out mismatch';
     return '';
   }
+  getDesc() {
+    const {name, kind, dir} = this;
+    return `${name} [${kind}/${dir}]`;
+  }
 }
 

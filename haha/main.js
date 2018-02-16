@@ -91,7 +91,7 @@ const view = ({elems}, actions) => {
     if (!Cls) console.error({_t, id});
     all[id] = new Cls({id, state, all});
   }
-  const {tx, ty, scale, currentElem, lastError} = all.__topState;
+  const {tx, ty, scale, currentElem, lastError, portOverParent, portOverName} = all.__topState;
   const {selectOne, setTopState} = actions.elems;
   document.onkeydown = e => {
     if (e.key === 'Backspace') {
@@ -104,7 +104,19 @@ const view = ({elems}, actions) => {
   }
   let status = h('span');
   if (lastError) {
-    status = [h('span', {}, 'x'), h('span', {}, lastError)];
+    status = [
+      h('span', {
+        class: 'x',
+        onclick: e => setTopState({lastError: null}),
+      }, 'x'),
+      h('span', {class: 'error'}, lastError),
+    ];
+  }
+  else if (portOverParent) {
+    const port = all[portOverParent].getPort(portOverName);
+    status = [
+      h('span', {class: 'info'}, port.getDesc()),
+    ];
   }
   return h('div', {},
     h('div',
