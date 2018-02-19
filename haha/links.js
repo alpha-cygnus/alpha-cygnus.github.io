@@ -8,6 +8,7 @@ export class DirectLink extends Link {
       this.all[this.to].getPort(this.toPort),
     ];
     const dragging = this.isDragging();
+    console.log(from, to);
     return h('g', {},
       h('path', {
         id: id, 'marker-mid': 'url(#markerCross)',
@@ -22,9 +23,9 @@ export class DirectLink extends Link {
           selectOne({id});
         },
       }),
-      h('text', {'text-anchor': 'middle', dy: -2},
-        h('textPath', {startOffset: '50%', href: '#' + this.id}, this.id)
-      ),
+      // h('text', {'text-anchor': 'middle', dy: -2},
+      //   h('textPath', {startOffset: '50%', href: '#' + this.id}, this.id)
+      // ),
     );
   }
 }

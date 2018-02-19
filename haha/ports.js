@@ -1,4 +1,9 @@
-import { startDragOnMouseDown, mangleScale, snap } from './utils.js';
+import { startDragOnMouseDown, mangleScale, snap, isDef } from './utils.js';
+
+export const PORT_DIR_IN = 'in';
+export const PORT_DIR_OUT = 'out';
+export const PORT_KIND_AUDIO = 'audio';
+export const PORT_KIND_PARAM = 'param';
 
 export class Port {
   constructor(parent, state) {
@@ -6,9 +11,9 @@ export class Port {
     this.state = state;
     const r = 5;
     this.r = r;
-    const {name, x, y, dir = 'i', kind = 'a', isOver, fill} = this.state;
-    const dx = this.state.dx || x*3;
-    const dy = this.state.dy || y*3;
+    const {name, x, y, dir = PORT_DIR_IN, kind = PORT_KIND_AUDIO, isOver, fill} = this.state;
+    const dx = isDef(this.state.dx) ? this.state.dx : x*2;
+    const dy = isDef(this.state.dy) ? this.state.dy : y*2;
     const dx1 = dx ? dx/Math.abs(dx) : 0;
     const dy1 = dy ? dy/Math.abs(dy) : 0;
     Object.assign(this, {name, x, y, dx, dy, dir, kind});
@@ -16,7 +21,7 @@ export class Port {
     this.cy = parent.y + y + dy1*r;
     this.atx = this.cx + dx1*r;
     this.aty = this.cy + dy1*r;
-    this.fill = fill || (dir === 'i' ? 'red' : 'green');
+    this.fill = fill || (dir === PORT_DIR_OUT ? 'red' : 'green');
     this.stroke = isOver ? 'black' : 'grey';
     this.id = parent.id + '.' + name;
   }

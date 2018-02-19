@@ -7,28 +7,46 @@ import * as LINK_CLASSES from './links.js';
 
 const ELEM_CLASSES = {...NODE_CLASSES, ...LINK_CLASSES};
 
-const nodeCount = rnd(10, 10);
-const elems = {};
-for (let i = 0; i < nodeCount; i++) {
-  elems['c' + i] = ['Circle', {
-    x: snap(rnd(600)) - 300, y: snap(rnd(600)) - 300,
-    r: rnd(20, 10), fill: pick(['red', 'green', 'blue']),
-  }];
-}
+// const nodeCount = rnd(10, 10);
+// const elems = {};
+// for (let i = 0; i < nodeCount; i++) {
+//   elems['c' + i] = ['Circle', {
+//     x: snap(rnd(600)) - 300, y: snap(rnd(600)) - 300,
+//     r: rnd(20, 10), fill: pick(['red', 'green', 'blue']),
+//   }];
+// }
 
-for (let i = 0; i < Math.random()*nodeCount*nodeCount; i++) {
-  const f = rnd(nodeCount);
-  const fi = pick([2, 3]);
-  const t = Math.floor(Math.random()*nodeCount);
-  const ti = pick([0, 1]);
-  elems[`l${f}.${fi}-${t}.${ti}`] = ['DirectLink', {
-    from: `c${f}`, to: `c${t}`, fromPort: fi, toPort: ti,
-  }];
+// for (let i = 0; i < Math.random()*nodeCount*nodeCount; i++) {
+//   const f = rnd(nodeCount);
+//   const fi = pick([2, 3]);
+//   const t = Math.floor(Math.random()*nodeCount);
+//   const ti = pick([0, 1]);
+//   elems[`l${f}.${fi}-${t}.${ti}`] = ['DirectLink', {
+//     from: `c${f}`, to: `c${t}`, fromPort: fi, toPort: ti,
+//   }];
+// }
+
+const directLink = (from, fromPort, to, toPort) => (
+  {[`l${from}.${fromPort}-${to}.${toPort}`]: ['DirectLink', {from, fromPort, to, toPort}]}
+);
+
+function getTestElems() {
+  return {
+    gain0: ['Gain', {x: 0, y: 0}],
+    osc0: ['Oscillator', {x: -150, y: 150, type: 'sine'}],
+    osc1: ['Oscillator', {x: -150, y: 0, type: 'triangle'}],
+    osc2: ['Oscillator', {x: -150, y: -150, type: 'square'}],
+    const0: ['Constant', {x: 0, y: -150, value: 0.2}],
+    ...directLink('osc0', 'out', 'gain0', 'inp'),
+    ...directLink('osc1', 'out', 'gain0', 'inp'),
+    ...directLink('osc2', 'out', 'gain0', 'inp'),
+    ...directLink('const0', 'out', 'gain0', 'gain'),
+  };
 }
 
 const state = {
   elems: {
-    ...elems,
+    ...getTestElems(),
     __topState: ['TopState', {title: 'Random graph', scale: 1, tx: 0, ty: 0, currentElem: '__topState'}],
   }
 };
@@ -147,7 +165,7 @@ const view = ({elems}, actions) => {
         }),
         h('g', {transform: `translate(${tx + 0.5}, ${ty + 0.5}) scale(${scale})`},
           [0, 1, 2, 3].map(layer => 
-            h('g', {},
+            h('g', {class: `layer${layer}`, id: `layer_${layer}`},
               Object.keys(elems)
                 .map(id => all[id])
                 .filter(x => x)

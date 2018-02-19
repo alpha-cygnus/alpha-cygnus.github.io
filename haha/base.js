@@ -40,8 +40,8 @@ export class Elem {
 export class Node extends Elem {
   constructor (data) {
     super(data);
-    const {x, y, dragging, portOver} = this.state;
-    Object.assign(this, {x, y, dragging, portOver});
+    const {x, y, $dragging, portOver} = this.state;
+    Object.assign(this, {x, y, $dragging, portOver});
     this.ports = [];
   }
   addPort(state) {
@@ -54,14 +54,14 @@ export class Node extends Elem {
     return startDragOnMouseDown(
       e => {
         const [dx, dy] = [x - e.x, y - e.y];
-        setIt({id, dragging: true});
+        setIt({id, $dragging: true});
         return {dx, dy};
       },
       (e, {dx, dy}) => {
         setIt({id, x: snap(dx + e.x), y: snap(dy + e.y)});
       },
       (e, {dx, dy}) => {
-        setIt({id, dragging: false});
+        setIt({id, $dragging: false});
         const [dx1, dy1] = [x - e.x, y - e.y];
         if (dx1 === dx && dy1 === dy) {
           console.log(this.id, 'click');
@@ -82,16 +82,29 @@ export class Node extends Elem {
       .map(deleteOne)
   }
   isDragging() {
-    return this.dragging;
+    return this.$dragging;
   }
   getLayer() {
     return this.isDragging() ? 3 : 1;
   }
   getPort(portId) {
-    return this.ports[portId];
+    return this.ports[portId] || this.ports.find(({name}) => name === portId);
   }
   renderPorts(h, actions) {
     return this.ports.map(port => port.renderSVG(h, actions));
+  }
+  renderEditor(h, actions) {
+    return h('div', {},
+      h('h1', {}, this.id),
+      h('pre', {}, JSON.stringify({...this.state,
+        ports: this.ports.map(({state, atx, aty, cx, cy, dx, dy}) => ({state, atx, aty, cx, cy, dx, dy}))}, null, '  ')),
+      h('button', {
+        onclick: e => {
+          this.onDelete(actions);
+          actions.selectOne({id: null});
+        },
+      }, 'DEL'),
+    );
   }
 }
 
@@ -106,7 +119,7 @@ export class Link extends Elem {
   }
   isDragging() {
     const [from, to] = [this.all[this.from], this.all[this.to]];
-    return from.dragging || to.dragging;
+    return from.$dragging || to.$dragging;
   }
   getLayer() {
     return this.isDragging() ? 2 : 0;
