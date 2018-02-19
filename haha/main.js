@@ -45,19 +45,20 @@ const state = {
 
 const view = ({elems, modules, currentModule}, actions) => {
   const module = new Module(currentModule, modules[currentModule]);
-  const {currentElem, lastError, $portOverParent, $portOverName} = module;
+  const {currentElem, $lastError, $portOverParent, $portOverName} = modules[currentModule];
   let status = h('span');
-  if (lastError) {
+  const {setModuleState} = actions;
+  if ($lastError) {
     status = [
       h('span', {
         class: 'x',
-        onclick: e => setModuleState({lastError: null}),
+        onclick: e => setModuleState({$lastError: null}),
       }, 'x'),
-      h('span', {class: 'error'}, lastError),
+      h('span', {class: 'error'}, $lastError),
     ];
   }
   else if ($portOverParent) {
-    const port = all[$portOverParent].getPort($portOverName);
+    const port = module.all[$portOverParent].getPort($portOverName);
     status = [
       h('span', {class: 'info'}, port.getDesc()),
     ];

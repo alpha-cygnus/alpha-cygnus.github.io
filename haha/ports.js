@@ -40,22 +40,23 @@ export class Port {
       },
       onmousedown: startDragOnMouseDown(
         e => {
-          const [dx, dy] = [cx - e.x, cy - e.y];
-          newElem(['FakeNode', {
-            id: '__fakeNode', dragging: true, x: cx, x: cy, r: 10
-          }]);
-          newElem(['DirectLink', {
-            id: '__newLink', from: parent.id, fromPort: name, to: '__fakeNode'
+          const [dx, dy] = [cx - e.x, cy - e.y - 5];
+          // newElem(['FakeNode', {
+          //   id: '__fakeNode', dragging: true, x: cx, x: cy, r: 10
+          // }]);
+          newElem(['TempNewLink', {
+            id: '__newLink', from: parent.id, fromPort: name, x: cx, y: cy,
           }]);
           return {dx, dy};
         },
         (e, {dx, dy}) => {
-          setElemProps({id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
+          // setElemProps({id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
+          setElemProps({id: '__newLink', x: snap(dx + e.x), y: snap(dy + e.y)});
         },
         e => {
           const [from, fromPort] = [this.parent.id, this.name];
           newLink({from, fromPort, all});
-          deleteElem({id: '__fakeNode'});
+          // deleteElem({id: '__fakeNode'});
           deleteElem({id: '__newLink'});
         },
         mangleScale(scale),

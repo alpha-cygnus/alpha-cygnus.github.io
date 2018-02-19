@@ -2,31 +2,10 @@ import { Elem, Node } from './base.js';
 import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
-export class TopState extends Elem {
-  constructor(data) {
-    super(data);
-    Object.assign(this, this.state);
-  }
-  onDelete() {}
-  renderEditor(h, {setModuleState}) {
-    const {scale} = this;
-    return h('div', {},
-      h('h2', {}, this.title),
-      h('pre', {}, JSON.stringify(this.state, null, '  ')),
-      h('button', {
-        onclick: e => setModuleState({scale: scale * 2})
-      }, '+'),
-      h('button', {
-        onclick: e => setModuleState({scale: scale / 2})
-      }, '-'),
-    );
-  }
-}
-
 export class FakeNode extends Node {
   constructor (data) {
     super(data);
-    this.portOver = 0;
+    this.$portOver = 0;
     this.addPort({x: 0, y: -2, fill: 'none'});
   }
   is$Dragging() {
