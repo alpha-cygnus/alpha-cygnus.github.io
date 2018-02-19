@@ -2,23 +2,6 @@ import { Elem, Node } from './base.js';
 import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
-export class FakeNode extends Node {
-  constructor (data) {
-    super(data);
-    this.$portOver = 0;
-    this.addPort({x: 0, y: -2, fill: 'none'});
-  }
-  is$Dragging() {
-    return true;
-  }
-  getLayer() {
-    return 3;
-  }
-  getPort() {
-    return this.ports[0];
-  }
-}
-
 export class Circle extends Node {
   constructor(data) {
     super(data);
