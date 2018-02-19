@@ -25,38 +25,38 @@ export class Port {
     this.stroke = isOver ? 'black' : 'grey';
     this.id = parent.id + '.' + name;
   }
-  renderSVG(h, {setIt, newOne, deleteOne, setPortOver, newLink}) {
+  renderSVG(h, {setElemProps, newElem, deleteElem, setPortOver, newLink}) {
     const {id, cx, cy, r, fill, stroke, parent, name} = this;
     const all = this.parent.all;
     const {scale} = this.parent.getTopState();
     return h('circle', {'class': 'port', id: id, cx, cy, r, fill, stroke,
       onmouseover: e => {
-        setIt({id: parent.id, portOver: name});
+        setElemProps({id: parent.id, $portOver: name});
         setPortOver(this);
       },
       onmouseout: e => {
-        setIt({id: parent.id, portOver: null});
+        setElemProps({id: parent.id, $portOver: null});
         setPortOver(null);
       },
       onmousedown: startDragOnMouseDown(
         e => {
           const [dx, dy] = [cx - e.x, cy - e.y];
-          newOne(['FakeNode', {
+          newElem(['FakeNode', {
             id: '__fakeNode', dragging: true, x: cx, x: cy, r: 10
           }]);
-          newOne(['DirectLink', {
+          newElem(['DirectLink', {
             id: '__newLink', from: parent.id, fromPort: name, to: '__fakeNode'
           }]);
           return {dx, dy};
         },
         (e, {dx, dy}) => {
-          setIt({id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
+          setElemProps({id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
         },
         e => {
           const [from, fromPort] = [this.parent.id, this.name];
           newLink({from, fromPort, all});
-          deleteOne({id: '__fakeNode'});
-          deleteOne({id: '__newLink'});
+          deleteElem({id: '__fakeNode'});
+          deleteElem({id: '__newLink'});
         },
         mangleScale(scale),
       ),

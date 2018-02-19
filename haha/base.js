@@ -2,10 +2,11 @@ import { startDragOnMouseDown, mangleScale, snap } from './utils.js';
 import { Port } from './ports.js';
 
 export class Elem {
-  constructor ({id, state, all}) {
+  constructor ({id, state, module}) {
     this.id = id;
     this.state = state;
-    this.all = all;
+    this.all = module.all;
+    this.module = module;
   }
   renderSVG(h, actions) {
   }
@@ -13,15 +14,15 @@ export class Elem {
     return this.layer || 0;
   }
   isSelected() {
-    return this.getTopState().currentElem === this.id;
+    return this.getTopState().$currentElem === this.id;
   }
-  onDelete({deleteOne, selectOne}) {
+  onDelete({deleteElem, selectElem}) {
     const {id} = this;
-    deleteOne({id});
-    selectOne({id: null}); 
+    deleteElem({id});
+    selectElem({id: null}); 
   }
   getTopState() {
-    return this.all.__topState.state;
+    return this.module.state;
   }
   renderEditor(h, actions) {
     return h('div', {},
@@ -30,7 +31,7 @@ export class Elem {
       h('button', {
         onclick: e => {
           this.onDelete(actions);
-          actions.selectOne({id: null});
+          actions.selectElem({id: null});
         },
       }, 'DEL'),
     );
@@ -40,32 +41,32 @@ export class Elem {
 export class Node extends Elem {
   constructor (data) {
     super(data);
-    const {x, y, $dragging, portOver} = this.state;
-    Object.assign(this, {x, y, $dragging, portOver});
+    const {x, y, $dragging, $portOver} = this.state;
+    Object.assign(this, {x, y, $dragging, $portOver});
     this.ports = [];
   }
   addPort(state) {
     const name = state.name || this.ports.length;
-    this.ports.push(new Port(this, {...state, name, isOver: name === this.portOver}));
+    this.ports.push(new Port(this, {...state, name, isOver: name === this.$portOver}));
   }
-  dragMouseDown({setIt, selectOne, deleteOne}) {
+  dragMouseDown({setElemProps, selectElem, deleteElem}) {
     const {id, x, y} = this;
     const {scale} = this.getTopState();
     return startDragOnMouseDown(
       e => {
         const [dx, dy] = [x - e.x, y - e.y];
-        setIt({id, $dragging: true});
+        setElemProps({id, $dragging: true});
         return {dx, dy};
       },
       (e, {dx, dy}) => {
-        setIt({id, x: snap(dx + e.x), y: snap(dy + e.y)});
+        setElemProps({id, x: snap(dx + e.x), y: snap(dy + e.y)});
       },
       (e, {dx, dy}) => {
-        setIt({id, $dragging: false});
+        setElemProps({id, $dragging: false});
         const [dx1, dy1] = [x - e.x, y - e.y];
         if (dx1 === dx && dy1 === dy) {
           console.log(this.id, 'click');
-          selectOne({id});
+          selectElem({id});
           if (e.shiftKey) {
           }
         }
@@ -73,13 +74,13 @@ export class Node extends Elem {
       mangleScale(scale),
     );
   }
-  onDelete({deleteOne, selectOne}) {
+  onDelete({deleteElem, selectElem}) {
     const {id} = this;
-    deleteOne({id});
-    selectOne({id: null}); 
+    deleteElem({id});
+    selectElem({id: null}); 
     Object.values(this.all)
       .filter(elem => elem instanceof Link && elem.from === id || elem.to === id)
-      .map(deleteOne)
+      .map(deleteElem)
   }
   isDragging() {
     return this.$dragging;
@@ -101,7 +102,7 @@ export class Node extends Elem {
       h('button', {
         onclick: e => {
           this.onDelete(actions);
-          actions.selectOne({id: null});
+          actions.selectElem({id: null});
         },
       }, 'DEL'),
     );

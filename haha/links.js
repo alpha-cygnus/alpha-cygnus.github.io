@@ -1,7 +1,7 @@
 import { Link } from './base.js';
 
 export class DirectLink extends Link {
-  renderSVG(h, {setIt, selectOne}) {
+  renderSVG(h, {setElemProps, selectElem}) {
     const {id, state: {over}} = this;
     const [from, to] = [
       this.all[this.from].getPort(this.fromPort),
@@ -16,11 +16,11 @@ export class DirectLink extends Link {
         ${to.atx + to.dx} ${to.aty + to.dy} ${to.atx} ${to.aty}`,
         stroke: dragging ? 'black' : 'grey', fill: 'none', 'stroke-width': this.isSelected() ? 5 : dragging || over ? 2 : 1,
         onmouseover: e => {
-          setIt({id, over: true})
+          setElemProps({id, over: true})
         },
-        onmouseout: e => setIt({id, over: false}),
+        onmouseout: e => setElemProps({id, over: false}),
         onclick: e => {
-          selectOne({id});
+          selectElem({id});
         },
       }),
       // h('text', {'text-anchor': 'middle', dy: -2},

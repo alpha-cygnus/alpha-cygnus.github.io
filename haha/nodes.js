@@ -8,16 +8,16 @@ export class TopState extends Elem {
     Object.assign(this, this.state);
   }
   onDelete() {}
-  renderEditor(h, {setTopState}) {
+  renderEditor(h, {setModuleState}) {
     const {scale} = this;
     return h('div', {},
       h('h2', {}, this.title),
       h('pre', {}, JSON.stringify(this.state, null, '  ')),
       h('button', {
-        onclick: e => setTopState({scale: scale * 2})
+        onclick: e => setModuleState({scale: scale * 2})
       }, '+'),
       h('button', {
-        onclick: e => setTopState({scale: scale / 2})
+        onclick: e => setModuleState({scale: scale / 2})
       }, '-'),
     );
   }
