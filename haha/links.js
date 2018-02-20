@@ -10,9 +10,10 @@ export class DirectLink extends Link {
     const dragging = this.isDragging();
     return h('g', {},
       h('path', {
-        id: id, 'marker-mid': 'url(#markerCross)',
-        d: `M${from.atx} ${from.aty} C${from.atx + from.dx} ${from.aty + from.dy}
-        ${to.atx + to.dx} ${to.aty + to.dy} ${to.atx} ${to.aty}`,
+        id: id,
+        //'marker-mid': 'url(#markerCross)',
+        d: `M${from.atx} ${from.aty} C${from.atx + from.nx} ${from.aty + from.ny}
+        ${to.atx + to.nx} ${to.aty + to.ny} ${to.atx} ${to.aty}`,
         stroke: dragging ? 'black' : 'grey', fill: 'none', 'stroke-width': this.isSelected() ? 5 : dragging || over ? 2 : 1,
         onmouseover: e => {
           setElemProps({id, over: true})
@@ -40,7 +41,7 @@ export class TempNewLink extends Link {
     return h('g', {},
       h('path', {
         id: id,
-        d: `M${from.atx} ${from.aty} C${from.atx + from.dx} ${from.aty + from.dy}
+        d: `M${from.atx} ${from.aty} C${from.atx + from.nx} ${from.aty + from.ny}
         ${x} ${y} ${x} ${y}`,
         stroke: 'black', fill: 'none', 'stroke-width': 2,
       }),

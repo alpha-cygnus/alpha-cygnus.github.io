@@ -2,50 +2,55 @@ import { h, app } from './hyperapp/index.js';
 
 import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
 
-import * as NODE_CLASSES from './nodes.js';
-import * as LINK_CLASSES from './links.js';
+import {FullState} from './state.js';
 
 import * as actions from './actions.js';
 
-import {Module} from './module.js';
-
-const ELEM_CLASSES = {...NODE_CLASSES, ...LINK_CLASSES};
-
-const directLink = (from, fromPort, to, toPort) => (
-  {[`l${from}.${fromPort}-${to}.${toPort}`]: ['DirectLink', {from, fromPort, to, toPort}]}
-);
+const directLink = (from, fromPort, to, toPort) => ['DirectLink', {id: `l${from}.${fromPort}-${to}.${toPort}`, from, fromPort, to, toPort}];
 
 function getTestElems() {
-  return {
-    gain0: ['Gain', {x: 0, y: 0}],
-    osc0: ['Oscillator', {x: -150, y: 150, type: 'sine'}],
-    osc1: ['Oscillator', {x: -150, y: 0, type: 'triangle'}],
-    osc2: ['Oscillator', {x: -150, y: -150, type: 'square'}],
-    const0: ['Constant', {x: 0, y: -150, value: 0.2}],
-    ...directLink('osc0', 'out', 'gain0', 'inp'),
-    ...directLink('osc1', 'out', 'gain0', 'inp'),
-    ...directLink('osc2', 'out', 'gain0', 'inp'),
-    ...directLink('const0', 'out', 'gain0', 'gain'),
-  };
+  return [
+    ['Gain', {id: 'gain0', x: 0, y: 0}],
+    ['Osc', {id: 'osc0', x: -150, y: 150, type: 'sine'}],
+    ['Osc', {id: 'osc1', x: -150, y: 0, type: 'triangle'}],
+    ['Osc', {id: 'osc2', x: -150, y: -150, type: 'square'}],
+    ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
+    ['Filter', {id: 'filter0', x: -250, y: -150, type: 'lowpass'}],
+    ['Filter', {id: 'filter1', x: -250, y: -50,  type: 'highpass'}],
+    ['Filter', {id: 'filter2', x: -250, y: +50,  type: 'bandpass'}],
+    ['Filter', {id: 'filter3', x: -250, y: +150, type: 'notch'}],
+    directLink('osc0', 'out', 'gain0', 'inp'),
+    directLink('osc1', 'out', 'gain0', 'inp'),
+    directLink('osc2', 'out', 'gain0', 'inp'),
+    directLink('const0', 'out', 'gain0', 'gain'),
+  ];
 }
 
-const state = {
-  modules: {
-    main: {
-      elems: getTestElems(),
-      title: 'Main',
-      scale: 1,
-      tx: 0,
-      ty: 0,
-      $currentElem: null,
+const fullState = [
+    'FullState',
+    {
+      currentModule: 'main',
     },
-  },
-  currentModule: 'main',
-};
+    ['Module',
+      {
+        id: 'main',
+        title: 'Main',
+        scale: 1,
+        tx: 0,
+        ty: 0,
+      },
+      ...getTestElems(),
+    ]
+  ]
+;
 
-const view = ({elems, modules, currentModule}, actions) => {
-  const module = new Module(currentModule, modules[currentModule]);
-  const {currentElem, $lastError, $portOverParent, $portOverName} = modules[currentModule];
+const view = (state, actions) => {
+  // const [_, {currentModule}, ...modules] = fullState;
+  // const allModules = modules.map(([_t, props, ...elems]) => new Module(props, elems)).reduce((am, m) => ({...am, [m.id]: m}), {});
+  // const module = allModules[currentModule];
+  const fullState = new FullState(state);
+  const module = fullState.currentModule;
+  const {currentElem, $lastError, $portOverParent, $portOverName} = module.state;
   let status = h('span');
   const {setModuleState} = actions;
   if ($lastError) {
@@ -81,5 +86,5 @@ const view = ({elems, modules, currentModule}, actions) => {
   );
 }
 
-app(state, actions, view, document.body);
+app({fullState}, actions, view, document.body);
 

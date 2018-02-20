@@ -2,35 +2,13 @@ import { Elem, Node } from './base.js';
 import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
-export class Circle extends Node {
-  constructor(data) {
-    super(data);
-    const {r, fill} = this.state;
-    Object.assign(this, {r, fill});
-    this.addPort({x: -r, y: 0, dir: 'i'});
-    this.addPort({x: 0, y: -r, dir: 'i'});
-    this.addPort({x: +r, y: 0, dir: 'o'});
-    this.addPort({x: 0, y: +r, dir: 'o'});
-  }
-  renderSVG(h, actions) {
-    const {id, x, y, r, fill, $dragging} = this;
-    return h('g', {id}, 
-      h('circle', {cx: x, cy: y, r, fill, stroke: $dragging ? 'black' : '#444', 'stroke-width': this.isSelected() ? 5 : $dragging ? 2 : 1,
-        onmousedown: this.dragMouseDown(actions),
-      }),
-      h('text', {'text-anchor': 'middle', x, y, dy: 0, textLength: 2*r, 'dominant-baseline': 'middle'}, '. ' + id + ' .'),
-      this.renderPorts(h, actions),
-    );
-  }
-}
-
 export class ANode extends Node {
   constructor(data) {
     super(data);
     const {fill = 'white', size = 30} = this.state;
     Object.assign(this, {size, fill});
-    this.getPorts().map(([name, dir, x, y, {dx, dy, ...opts} = {}]) => this.addPort({
-      name, dir, x: x*size, y: y*size, dx: dx && dx*size, dy: dy && dy*size, ...opts
+    this.getPorts().map(([name, dir, x, y, {nx, ny, ...opts} = {}]) => this.addPort({
+      name, dir, x: x*size, y: y*size, nx: nx && nx*size, ny: ny && ny*size, ...opts
     }));
   }
   getMainStroke() {
@@ -66,13 +44,13 @@ export class ANode extends Node {
       h('path', {
         transform: `translate(${x}, ${y})`,
         d: `M0 0 ${this.getInnerShapePath().map(x => typeof x === 'number' ? x*size : x).join(' ')}`, fill: 'none',
-        stroke: 'grey',
+        stroke: '#AAA', 'stroke-width': 1,
         onmousedown: this.dragMouseDown(actions),
       }),
       h('text',
         {
           transform: `translate(${x + tx}, ${y + ty}) scale(0.6, 1)`,
-          'text-anchor': 'middle', x: 0, y: 0, dy: 0, 'dominant-baseline': 'middle'
+          'text-anchor': 'middle', x: 0, y: 0, ny: 0, 'dominant-baseline': 'middle'
         },
         this.getText(),
       ),
@@ -101,7 +79,7 @@ export class Gain extends ANode {
   }
 }
 
-export class Oscillator extends ANode {
+export class Osc extends ANode {
   constructor(data) {
     super(data);
     const {type = 'sine'} = this.state;
@@ -146,7 +124,7 @@ export class Oscillator extends ANode {
   }
 }
 
-export class Constant extends ANode {
+export class Const extends ANode {
   constructor(data) {
     super(data);
     const {value = 1} = this.state;
@@ -178,5 +156,55 @@ export class Constant extends ANode {
         this.value,
       ),
     ];
+  }
+}
+
+export class Filter extends ANode {
+  constructor(data) {
+    super(data);
+    const {type = 'lowpass'} = this.state;
+    this.type = type;
+  }
+  getPorts() {
+    return [
+      ['inp',  PORT_DIR_IN, -1, 0, {}],
+      ['freq', PORT_DIR_IN, -0.4, -1, {nx: 0, ny: -1}],
+      ['detune', PORT_DIR_IN, +0.4, -1, {nx: 0, ny: -1}],
+      ['Q', PORT_DIR_IN, 0, +1, {}],
+      ['out',  PORT_DIR_OUT, +1, 0, {}],
+    ];
+  }
+  getShapePath() {
+    return ['M', -1, -1,
+      'L', 1, -1,
+      'L', 1, 1,
+      'L', -1, 1,
+      'z',
+    ];
+  }
+  getInnerShapePath() {
+    const typeShape = {
+      lowpass: [
+        'M', -0.75, -0.2,
+        'C', 0.2, -0.2, 0.1, -0.75, 0.3, -0.75,
+        'S', 0.75, 0.75, 0.75, 0.75, 
+      ],
+      highpass: [
+        'M', +0.75, -0.2,
+        'C', -0.2,  -0.2, -0.1, -0.75, -0.3, -0.75,
+        'S', -0.75, 0.75, -0.75, 0.75, 
+      ],
+      bandpass: [
+        'M', -0.75, 0.3,
+        'C', 0.1,   0.3, -0.3, -0.75, 0, -0.75,
+        'S', -0.1,  0.3, 0.75, 0.3,
+      ],
+      notch: [
+        'M', -0.75, -0.3,
+        'C', 0.1, -0.3, -0.2, 0.75, 0, 0.75,
+        'S', -0.1, -0.3, 0.75, -0.3,
+      ],
+    }
+    return typeShape[this.type] || [];
   }
 }
