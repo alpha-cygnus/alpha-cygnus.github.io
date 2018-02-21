@@ -44,7 +44,7 @@ export class ANode extends Node {
       h('path', {
         transform: `translate(${x}, ${y})`,
         d: `M0 0 ${this.getInnerShapePath().map(x => typeof x === 'number' ? x*size : x).join(' ')}`, fill: 'none',
-        stroke: '#AAA', 'stroke-width': 1,
+        stroke: '#BBB', 'stroke-width': 2,
         onmousedown: this.dragMouseDown(actions),
       }),
       h('text',
@@ -206,5 +206,60 @@ export class Filter extends ANode {
       ],
     }
     return typeShape[this.type] || [];
+  }
+}
+
+export class ModuleInput extends ANode {
+  constructor(data) {
+    super(data);
+    const {kind = 'audio'} = this.state;
+    this.kind = kind;
+  }
+  getPorts() {
+    return [
+      ['out',  PORT_DIR_OUT, +1, 0, {}],
+    ];
+  }
+  getShapePath() {
+    return ['m', -1, 0,
+      'a', 1, 1, '0', '0', '0', 2, 0,
+      'a', 1, 1, '0', '0', '0', -2, 0,
+    ];
+  }
+  getInnerShapePath() {
+    return [
+      'M', -1.5, 0,
+      'L', 0, 0,
+      'M', -0.5, -0.5,
+      'L', 0, 0,
+      'L', -0.5, 0.5,
+    ];
+  }
+}
+
+export class ModuleOutput extends ANode {
+  constructor(data) {
+    super(data);
+    const {kind = 'audio'} = this.state;
+    this.kind = kind;
+  }
+  getPorts() {
+    return [
+      ['in',  PORT_DIR_IN, -1, 0, {}],
+    ];
+  }
+  getShapePath() {
+    return ['m', -1, 0,
+      'a', 1, 1, '0', '0', '0', 2, 0,
+      'a', 1, 1, '0', '0', '0', -2, 0,
+    ];
+  }
+  getInnerShapePath() {
+    return [
+      'M', 0, 0, 'L', 1.5, 0,
+      'M', 1, -0.5,
+      'L', 1.5, 0,
+      'L', 1, 0.5,
+    ];
   }
 }

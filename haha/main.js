@@ -19,6 +19,8 @@ function getTestElems() {
     ['Filter', {id: 'filter1', x: -250, y: -50,  type: 'highpass'}],
     ['Filter', {id: 'filter2', x: -250, y: +50,  type: 'bandpass'}],
     ['Filter', {id: 'filter3', x: -250, y: +150, type: 'notch'}],
+    ['ModuleInput', {id: 'inp', x: -350, y: 0, kind: 'audio'}],
+    ['ModuleOutput', {id: 'out', x: +350, y: 0, kind: 'audio'}],
     directLink('osc0', 'out', 'gain0', 'inp'),
     directLink('osc1', 'out', 'gain0', 'inp'),
     directLink('osc2', 'out', 'gain0', 'inp'),
@@ -45,12 +47,9 @@ const fullState = [
 ;
 
 const view = (state, actions) => {
-  // const [_, {currentModule}, ...modules] = fullState;
-  // const allModules = modules.map(([_t, props, ...elems]) => new Module(props, elems)).reduce((am, m) => ({...am, [m.id]: m}), {});
-  // const module = allModules[currentModule];
   const fullState = new FullState(state);
   const module = fullState.currentModule;
-  const {currentElem, $lastError, $portOverParent, $portOverName} = module.state;
+  const {$currentElem, $lastError, $portOverParent, $portOverName} = module.state;
   let status = h('span');
   const {setModuleState} = actions;
   if ($lastError) {
@@ -68,7 +67,7 @@ const view = (state, actions) => {
       h('span', {class: 'info'}, port.getDesc()),
     ];
   }
-  const toEdit = currentElem ? module.all[currentElem] : module;
+  const toEdit = $currentElem ? module.all[$currentElem] : module;
   return h('div', {},
     h('div',
       {
@@ -76,6 +75,11 @@ const view = (state, actions) => {
         onkeydown: e => console.log('kd', e),
       },
       h('svg', {width: '801px', height: '801px', viewBox: '-400 -400 800 800', style: 'border: 1px solid red'},
+        h('defs', {},
+          h('pattern', {id: 'gridPattern', x: -5, y: -5, width: 10, height: 10, patternUnits: 'userSpaceOnUse'},
+            h('circle', {cx: 5, cy: 5, r: 1, fill: '#CCC', stroke: 'none'})
+          )
+        ),
         module.renderSVG(h, actions, [-400, -400, 800, 800]),
       ),
       h('div', {id: 'divProps'},

@@ -1,4 +1,6 @@
-export const snap = (x, to = 1) => Math.round(x / to)*to;
+export const SNAP_TO = 10;
+
+export const snap = (x, to = SNAP_TO) => Math.round(x / to)*to;
 
 export const rnd = (n, n0 = 0) => Math.floor(Math.random()*n) + n0;
 export const pick = arr => arr[rnd(arr.length)];
@@ -20,3 +22,15 @@ export const mangleScale = scale => e => {
   
 export const isDef = v => typeof v !== 'undefined';
 
+export function * yieldElemXML([_t, props, ...subs], prefix = '') {
+  const begin = `${prefix}<${_t}${Object.entries(props).map(([k, v]) => k.match(/^\$/) ? '' : ` ${k}="${v}"`).join('')}`;
+  if (subs.length) {
+    yield `${begin}>`;
+    for (const sub of subs) {
+      yield * yieldElemXML(sub, prefix + '  ');
+    }
+    yield `${prefix}</${_t}>`;
+  } else {
+    yield `${begin} />`;
+  }
+}

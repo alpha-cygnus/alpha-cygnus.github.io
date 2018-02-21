@@ -65,7 +65,6 @@ export class Node extends Elem {
         setElemProps({id, $dragging: false});
         const [dx1, dy1] = [x - e.x, y - e.y];
         if (dx1 === dx && dy1 === dy) {
-          console.log(this.id, 'click');
           selectElem({id});
           if (e.shiftKey) {
           }
