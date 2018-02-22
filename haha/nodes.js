@@ -245,7 +245,7 @@ export class ModuleOutput extends ANode {
   }
   getPorts() {
     return [
-      ['in',  PORT_DIR_IN, -1, 0, {}],
+      ['inp',  PORT_DIR_IN, -1, 0, {}],
     ];
   }
   getShapePath() {

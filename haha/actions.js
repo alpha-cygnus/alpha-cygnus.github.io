@@ -29,20 +29,27 @@ export const newLink = ({from, fromPort, all}) => (state, actions) => {
   if ($portOverParent) {
     const [to, toPort] = [$portOverParent, $portOverName];
     let can = true;
+    let connectError;
     console.log('newLink', all);
     if (all) {
       const src = all[from].getPort(fromPort);
       const dst = all[to].getPort(toPort);
-      const connectError = src && dst && src.connectError(dst);
-      if (connectError) {
+      connectError = src && dst && src.connectError(dst);
+      if (connectError && connectError !== 'SWAP') {
         console.error(connectError);
         return actions.setModuleState({$lastError: connectError});
       }
     }
-    const state = {
-      id: `l${from}.${fromPort}-${to}.${toPort}`,
-      from, fromPort, to, toPort,
-    };
+    const state = connectError === 'SWAP'
+      ? {
+        id: `l${to}.${toPort}-${from}.${fromPort}`,
+        from: to, fromPort: toPort, to: from, toPort: fromPort,
+      }
+      : {
+        id: `l${from}.${fromPort}-${to}.${toPort}`,
+        from, fromPort, to, toPort,
+      }
+    ;
     actions.setModuleState({$lastError: null});
     return actions.newElem(['DirectLink', state]);
   }

@@ -66,6 +66,7 @@ export class Port {
   connectError(otherPort) {
     if (otherPort.kind !== this.kind) return 'kind mismatch';
     if (otherPort.dir === this.dir) return 'int/out mismatch';
+    if (this.dir === PORT_DIR_IN) return 'SWAP';
     return '';
   }
   getDesc() {

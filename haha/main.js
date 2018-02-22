@@ -6,6 +6,8 @@ import {FullState} from './state.js';
 
 import * as actions from './actions.js';
 
+import * as asi from './asi/index.js';
+
 const directLink = (from, fromPort, to, toPort) => ['DirectLink', {id: `l${from}.${fromPort}-${to}.${toPort}`, from, fromPort, to, toPort}];
 
 function getTestElems() {
@@ -89,6 +91,19 @@ const view = (state, actions) => {
     h('div', {id: 'divStatus'}, status),
   );
 }
+
+// const ctx = new AudioContext();
+// async function logAsync(values) {
+//   for await (const v of values) {
+//     console.log(v);
+//   }
+// }
+
+// const bodyClicks = asi.fromEventLast(document.body, 'click');
+// const bodyKeys = asi.fromEventLast(document.body, 'keydown');
+
+// //logAsync(asi.sampleBy(tks, bodyKeys, bodyClicks));
+// logAsync(asi.take(5, asi.audioTicks(ctx, 3)));
 
 app({fullState}, actions, view, document.body);
 

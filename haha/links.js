@@ -23,9 +23,12 @@ export class DirectLink extends Link {
           selectElem({id});
         },
       }),
-      // h('text', {'text-anchor': 'middle', dy: -2},
-      //   h('textPath', {startOffset: '50%', href: '#' + this.id}, this.id)
-      // ),
+      h('text', {'text-anchor': 'start', dy: -2},
+        h('textPath', {startOffset: '0%', href: '#' + this.id}, this.fromPort === 'out' ? '' : this.fromPort)
+      ),
+      h('text', {'text-anchor': 'end', dy: -2},
+        h('textPath', {startOffset: '100%', href: '#' + this.id}, this.toPort === 'inp' ? '' : this.toPort)
+      ),
     );
   }
 }
