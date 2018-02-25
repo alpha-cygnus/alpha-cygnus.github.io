@@ -41,17 +41,13 @@ export class Port {
       onmousedown: startDragOnMouseDown(
         e => {
           const [dx, dy] = [cx - e.x, cy - e.y - 5];
-          // newElem(['FakeNode', {
-          //   id: '__fakeNode', dragging: true, x: cx, x: cy, r: 10
-          // }]);
           newElem(['TempNewLink', {
             id: '__newLink', from: parent.id, fromPort: name, x: cx, y: cy,
           }]);
           return {dx, dy};
         },
         (e, {dx, dy}) => {
-          // setElemProps({id: '__fakeNode', x: snap(dx + e.x), y: snap(dy + e.y)});
-          setElemProps({id: '__newLink', x: snap(dx + e.x), y: snap(dy + e.y)});
+          setElemProps({id: '__newLink', x: dx + e.x, y: dy + e.y});
         },
         e => {
           const [from, fromPort] = [this.parent.id, this.name];
@@ -64,10 +60,10 @@ export class Port {
     });
   }
   connectError(otherPort) {
-    if (otherPort.kind !== this.kind) return 'kind mismatch';
-    if (otherPort.dir === this.dir) return 'int/out mismatch';
-    if (this.dir === PORT_DIR_IN) return 'SWAP';
-    return '';
+    if (otherPort.kind !== this.kind) return ['kind mismatch'];
+    if (otherPort.dir === this.dir) return ['int/out mismatch'];
+    if (this.dir === PORT_DIR_IN) return ['SWAP'];
+    return ['', 'AudioLink'];
   }
   getDesc() {
     const {name, kind, dir} = this;

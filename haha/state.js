@@ -1,4 +1,4 @@
-import {Module} from './module.js';
+import * as MODULE_CLASSES from './module.js';
 
 export function updateModuleState({fullState}, updater) {
   const [_t, props, ...modules] = fullState;
@@ -29,9 +29,16 @@ export class FullState {
     const {fullState} = state;
     const [_, props, ...modules] = fullState;
     const {currentModule} = props;
-    const allModules = modules.map(([_t, props, ...elems]) => new Module(props, elems)).reduce((am, m) => ({...am, [m.id]: m}), {});
-    this.currentModule = allModules[currentModule];
+    const allModules = {};
     this.allModules = allModules;
+    for (const [_t, props, ...elems] of modules) {
+      const m = new MODULE_CLASSES[_t](this, props, elems);
+      allModules[m.id] = m;
+    }
+    for (const m of Object.values(allModules)) {
+      m.initProps();
+    }
+    this.currentModule = allModules[currentModule];
     this.props = props;
   }
 }

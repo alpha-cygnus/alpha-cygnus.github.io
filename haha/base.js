@@ -8,6 +8,8 @@ export class Elem {
     this.all = module.all;
     this.module = module;
   }
+  initProps() {
+  }
   renderSVG(h, actions) {
   }
   getLayer() {
@@ -39,8 +41,7 @@ export class Elem {
 }
 
 export class Node extends Elem {
-  constructor (data) {
-    super(data);
+  initProps() {
     const {x, y, $dragging, $portOver} = this.state;
     Object.assign(this, {x, y, $dragging, $portOver});
     this.ports = [];
@@ -109,8 +110,8 @@ export class Node extends Elem {
 }
 
 export class Link extends Elem {
-  constructor (data) {
-    super(data);
+  initProps() {
+    super.initProps();
     this.from = this.state.from;
     this.to = this.state.to;
     this.fromPort = this.state.fromPort;

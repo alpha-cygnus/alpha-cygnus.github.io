@@ -29,16 +29,13 @@ export const newLink = ({from, fromPort, all}) => (state, actions) => {
   if ($portOverParent) {
     const [to, toPort] = [$portOverParent, $portOverName];
     let can = true;
-    let connectError;
     console.log('newLink', all);
-    if (all) {
-      const src = all[from].getPort(fromPort);
-      const dst = all[to].getPort(toPort);
-      connectError = src && dst && src.connectError(dst);
-      if (connectError && connectError !== 'SWAP') {
-        console.error(connectError);
-        return actions.setModuleState({$lastError: connectError});
-      }
+    const src = all[from].getPort(fromPort);
+    const dst = all[to].getPort(toPort);
+    const [connectError, linkClass = 'AudioLink'] = src && dst && src.connectError(dst) || ['NO PORTS'];
+    if (connectError && connectError !== 'SWAP') {
+      console.error(connectError);
+      return actions.setModuleState({$lastError: connectError});
     }
     const state = connectError === 'SWAP'
       ? {
@@ -51,7 +48,7 @@ export const newLink = ({from, fromPort, all}) => (state, actions) => {
       }
     ;
     actions.setModuleState({$lastError: null});
-    return actions.newElem(['DirectLink', state]);
+    return actions.newElem([linkClass, state]);
   }
   return state;
 };
@@ -61,7 +58,6 @@ export const selectElem = ({id}) => (state, actions) => {
 };
 
 export const logState = () => state => {
-  //console.log(JSON.stringify(state, (key, value) => key.match(/^\$/) ? undefined : value, '  '));
   console.log([...yieldElemXML(state.fullState)].join('\n'));
   return state;
 }

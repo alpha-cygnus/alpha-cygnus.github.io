@@ -8,10 +8,13 @@ import * as ACTIONS from './actions.js';
 const ELEM_CLASSES = {...NODE_CLASSES, ...LINK_CLASSES};
 
 export class Module {
-  constructor(props, elems) {
+  constructor(parent, props, elems) {
+    this.parent = parent;
+    this.allModules = parent.allModules;
     this.state = props;
     const {id, title, scale, tx, ty, $currentElem, snapTo = 10} = props;
     this.name = id;
+    console.log('module', id, parent, parent.allModules);
     Object.assign(this, {id, elems, title, scale, tx, ty, $currentElem, snapTo});
     const all = {};
     this.all = all;
@@ -20,6 +23,11 @@ export class Module {
       const {id, ...state} = props;
       if (!Cls) console.error({_t, id});
       all[id] = new Cls({id, state, module: this});
+    }
+  }
+  initProps() {
+    for (const elem of Object.values(this.all)) {
+      elem.initProps();
     }
   }
   renderSVG(h, actions, viewBox) {

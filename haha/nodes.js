@@ -3,8 +3,8 @@ import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
 export class ANode extends Node {
-  constructor(data) {
-    super(data);
+  initProps() {
+    super.initProps();
     const {fill = 'white', size = 30} = this.state;
     Object.assign(this, {size, fill});
     this.getPorts().map(([name, dir, x, y, {nx, ny, ...opts} = {}]) => this.addPort({
@@ -49,7 +49,7 @@ export class ANode extends Node {
       }),
       h('text',
         {
-          transform: `translate(${x + tx}, ${y + ty}) scale(0.6, 1)`,
+          transform: `translate(${x + tx}, ${y + ty}) scale(1, 1)`,
           'text-anchor': 'middle', x: 0, y: 0, ny: 0, 'dominant-baseline': 'middle'
         },
         this.getText(),
@@ -209,21 +209,24 @@ export class Filter extends ANode {
   }
 }
 
-export class ModuleInput extends ANode {
+export class ModulePort extends ANode {
   constructor(data) {
     super(data);
     const {kind = 'audio'} = this.state;
     this.kind = kind;
   }
-  getPorts() {
-    return [
-      ['out',  PORT_DIR_OUT, +1, 0, {}],
-    ];
-  }
   getShapePath() {
     return ['m', -1, 0,
       'a', 1, 1, '0', '0', '0', 2, 0,
       'a', 1, 1, '0', '0', '0', -2, 0,
+    ];
+  }
+}
+
+export class ModuleInput extends ModulePort {
+  getPorts() {
+    return [
+      ['out',  PORT_DIR_OUT, +1, 0, {}],
     ];
   }
   getInnerShapePath() {
@@ -237,21 +240,10 @@ export class ModuleInput extends ANode {
   }
 }
 
-export class ModuleOutput extends ANode {
-  constructor(data) {
-    super(data);
-    const {kind = 'audio'} = this.state;
-    this.kind = kind;
-  }
+export class ModuleOutput extends ModulePort {
   getPorts() {
     return [
       ['inp',  PORT_DIR_IN, -1, 0, {}],
-    ];
-  }
-  getShapePath() {
-    return ['m', -1, 0,
-      'a', 1, 1, '0', '0', '0', 2, 0,
-      'a', 1, 1, '0', '0', '0', -2, 0,
     ];
   }
   getInnerShapePath() {
@@ -260,6 +252,37 @@ export class ModuleOutput extends ANode {
       'M', 1, -0.5,
       'L', 1.5, 0,
       'L', 1, 0.5,
+    ];
+  }
+}
+
+export class ModuleInstance extends ANode {
+  getPorts() {
+    const {moduleId} = this.state;
+    const source = this.module.allModules[moduleId];
+    const sourceNodes = source.elems
+      .map(([_t, {id}]) => source.all[id])
+    const ins = sourceNodes
+      .filter(node => node instanceof ModuleInput);
+    const outs = sourceNodes
+      .filter(node => node instanceof ModuleOutput);
+    const sizeY = Math.max((Math.max(ins.length, outs.length))/3, 1);
+    console.log('init mod inst', {moduleId, source, ins, outs, sourceNodes, sizeY});
+    Object.assign(this, {moduleId, source, ins, outs, sourceNodes, sizeY});
+    const ports = [
+      ...ins.map(({id, kind}, i) => [id, PORT_DIR_IN, -1, (i - (ins.length - 1)/2)*2/3, {nx: -1, ny: 0}]),
+      ...outs.map(({id, kind}, i) => [id, PORT_DIR_OUT, 1, (i - (outs.length - 1)/2)*2/3, {nx: 1, ny: 0}]),
+    ];
+    console.log('mod inst ports', ports);
+    return ports;
+  }
+  getShapePath() {
+    const {sizeY} = this;
+    return ['M', -1, -sizeY,
+      'L', 1, -sizeY,
+      'L', 1, sizeY,
+      'L', -1, sizeY,
+      'Z'
     ];
   }
 }
