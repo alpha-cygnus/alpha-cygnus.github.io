@@ -1,4 +1,6 @@
-import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
+import { snap, rnd, pick, mangleScale, startDragOnMouseDown, yieldElemXML } from './utils.js';
+
+import {Link} from './base.js';
 
 import * as NODE_CLASSES from './nodes.js';
 import * as LINK_CLASSES from './links.js';
@@ -29,6 +31,18 @@ export class Module {
     for (const elem of Object.values(this.all)) {
       elem.initProps();
     }
+    this.links = {
+      from: {},
+      to: {},
+    };
+    const {from, to} = this.links;
+    for (const link of Object.values(this.all).filter(e => e instanceof Link)) {
+      from[link.from] = from[link.from] || {};
+      from[link.from][link.fromPort] = [...(from[link.from][link.fromPort] || []), link];
+      to[link.to] = to[link.to] || {};
+      to[link.to][link.toPort] = [...(to[link.to][link.toPort] || []), link];
+    }
+    console.log(this.id, this.links);
   }
   renderSVG(h, actions, viewBox) {
     const [x = -400, y = -400, width = 800, height = 800] = viewBox || [];
@@ -120,9 +134,21 @@ export class Module {
         onclick: e => logState()
       }, 'log'),
       h('button', {
+        onclick: e => {
+          console.log([...yieldElemXML(this.renderGraph())].join('\n'));
+        }
+      }, 'G'),
+      h('button', {
         onclick: e => newElem(['Osc', {id: 'newOsc', x: 0, y: 0}]),
       }, 'new test'),
       h('pre', {id: 'preProps', style: {height: '600px', overflow: 'auto'}}, JSON.stringify([this.state, this.elems], null, '  ')),
     );
+  }
+  renderGraph() {
+    const g = ['Graph', {}];
+    for (const elem of Object.values(this.all)) {
+      g.push(...elem.renderGraph(''));
+    }
+    return g;
   }
 }

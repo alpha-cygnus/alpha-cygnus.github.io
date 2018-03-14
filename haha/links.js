@@ -1,4 +1,6 @@
 import { Link } from './base.js';
+import { flatten } from './utils.js';
+import { ModulePortNode } from './nodes.js';
 
 export class TempNewLink extends Link {
   isDragging() {
@@ -55,6 +57,18 @@ export class ALink extends Link {
         h('textPath', {startOffset: '100%', href: '#' + this.id}, this.toPort === 'inp' ? '' : this.toPort)
       ),
     );
+  }
+  renderGraph(idPrefix) {
+    if (this.all[this.from] instanceof ModulePortNode) return [];
+    if (this.all[this.to] instanceof ModulePortNode) return [];
+    //console.log(this.id);
+    const [f, t] = [
+      this.all[this.from].getPort(this.fromPort),
+      this.all[this.to].getPort(this.toPort),
+    ];
+    const fs = f.getIdsForLink(idPrefix);
+    const ts = t.getIdsForLink(idPrefix);
+    return flatten(fs.map(from => ts.map(to => ['Link', {from, to}])));
   }
 }
 

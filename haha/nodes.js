@@ -1,5 +1,5 @@
-import { Elem, Node } from './base.js';
-import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
+import { Elem, Node, Link } from './base.js';
+import { Port, PORT_DIR_IN, PORT_DIR_OUT, AudioPort, ModulePort } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
 export class ANode extends Node {
@@ -10,6 +10,9 @@ export class ANode extends Node {
     this.getPorts().map(([name, dir, x, y, {nx, ny, ...opts} = {}]) => this.addPort({
       name, dir, x: x*size, y: y*size, nx: nx && nx*size, ny: ny && ny*size, ...opts
     }));
+  }
+  getPortClass(state) {
+    return AudioPort;
   }
   getMainStroke() {
     const {$dragging, size} = this;
@@ -61,6 +64,9 @@ export class ANode extends Node {
   renderInnerSVG() {
     return [];
   }
+  renderGraph(idPrefix) {
+    return [];
+  }
 }
 
 export class Gain extends ANode {
@@ -76,6 +82,11 @@ export class Gain extends ANode {
   }
   getShapePath() {
     return ['m', 1, 0, 'l', -2, 1, 'l', 0, -2, 'z'];
+  }
+  renderGraph(idPrefix) {
+    return [
+      ['Gain', {id: idPrefix + this.id, gain: 0}]
+    ];
   }
 }
 
@@ -122,6 +133,12 @@ export class Osc extends ANode {
     }
     return typeShape[this.type] || [];
   }
+  renderGraph(idPrefix) {
+    const {type} = this;
+    return [
+      ['Oscillator', {id: idPrefix + this.id, type}]
+    ];
+  }
 }
 
 export class Const extends ANode {
@@ -155,6 +172,12 @@ export class Const extends ANode {
         },
         this.value,
       ),
+    ];
+  }
+  renderGraph(idPrefix) {
+    const {value} = this;
+    return [
+      ['ConstantSource', {id: idPrefix + this.id, value}]
     ];
   }
 }
@@ -207,9 +230,15 @@ export class Filter extends ANode {
     }
     return typeShape[this.type] || [];
   }
+  renderGraph(idPrefix) {
+    const {type} = this;
+    return [
+      ['BiQuadFilter', {id: idPrefix + this.id, type}]
+    ];
+  }
 }
 
-export class ModulePort extends ANode {
+export class ModulePortNode extends ANode {
   constructor(data) {
     super(data);
     const {kind = 'audio'} = this.state;
@@ -223,7 +252,7 @@ export class ModulePort extends ANode {
   }
 }
 
-export class ModuleInput extends ModulePort {
+export class ModuleInput extends ModulePortNode {
   getPorts() {
     return [
       ['out',  PORT_DIR_OUT, +1, 0, {}],
@@ -240,7 +269,7 @@ export class ModuleInput extends ModulePort {
   }
 }
 
-export class ModuleOutput extends ModulePort {
+export class ModuleOutput extends ModulePortNode {
   getPorts() {
     return [
       ['inp',  PORT_DIR_IN, -1, 0, {}],
@@ -257,23 +286,35 @@ export class ModuleOutput extends ModulePort {
 }
 
 export class ModuleInstance extends ANode {
+  getSource() {
+    const {moduleId} = this.state;
+    return this.module.allModules[moduleId];
+  }
+  getSourceElems() {
+    const source = this.getSource();
+    return source.elems
+      .map(([_t, {id}]) => source.all[id]);
+  }
+  getSourceNodes() {
+    return this.getSourceElems().filter(elem => elem instanceof Node);
+  }
+  getPortClass(state) {
+    return ModulePort;
+  }
   getPorts() {
     const {moduleId} = this.state;
-    const source = this.module.allModules[moduleId];
-    const sourceNodes = source.elems
-      .map(([_t, {id}]) => source.all[id])
+    const source = this.getSource();
+    const sourceNodes = this.getSourceNodes();
     const ins = sourceNodes
       .filter(node => node instanceof ModuleInput);
     const outs = sourceNodes
       .filter(node => node instanceof ModuleOutput);
     const sizeY = Math.max((Math.max(ins.length, outs.length))/3, 1);
-    console.log('init mod inst', {moduleId, source, ins, outs, sourceNodes, sizeY});
     Object.assign(this, {moduleId, source, ins, outs, sourceNodes, sizeY});
     const ports = [
       ...ins.map(({id, kind}, i) => [id, PORT_DIR_IN, -1, (i - (ins.length - 1)/2)*2/3, {nx: -1, ny: 0}]),
       ...outs.map(({id, kind}, i) => [id, PORT_DIR_OUT, 1, (i - (outs.length - 1)/2)*2/3, {nx: 1, ny: 0}]),
     ];
-    console.log('mod inst ports', ports);
     return ports;
   }
   getShapePath() {
@@ -284,5 +325,8 @@ export class ModuleInstance extends ANode {
       'L', -1, sizeY,
       'Z'
     ];
+  }
+  renderGraph(idPrefix) {
+    return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
   }
 }

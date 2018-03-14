@@ -5,6 +5,11 @@ export const PORT_DIR_OUT = 'out';
 export const PORT_KIND_AUDIO = 'audio';
 export const PORT_KIND_PARAM = 'param';
 
+export const PORT_DEF_NAME = {
+  [PORT_DIR_IN]: 'inp',
+  [PORT_DIR_OUT]: 'out',
+}
+
 export class Port {
   constructor(parent, state) {
     this.parent = parent;
@@ -69,5 +74,41 @@ export class Port {
     const {name, kind, dir} = this;
     return `${name} [${kind}/${dir}]`;
   }
+  getIdsForLink(idPrefix) {
+    return [];
+  }
 }
 
+export class AudioPort extends Port {
+  getIdsForLink(idPrefix) {
+    const idSuffix = this.name === PORT_DEF_NAME[this.dir] ? '' : '.' + this.name;
+    return [idPrefix + this.parent.id + idSuffix];
+  }
+}
+
+export class ModulePort extends Port {
+  getIdsForLink(idPrefix) {
+    const source = this.parent.getSource();
+    const result = [];
+    for (let fromPort in source.links.from[this.name]) {
+      for (const {to, toPort} of source.links.from[this.name][fromPort]) {
+        const port = source.all[to].getPort(toPort);
+        console.log(this.id, {fromPort, to, toPort});
+        result.push(...port.getIdsForLink(idPrefix + this.parent.id + '$'));
+      }
+    };
+    for (let toPort in source.links.to[this.name]) {
+      for (const {from, fromPort} of source.links.to[this.name][toPort]) {
+        const port = source.all[from].getPort(fromPort);
+        console.log(this.id, {from, fromPort, toPort});
+        result.push(...port.getIdsForLink(idPrefix + this.parent.id + '$'));
+      }
+    };
+    console.log(this.id, idPrefix, result, source.links);
+    // if (!node) {
+    //   console.error(`node id ${this.name} not found`);
+    //   return [];
+    // }
+    return result;
+  }
+}

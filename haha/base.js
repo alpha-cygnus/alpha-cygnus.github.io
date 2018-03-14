@@ -38,6 +38,9 @@ export class Elem {
       }, 'DEL'),
     );
   }
+  renderGraph(idPrefix) {
+    return [];
+  }
 }
 
 export class Node extends Elem {
@@ -46,9 +49,13 @@ export class Node extends Elem {
     Object.assign(this, {x, y, $dragging, $portOver});
     this.ports = [];
   }
+  getPortClass(state) {
+    return Port;
+  }
   addPort(state) {
     const name = state.name || this.ports.length;
-    this.ports.push(new Port(this, {...state, name, isOver: name === this.$portOver}));
+    const PortClass = this.getPortClass();
+    this.ports.push(new PortClass(this, {...state, name, isOver: name === this.$portOver}));
   }
   dragMouseDown({setElemProps, selectElem, deleteElem}) {
     const {id, x, y} = this;

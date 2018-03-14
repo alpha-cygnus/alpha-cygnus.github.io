@@ -22,7 +22,7 @@ export const mangleScale = scale => e => {
   
 export const isDef = v => typeof v !== 'undefined';
 
-export function * yieldElemXML([_t, props, ...subs], prefix = '') {
+export function * yieldElemXML([_t, props = {}, ...subs], prefix = '') {
   const begin = `${prefix}<${_t}${Object.entries(props).map(([k, v]) => k.match(/^\$/) ? '' : ` ${k}="${v}"`).join('')}`;
   if (subs.length) {
     yield `${begin}>`;
@@ -34,3 +34,5 @@ export function * yieldElemXML([_t, props, ...subs], prefix = '') {
     yield `${begin} />`;
   }
 }
+
+export const flatten = arr => arr.reduce((result, elem) => result.concat(elem), []);
