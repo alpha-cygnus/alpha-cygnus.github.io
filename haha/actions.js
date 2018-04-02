@@ -1,18 +1,14 @@
 import {yieldElemXML} from './utils.js';
-import {updateElem, updateModuleElems, updateModuleProps, updateModuleState, getModuleProps} from './state.js';
 
-export const setElemProps = ({id, ...it}) => fullState => {
-  return updateElem(fullState, ([_t, props, ...subs]) => [_t, {...props, ...it}, ...subs], id);
-};
+import {insert, remove, setAttr, wrap} from './state.js';
 
-//export const newElem = ([_t, {id, ...it}]) => fullState => updateModuleElems(fullState, () => ({[id]: [_t, it]}));
-export const newElem = elem => fullState => updateModuleElems(fullState, elems => [...elems, elem]);
+export const setElemProps = ({id, ...it}) => ({fullState}) => wrap(setAttr(fullState, '@currentSynth/@currentModule/#' + id, it));
 
-export const deleteElem = ({id}) => fullState => updateModuleElems(fullState, elems => elems.filter(([_t, props]) => props.id !== id));
+export const newElem = elem => ({fullState}) => wrap(insert(fullState, '@currentSynth/@currentModule', elem));
 
-export const setModuleState = (it) => (state) => {
-  return updateModuleProps(state, () => it);
-};
+export const deleteElem = ({id}) => ({fullState}) => wrap(remove(fullState, '@currentSynth/@currentModule/#' + id, it));
+
+export const setModuleState = it => ({fullState}) => wrap(setAttr(fullState, '@currentSynth/@currentModule', it));
 
 export const setPortOver = (port) => (state, actions) => {
   if (port) {

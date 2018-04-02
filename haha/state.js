@@ -1,44 +1,68 @@
-import * as MODULE_CLASSES from './module.js';
-
-export function updateModuleState({fullState}, updater) {
-  const [_t, props, ...modules] = fullState;
-  const {currentModule} = props;
-  return {fullState: [_t, props, ...modules.map(module => module[1].id === currentModule ? updater(module) : module)]};
-}
-
-export function getModuleProps({fullState}) {
-  const [_t, {currentModule}, ...modules] = fullState;
-  const module = modules.find(([_, {id}]) => id === currentModule);
-  return module && module[1] || {};
-}
-
-export function updateModuleElems(fullState, updater) {
-  return updateModuleState(fullState, ([_t, props, ...elems]) => [_t, props, ...updater(elems)]);
-}
-
-export function updateModuleProps(fullState, updater) {
-  return updateModuleState(fullState, ([_t, props, ...elems]) => [_t, {...props, ...updater(props)}, ...elems]);
-}
-
-export function updateElem(fullState, updater, id) {
-  return updateModuleElems(fullState, elems => elems.map(elem => elem[1].id === id ? updater(elem) : elem));
-}
-
-export class FullState {
-  constructor(state) {
-    const {fullState} = state;
-    const [_, props, ...modules] = fullState;
-    const {currentModule} = props;
-    const allModules = {};
-    this.allModules = allModules;
-    for (const [_t, props, ...elems] of modules) {
-      const m = new MODULE_CLASSES[_t](this, props, elems);
-      allModules[m.id] = m;
+export function isElem(elem, cond, state) {
+  const [eType, eOpts] = elem;
+  const [_, sOpts] = state;
+  if (typeof cond === 'string') {
+    let m;
+    if (m = cond.match(/^@(\w+)$/)) {
+      return eOpts.id === sOpts[m[1]];
     }
-    for (const m of Object.values(allModules)) {
-      m.initProps();
+    if (m = cond.match(/^#(.+)$/)) {
+      return eOpts.id === m[1];
     }
-    this.currentModule = allModules[currentModule];
-    this.props = props;
   }
 }
+
+export function normPath(path) {
+  if (Array.isArray(path)) return path;
+  if (typeof path === 'string') {
+    return path.split('/');
+  }
+  return path;
+}
+
+export function insert(state, path, elem) {
+  path = normPath(path);
+  const [_t, opts, ...elems] = state;
+  if (!path.length) {
+    return [_t, opts, ...elems, elem];
+  }
+  const [cond, ...subPath] = path;
+  return [_t, opts, ...elems.map(e => isElem(e, cond, state) ? insert(e, subPath, elem) : e)];
+}
+
+export function remove(state, path) {
+  path = normPath(path);
+  const [_t, opts, ...elems] = state;
+  if (path.length === 1) {
+    const [cond] = path;
+    return [_t, opts, ...elems.filter(e => !isElem(e, cond, state))];
+  }
+  const [cond, ...subPath] = path;
+  return [_t, opts, ...elems.map(e => isElem(e, cond, state) ? remove(e, subPath) : e)];
+}
+
+export function setAttr(state, path, attrs) {
+  path = normPath(path);
+  console.log('setAttr', state, path, attrs);
+  const [_t, opts, ...elems] = state;
+  if (!path.length) {
+    return [_t, {...opts, ...attrs}, ...elems];
+  }
+  const [cond, ...subPath] = path;
+  return [_t, opts, ...elems.map(e => isElem(e, cond, state) ? setAttr(e, subPath, attrs) : e)];
+}
+
+export function getElems(state, path) {
+  path = normPath(path);
+  const [_t, opts, ...elems] = state;
+  if (!path.length) {
+    return [state];
+  }
+  const [cond, ...subPath] = path;
+  return elems.filter(e => isElem(e, cond, state)).reduce((res, e) => [...res, ...getElems(e, subPath)], []);
+}
+
+export const wrap = fullState => {
+  console.log('WRAP', fullState);
+  return {fullState};
+};

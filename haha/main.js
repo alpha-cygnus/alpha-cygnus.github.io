@@ -2,7 +2,7 @@ import { h, app } from './hyperapp/index.js';
 
 import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
 
-import {FullState} from './state.js';
+import {Synth} from './synth.js';
 
 import * as actions from './actions.js';
 
@@ -15,8 +15,14 @@ const audioLink = (f, t) => {
 }
 
 const fullState = [
-    'FullState',
+  'FullState',
+  {
+    currentSynth: 'testSynth',
+  },
+  [
+    'Synth',
     {
+      id: 'testSynth',
       currentModule: 'main',
     },
     ['Module',
@@ -81,11 +87,15 @@ const fullState = [
       //audioLink('gain', 'gain0.gain'),
     ],
   ]
-;
+];
 
 const view = (state, actions) => {
-  const fullState = new FullState(state);
-  const module = fullState.currentModule;
+  console.log('STATE', state);
+  const {fullState} = state;
+  const [_t, _o, synth0State] = fullState;
+  console.log({fullState, synth0State});
+  const synth = new Synth(synth0State);
+  const module = synth.currentModule;
   const {$currentElem, $lastError, $portOverParent, $portOverName} = module.state;
   let status = h('span');
   const {setModuleState} = actions;
