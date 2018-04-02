@@ -16,7 +16,6 @@ export class Module {
     this.state = props;
     const {id, title, scale, tx, ty, $currentElem, snapTo = 10} = props;
     this.name = id;
-    console.log('module', id, parent, parent.allModules);
     Object.assign(this, {id, elems, title, scale, tx, ty, $currentElem, snapTo});
     const all = {};
     this.all = all;
@@ -42,7 +41,6 @@ export class Module {
       to[link.to] = to[link.to] || {};
       to[link.to][link.toPort] = [...(to[link.to][link.toPort] || []), link];
     }
-    console.log(this.id, this.links);
   }
   renderSVG(h, actions, viewBox) {
     const [x = -400, y = -400, width = 800, height = 800] = viewBox || [];
@@ -77,9 +75,7 @@ export class Module {
           },
           (e, {dx, dy}) => {
             const [dx1, dy1] = [tx - e.x, ty - e.y];
-            console.log(dx1, dy1, dx, dy);
             if (dx1 === dx && dy1 === dy) {
-              console.log('select none');
               selectElem({id: null});
             }
           },
@@ -100,9 +96,7 @@ export class Module {
             },
             (e, {dx, dy}) => {
               const [dx1, dy1] = [tx - e.x, ty - e.y];
-              console.log(dx1, dy1, dx, dy);
               if (dx1 === dx && dy1 === dy) {
-                console.log('select none');
                 selectElem({id: null});
               }
             },

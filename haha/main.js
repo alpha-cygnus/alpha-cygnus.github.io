@@ -90,10 +90,8 @@ const fullState = [
 ];
 
 const view = (state, actions) => {
-  console.log('STATE', state);
   const {fullState} = state;
   const [_t, _o, synth0State] = fullState;
-  console.log({fullState, synth0State});
   const synth = new Synth(synth0State);
   const module = synth.currentModule;
   const {$currentElem, $lastError, $portOverParent, $portOverName} = module.state;
@@ -115,6 +113,13 @@ const view = (state, actions) => {
     ];
   }
   const toEdit = $currentElem ? module.all[$currentElem] : module;
+  document.onkeyup = e => {
+    if (e.key === 'Backspace' && $currentElem) {
+      console.log(e);
+      toEdit.onDelete(actions);
+      // actions.deleteElem({id: $currentElem});
+    }
+  };
   return h('div', {},
     h('div',
       {

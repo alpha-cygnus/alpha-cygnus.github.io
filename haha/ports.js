@@ -93,18 +93,15 @@ export class ModulePort extends Port {
     for (let fromPort in source.links.from[this.name]) {
       for (const {to, toPort} of source.links.from[this.name][fromPort]) {
         const port = source.all[to].getPort(toPort);
-        console.log(this.id, {fromPort, to, toPort});
         result.push(...port.getIdsForLink(idPrefix + this.parent.id + '$'));
       }
     };
     for (let toPort in source.links.to[this.name]) {
       for (const {from, fromPort} of source.links.to[this.name][toPort]) {
         const port = source.all[from].getPort(fromPort);
-        console.log(this.id, {from, fromPort, toPort});
         result.push(...port.getIdsForLink(idPrefix + this.parent.id + '$'));
       }
     };
-    console.log(this.id, idPrefix, result, source.links);
     // if (!node) {
     //   console.error(`node id ${this.name} not found`);
     //   return [];

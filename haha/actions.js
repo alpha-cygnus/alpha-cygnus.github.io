@@ -1,14 +1,21 @@
 import {yieldElemXML} from './utils.js';
 
-import {insert, remove, setAttr, wrap} from './state.js';
+import {insert, remove, setAttr, wrap, getElems} from './state.js';
 
-export const setElemProps = ({id, ...it}) => ({fullState}) => wrap(setAttr(fullState, '@currentSynth/@currentModule/#' + id, it));
+const curModPath = '@currentSynth/@currentModule';
 
-export const newElem = elem => ({fullState}) => wrap(insert(fullState, '@currentSynth/@currentModule', elem));
+export const setElemProps = ({id, ...it}) => ({fullState}) => wrap(setAttr(fullState, `${curModPath}/#${id}`, it));
 
-export const deleteElem = ({id}) => ({fullState}) => wrap(remove(fullState, '@currentSynth/@currentModule/#' + id, it));
+export const newElem = elem => ({fullState}) => wrap(insert(fullState, curModPath, elem));
 
-export const setModuleState = it => ({fullState}) => wrap(setAttr(fullState, '@currentSynth/@currentModule', it));
+export const deleteElem = ({id}) => ({fullState}) => wrap(remove(fullState, `${curModPath}/#${id}`));
+
+export const setModuleState = it => ({fullState}) => wrap(setAttr(fullState, curModPath, it));
+
+function getModuleProps({fullState}) {
+  const [[_t, props]] = getElems(fullState, curModPath);
+  return props;
+}
 
 export const setPortOver = (port) => (state, actions) => {
   if (port) {
@@ -25,7 +32,6 @@ export const newLink = ({from, fromPort, all}) => (state, actions) => {
   if ($portOverParent) {
     const [to, toPort] = [$portOverParent, $portOverName];
     let can = true;
-    console.log('newLink', all);
     const src = all[from].getPort(fromPort);
     const dst = all[to].getPort(toPort);
     const [connectError, linkClass = 'AudioLink'] = src && dst && src.connectError(dst) || ['NO PORTS'];

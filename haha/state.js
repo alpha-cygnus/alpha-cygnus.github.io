@@ -43,7 +43,6 @@ export function remove(state, path) {
 
 export function setAttr(state, path, attrs) {
   path = normPath(path);
-  console.log('setAttr', state, path, attrs);
   const [_t, opts, ...elems] = state;
   if (!path.length) {
     return [_t, {...opts, ...attrs}, ...elems];
@@ -63,6 +62,5 @@ export function getElems(state, path) {
 }
 
 export const wrap = fullState => {
-  console.log('WRAP', fullState);
   return {fullState};
 };
