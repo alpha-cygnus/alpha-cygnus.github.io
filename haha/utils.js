@@ -36,3 +36,11 @@ export function * yieldElemXML([_t, props = {}, ...subs], prefix = '') {
 }
 
 export const flatten = arr => arr.reduce((result, elem) => result.concat(elem), []);
+
+export const makeObject = (classes, [_t, attrs, ...children]) => {
+  const Cls = classes[_t];
+  const childObjs = children.map(child => makeObject(classes, child));
+  const obj = new Cls(attrs, childObjs);
+  childObjs.forEach(child => child.parent = obj);
+  return obj;
+}

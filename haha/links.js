@@ -22,8 +22,7 @@ export class TempNewLink extends Link {
 }
 
 export class ALink extends Link {
-  renderSVG(h, {setElemProps, selectElem}) {
-    const {id, state: {over}} = this;
+  getFromTo() {
     const [from, to] = [
       this.all[this.from].getPort(this.fromPort),
       this.all[this.to].getPort(this.toPort),
@@ -34,6 +33,11 @@ export class ALink extends Link {
     if (!to) {
       console.error('no to in', id);
     }
+    return [from, to];
+  }
+  renderSVG(h, {setElemProps, selectElem}) {
+    const [from, to] = this.getFromTo();
+    const {id, state: {over}} = this;
     const dragging = this.isDragging();
     return h('g', {},
       h('path', {
@@ -75,4 +79,8 @@ export class ALink extends Link {
 }
 
 export class AudioLink extends ALink {
+  *gen() {
+    const [from, to] = this.getFromTo();
+    yield `${from.getDotId()}.connect(${to.getDotId()});`;
+  }
 }

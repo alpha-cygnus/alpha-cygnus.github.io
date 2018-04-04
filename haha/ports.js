@@ -77,6 +77,9 @@ export class Port {
   getIdsForLink(idPrefix) {
     return [];
   }
+  getDotId() {
+    return [this.parent.id, this.name].join('.');
+  }
 }
 
 export class AudioPort extends Port {

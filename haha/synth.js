@@ -15,5 +15,19 @@ export class Synth {
     }
     this.currentModule = allModules[currentModule];
     this.props = props;
+    this.id = props.id;
+  }
+  *gen() {
+    yield `_synths.${this.id} = function ${this.id}({_ctx, _basic, _synths}) {`;
+    yield `  const _modules = {};`;
+    for (const m of Object.values(this.allModules)) {
+      yield * [...m.gen()].map(s => '  ' + s);
+    }
+    yield `  const main = _modules.main({_ctx, _basic, _modules, _synths});`
+    yield `  return {`;
+    yield `    _modules,`;
+    yield `    ...main,`;
+    yield `  };`;
+    yield `}`;
   }
 }

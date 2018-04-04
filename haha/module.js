@@ -133,6 +133,11 @@ export class Module {
         }
       }, 'G'),
       h('button', {
+        onclick: e => {
+          console.log([...this.parent.gen()].join('\n'));
+        }
+      }, 'gen'),
+      h('button', {
         onclick: e => newElem(['Osc', {id: 'newOsc', x: 0, y: 0}]),
       }, 'new test'),
       h('pre', {id: 'preProps', style: {height: '600px', overflow: 'auto'}}, JSON.stringify([this.state, this.elems], null, '  ')),
@@ -144,5 +149,28 @@ export class Module {
       g.push(...elem.renderGraph(''));
     }
     return g;
+  }
+  *gen() {
+    yield `_modules.${this.id} = function ${this.id}({_ctx, _basic, _modules, _synths}) {`;
+    const nodeIds = [];
+    for (const node of Object.values(this.all).filter(e => !(e instanceof Link))) {
+      yield * [...node.gen()].map(s => '  ' + s);
+      nodeIds.push(node.id);
+    }
+    for (const link of Object.values(this.all).filter(e => e instanceof Link)) {
+      console.log(link.id);
+      yield * [...link.gen()].map(s => '  ' + s);
+    }
+    yield `  return {`;
+    for (const nodeId of nodeIds) {
+      yield `    ${nodeId},`;
+    }
+    yield `    _on: t => {`;
+    for (const nodeId of nodeIds) {
+      yield `      ${nodeId}._on && ${nodeId}._on(t);`;
+    }
+    yield `    },`;
+    yield '  };';
+    yield '}';
   }
 }

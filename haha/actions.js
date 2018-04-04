@@ -4,7 +4,7 @@ import {insert, remove, setAttr, wrap, getElems} from './state.js';
 
 const curModPath = '@currentSynth/@currentModule';
 
-export const setElemProps = ({id, ...it}) => ({fullState}) => wrap(setAttr(fullState, `${curModPath}/#${id}`, it));
+export const setElemProps = ({id, ...it}) => ({fullState}) => wrap(setAttr(fullState, id ? `${curModPath}/#${id}` : `${curModPath}/@$currentElem`, it));
 
 export const newElem = elem => ({fullState}) => wrap(insert(fullState, curModPath, elem));
 

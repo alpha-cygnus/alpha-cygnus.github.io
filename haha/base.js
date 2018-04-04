@@ -1,5 +1,6 @@
-import { startDragOnMouseDown, mangleScale, snap } from './utils.js';
+import { startDragOnMouseDown, mangleScale, snap, makeObject } from './utils.js';
 import { Port } from './ports.js';
+import * as PARAM_CLASSES from './params.js';
 
 export class Elem {
   constructor ({id, state, module}) {
@@ -41,6 +42,8 @@ export class Elem {
   renderGraph(idPrefix) {
     return [];
   }
+  *gen() {
+  }
 }
 
 export class Node extends Elem {
@@ -51,6 +54,9 @@ export class Node extends Elem {
   }
   getPortClass(state) {
     return Port;
+  }
+  getParamList() {
+    return [];
   }
   addPort(state) {
     const name = state.name || this.ports.length;
@@ -101,9 +107,19 @@ export class Node extends Elem {
   renderPorts(h, actions) {
     return this.ports.map(port => port.renderSVG(h, actions));
   }
+  getParamValue(name) {
+    return typeof this[name] === 'undefined' ? this.state[name] : this[name];
+  }
   renderEditor(h, actions) {
+    const pars = this.getParamList();
+    ;
     return h('div', {},
       h('h1', {}, this.id),
+      pars
+        .map(par => makeObject(PARAM_CLASSES, par))
+        .map(par => par.render(
+          h, actions, this.getParamValue(par.name),
+        )),
       h('pre', {}, JSON.stringify({...this.state,
         ports: this.ports.map(({state, atx, aty, cx, cy, dx, dy}) => ({state, atx, aty, cx, cy, dx, dy}))}, null, '  ')),
       h('button', {

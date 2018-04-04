@@ -67,14 +67,30 @@ export class ANode extends Node {
   renderGraph(idPrefix) {
     return [];
   }
+  *gen() {
+    yield `const ${this.id} = _basic.create${this.constructor.name}(_ctx, {${
+      this.getParamList().map(
+        ([_t, {name}]) => `${name}: ${this.getParamValue(name)}`
+      ).join(', ')}});`;
+  }
 }
 
 export class Gain extends ANode {
+  constructor(data) {
+    super(data);
+    const {gain = 1.0} = this.state;
+    this.gain = gain;
+  }
   getPorts() {
     return [
       ['inp',  PORT_DIR_IN, -1, -0],
       ['gain', PORT_DIR_IN, 0, -1/2],
       ['out',  PORT_DIR_OUT, +1, 0],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'gain'}],
     ];
   }
   getTextPos() {
@@ -93,14 +109,27 @@ export class Gain extends ANode {
 export class Osc extends ANode {
   constructor(data) {
     super(data);
-    const {type = 'sine'} = this.state;
+    const {type = 'sine', frequency = 440} = this.state;
     this.type = type;
+    this.frequency = frequency;
   }
   getPorts() {
     return [
+      ['pitch',   PORT_DIR_IN, -1, 0, {}],
       ['freq',   PORT_DIR_IN, 0, -1, {}],
       ['detune', PORT_DIR_IN, 0, +1, {}],
       ['out',  PORT_DIR_OUT, +1, 0, {}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Select', {name: 'type'},
+        ['Option', {value: 'sine', label: 'Sine'}],
+        ['Option', {value: 'triangle', label: 'Tri'}],
+        ['Option', {value: 'square', label: 'Square'}],
+        ['Option', {value: 'sawtooth', label: 'Saw'}],
+      ],
+      ['Float', {name: 'frequency'}],
     ];
   }
   getShapePath() {
@@ -130,6 +159,13 @@ export class Osc extends ANode {
         'L', 0.75, 0.375,
         'L', 0.75, 0,
       ],
+      sawtooth: [
+        'M', -0.75, +0.375,
+        'L', -0.75, -0.375,
+        'L', 0, +0.375,
+        'L', 0, -0.375, 
+        'L', 0.75, +0.375,
+      ],
     }
     return typeShape[this.type] || [];
   }
@@ -150,6 +186,11 @@ export class Const extends ANode {
   getPorts() {
     return [
       ['out',  PORT_DIR_OUT, +1, 0, {}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'value'}],
     ];
   }
   getShapePath() {
@@ -195,6 +236,17 @@ export class Filter extends ANode {
       ['detune', PORT_DIR_IN, +0.4, -1, {nx: 0, ny: -1}],
       ['Q', PORT_DIR_IN, 0, +1, {}],
       ['out',  PORT_DIR_OUT, +1, 0, {}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Select', {name: 'type'},
+        ['Option', {value: 'lowpass', label: 'LP'}],
+        ['Option', {value: 'highpass', label: 'HP'}],
+        ['Option', {value: 'bandpass', label: 'BP'}],
+        ['Option', {value: 'notch', label: 'Notch'}],
+      ],
+      ['Float', {name: 'frequency'}],
     ];
   }
   getShapePath() {
@@ -269,6 +321,9 @@ export class ModuleInput extends ModulePortNode {
   }
 }
 
+export class AudioParam extends ModuleInput {
+}
+
 export class ModuleOutput extends ModulePortNode {
   getPorts() {
     return [
@@ -283,6 +338,9 @@ export class ModuleOutput extends ModulePortNode {
       'L', 1, 0.5,
     ];
   }
+}
+
+export class AudioOut extends ModuleOutput {
 }
 
 export class ModuleInstance extends ANode {
@@ -329,4 +387,69 @@ export class ModuleInstance extends ANode {
   renderGraph(idPrefix) {
     return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
   }
+  *gen() {
+    yield `const ${this.id} = _modules.${this.moduleId}({_ctx, _basic, _modules, _synths});`;
+  }
 }
+
+export class ADSR extends ANode {
+  constructor(data) {
+    super(data);
+    const {a = 0.01, d = 0.2, s = 0.5, r = 1} = this.state;
+    Object.assign(this, {a, d, s, r});
+  }
+  getPorts() {
+    return [
+      ['inp',  PORT_DIR_IN, -1, 0, {}],
+      ['out',  PORT_DIR_OUT, +1, 0, {}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'a'}],
+      ['Float', {name: 'd'}],
+      ['Float', {name: 's'}],
+      ['Float', {name: 'r'}],
+    ];
+  }
+  getShapePath() {
+    return ['M', -1, -1,
+      'L', 1, -1,
+      'L', 1, 1,
+      'L', -1, 1,
+      'z',
+    ];
+  }
+  getInnerShapePath() {
+    const typeShape = {
+      lowpass: [
+        'M', -0.75, -0.2,
+        'C', 0.2, -0.2, 0.1, -0.75, 0.3, -0.75,
+        'S', 0.75, 0.75, 0.75, 0.75, 
+      ],
+      highpass: [
+        'M', +0.75, -0.2,
+        'C', -0.2,  -0.2, -0.1, -0.75, -0.3, -0.75,
+        'S', -0.75, 0.75, -0.75, 0.75, 
+      ],
+      bandpass: [
+        'M', -0.75, 0.3,
+        'C', 0.1,   0.3, -0.3, -0.75, 0, -0.75,
+        'S', -0.1,  0.3, 0.75, 0.3,
+      ],
+      notch: [
+        'M', -0.75, -0.3,
+        'C', 0.1, -0.3, -0.2, 0.75, 0, 0.75,
+        'S', -0.1, -0.3, 0.75, -0.3,
+      ],
+    }
+    return typeShape[this.type] || [];
+  }
+  renderGraph(idPrefix) {
+    const {type} = this;
+    return [
+      ['BiQuadFilter', {id: idPrefix + this.id, type}]
+    ];
+  }
+}
+
