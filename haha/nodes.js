@@ -68,9 +68,12 @@ export class ANode extends Node {
     return [];
   }
   *gen() {
-    yield `const ${this.id} = _basic.create${this.constructor.name}(_ctx, {${
+    yield `const ${this.id} = _ctx.basic.create${this.constructor.name}(_ctx.audio, {${
       this.getParamList().map(
-        ([_t, {name}]) => `${name}: ${this.getParamValue(name)}`
+        ([_t, {name, type}]) => {
+          const v = this.getParamValue(name);
+          return `${name}: ${type === 'string' ? '"' + v + '"' : v}`;
+        }
       ).join(', ')}});`;
   }
 }
@@ -123,7 +126,7 @@ export class Osc extends ANode {
   }
   getParamList() {
     return [
-      ['Select', {name: 'type'},
+      ['Select', {name: 'type', type: 'string'},
         ['Option', {value: 'sine', label: 'Sine'}],
         ['Option', {value: 'triangle', label: 'Tri'}],
         ['Option', {value: 'square', label: 'Square'}],
@@ -131,6 +134,9 @@ export class Osc extends ANode {
       ],
       ['Float', {name: 'frequency'}],
     ];
+  }
+  getControls() {
+    return ['on', 'cut'];
   }
   getShapePath() {
     return ['m', -1, 0,
@@ -240,7 +246,7 @@ export class Filter extends ANode {
   }
   getParamList() {
     return [
-      ['Select', {name: 'type'},
+      ['Select', {name: 'type', type: 'string'},
         ['Option', {value: 'lowpass', label: 'LP'}],
         ['Option', {value: 'highpass', label: 'HP'}],
         ['Option', {value: 'bandpass', label: 'BP'}],
@@ -375,6 +381,9 @@ export class ModuleInstance extends ANode {
     ];
     return ports;
   }
+  getControls() {
+    return ['on', 'off', 'cut'];
+  }
   getShapePath() {
     const {sizeY} = this;
     return ['M', -1, -sizeY,
@@ -388,7 +397,7 @@ export class ModuleInstance extends ANode {
     return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
   }
   *gen() {
-    yield `const ${this.id} = _modules.${this.moduleId}({_ctx, _basic, _modules, _synths});`;
+    yield `const ${this.id} = _ctx.modules.${this.moduleId}(_ctx);`;
   }
 }
 
@@ -412,6 +421,9 @@ export class ADSR extends ANode {
       ['Float', {name: 'r'}],
     ];
   }
+  getControls() {
+    return ['on', 'off', 'cut'];
+  }
   getShapePath() {
     return ['M', -1, -1,
       'L', 1, -1,
@@ -421,29 +433,13 @@ export class ADSR extends ANode {
     ];
   }
   getInnerShapePath() {
-    const typeShape = {
-      lowpass: [
-        'M', -0.75, -0.2,
-        'C', 0.2, -0.2, 0.1, -0.75, 0.3, -0.75,
-        'S', 0.75, 0.75, 0.75, 0.75, 
-      ],
-      highpass: [
-        'M', +0.75, -0.2,
-        'C', -0.2,  -0.2, -0.1, -0.75, -0.3, -0.75,
-        'S', -0.75, 0.75, -0.75, 0.75, 
-      ],
-      bandpass: [
-        'M', -0.75, 0.3,
-        'C', 0.1,   0.3, -0.3, -0.75, 0, -0.75,
-        'S', -0.1,  0.3, 0.75, 0.3,
-      ],
-      notch: [
-        'M', -0.75, -0.3,
-        'C', 0.1, -0.3, -0.2, 0.75, 0, 0.75,
-        'S', -0.1, -0.3, 0.75, -0.3,
-      ],
-    }
-    return typeShape[this.type] || [];
+    return [
+      'M', -0.75, +0.75,
+      'L', -0.7, -0.75,
+      'L', -0.25, +0.25,
+      'L', 0.25, 0.25,
+      'L', 0.75, +0.75,
+    ];
   }
   renderGraph(idPrefix) {
     const {type} = this;

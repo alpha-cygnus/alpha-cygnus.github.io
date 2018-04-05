@@ -58,6 +58,9 @@ export class Node extends Elem {
   getParamList() {
     return [];
   }
+  getControls() {
+    return [];
+  }
   addPort(state) {
     const name = state.name || this.ports.length;
     const PortClass = this.getPortClass();

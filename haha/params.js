@@ -18,7 +18,10 @@ export class ParamEditor {
 export class Float extends ParamEditor {
   renderEditor(h, actions, value) {
     const {name} = this;
-    return h('input', {name, type: 'number', value});
+    return h('input', {name, type: 'number', value, onchange: e => {
+      actions.setElemProps({[this.name]: e.target.value});
+      //console.log(e.target.value);
+    }});
   }
 }
 

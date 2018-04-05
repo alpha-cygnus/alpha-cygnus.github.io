@@ -151,25 +151,33 @@ export class Module {
     return g;
   }
   *gen() {
-    yield `_modules.${this.id} = function ${this.id}({_ctx, _basic, _modules, _synths}) {`;
-    const nodeIds = [];
-    for (const node of Object.values(this.all).filter(e => !(e instanceof Link))) {
+    yield `_modules.${this.id} = function ${this.id}(_ctx) {`;
+    const nodes = Object.values(this.all).filter(e => !(e instanceof Link));
+    const links = Object.values(this.all).filter(e => e instanceof Link);
+    for (const node of nodes) {
       yield * [...node.gen()].map(s => '  ' + s);
-      nodeIds.push(node.id);
     }
-    for (const link of Object.values(this.all).filter(e => e instanceof Link)) {
-      console.log(link.id);
+    for (const link of links) {
       yield * [...link.gen()].map(s => '  ' + s);
     }
     yield `  return {`;
-    for (const nodeId of nodeIds) {
-      yield `    ${nodeId},`;
+    const inps = nodes.filter(node => node instanceof NODE_CLASSES.ModuleInput);
+    const outs = nodes.filter(node => node instanceof NODE_CLASSES.ModuleOutput);
+    for (const inp of inps) {
+      yield `    ${inp.id}: ${inp.id}.inp,`;
     }
-    yield `    _on: t => {`;
-    for (const nodeId of nodeIds) {
-      yield `      ${nodeId}._on && ${nodeId}._on(t);`;
+    for (const out of outs) {
+      yield `    ${out.id}: ${out.id}.out,`;
     }
-    yield `    },`;
+    for (const ctl of ['on', 'off', 'cut']) {
+      yield `    _${ctl}: t => {`;
+      for (const node of nodes) {
+        if (node.getControls().includes(ctl)) {
+          yield `      ${node.id}._${ctl}(t);`;
+        }
+      }
+      yield `    },`;
+    }
     yield '  };';
     yield '}';
   }

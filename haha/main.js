@@ -4,6 +4,8 @@ import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
 
 import {Synth} from './synth.js';
 
+import {onKeyDown, onKeyUp} from './keys.js';
+
 import * as actions from './actions.js';
 
 //import * as asi from './asi/index.js';
@@ -13,6 +15,10 @@ const audioLink = (f, t) => {
   const [to, toPort = 'inp'] = t.split('.');
   return ['AudioLink', {id: `l${from}.${fromPort}-${to}.${toPort}`, from, fromPort, to, toPort}];
 }
+
+const audio = new AudioContext();
+
+import * as basic from './runtime/basic.js';
 
 const fullState = [
   'FullState',
@@ -33,11 +39,12 @@ const fullState = [
         tx: 0,
         ty: 0,
       },
-      ['Gain', {id: 'gain0', x: 0, y: 0}],
-      ['Osc', {id: 'osc0', x: -150, y: 0, type: 'sawtooth'}],
+      ['Gain', {id: 'gain0', x: 150, y: 0}],
+      ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
+      ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
       // ['Osc', {id: 'osc1', x: -150, y: 0, type: 'triangle'}],
       // ['Osc', {id: 'osc2', x: -150, y: -150, type: 'square'}],
-      // ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
+      ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
       // ['Const', {id: 'const1', x: 0, y: 100, value: 600}],
       // ['Const', {id: 'const2', x: 0, y: 200, value: 10}],
       ['AudioParam', {id: 'pitch', x: -350, y: 0}],
@@ -46,13 +53,14 @@ const fullState = [
       // audioLink('osc0', 'gain0'),
       // audioLink('osc1', 'gain0'),
       // audioLink('osc2', 'gain0'),
-      // audioLink('const0', 'gain0.gain'),
+      audioLink('const0', 'gain0.gain'),
       // audioLink('gain0', 'flt4'),
       // audioLink('const1', 'flt4.freq'),
       // audioLink('const2', 'flt4.Q'),
       // audioLink('flt4', 'out'),
       audioLink('pitch', 'osc0.pitch'),
-      audioLink('osc0', 'gain0'),
+      audioLink('osc0', 'adsr0'),
+      audioLink('adsr0', 'gain0'),
       audioLink('gain0', 'out'),
     ],
     ['Module',
@@ -116,15 +124,26 @@ const view = (state, actions) => {
     ];
   }
   const toEdit = $currentElem ? module.all[$currentElem] : module;
-  document.onkeyup = e => {
-    if (e.key === 'Backspace' && $currentElem) {
-      console.log(e);
-      toEdit.onDelete(actions);
-      // actions.deleteElem({id: $currentElem});
-    }
-  };
-  const synthFunc = new Function([...synth.gen()].join('\n'));
+  const synthFunc = new Function('_ctx', [...synth.gen()].join('\n'));
   console.log(synthFunc);
+  document.onkeydown = onKeyDown(audio, synthFunc);
+  document.onkeyup = onKeyUp(audio, synthFunc);
+  // document.onkeyup = e => {
+  //   if (e.key === 'Backspace' && $currentElem) {
+  //     toEdit.onDelete(actions);
+  //     // actions.deleteElem({id: $currentElem});
+  //   }
+  // };
+  window.testSynth = (n, v, d, cutAfter) => {
+    const synth = synthFunc({audio, basic});
+    synth.pitch.value = n - 69;
+    console.log(synth.pitch);
+    const t = audio.currentTime;
+    synth.out.connect(audio.destination);
+    synth._on(t);
+    synth._off(t + d);
+    synth._cut(t + d + (cutAfter || 1));
+  }
   return h('div', {},
     h('div',
       {
