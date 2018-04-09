@@ -10,11 +10,14 @@ import * as actions from './actions.js';
 
 //import * as asi from './asi/index.js';
 
-const audioLink = (f, t) => {
+const aLink = (f, t, c) => {
   const [from, fromPort = 'out'] = f.split('.');
   const [to, toPort = 'inp'] = t.split('.');
-  return ['AudioLink', {id: `l${from}.${fromPort}-${to}.${toPort}`, from, fromPort, to, toPort}];
+  return [c, {id: `l${from}.${fromPort}-${to}.${toPort}`, from, fromPort, to, toPort}];
 }
+
+const audioLink = (f, t) => aLink(f, t, 'AudioLink');
+const controlLink = (f, t) => aLink(f, t, 'ControlLink');
 
 const audio = new AudioContext();
 
@@ -37,13 +40,16 @@ const fullState = [
     ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
     ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
     ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
+    ['ControlIn', {id: 'control', x: -350, y: -100}],
     ['AudioParam', {id: 'pitch', x: -350, y: 0}],
+    ['AudioParam', {id: 'vol', x: -350, y: 100}],
     ['AudioOut', {id: 'out', x: +350, y: 0}],
     audioLink('const0', 'gain0.gain'),
     audioLink('pitch', 'osc0.pitch'),
     audioLink('osc0', 'adsr0'),
     audioLink('adsr0', 'gain0'),
     audioLink('gain0', 'out'),
+    controlLink('control', 'adsr0.control'),
   ],
   [ 'FXPatch',
     {
@@ -74,6 +80,29 @@ const fullState = [
     audioLink('Q', 'filter1.Q'),
     audioLink('Q', 'filter2.Q'),
     audioLink('Q', 'filter3.Q'),
+  ],
+  [ 'MainPatch',
+    {
+      id: 'main',
+      title: 'Test',
+      tx: 0, ty: 0, scale: 1,
+    },
+    ['Channel', {
+      id: 'channel0',
+      x: -200, y: -150,
+    }],
+    ['Channel', {
+      id: 'channel1',
+      x: -200, y: -50,
+    }],
+    ['Channel', {
+      id: 'channel2',
+      x: -200, y: +50,
+    }],
+    ['Channel', {
+      id: 'channel3',
+      x: -200, y: +150,
+    }],
   ],
 ];
 

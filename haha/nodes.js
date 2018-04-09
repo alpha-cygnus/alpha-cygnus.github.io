@@ -1,5 +1,5 @@
 import { Elem, Node, Link } from './base.js';
-import { Port, PORT_DIR_IN, PORT_DIR_OUT, AudioPort, PatchPort } from './ports.js';
+import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
 export class ANode extends Node {
@@ -7,12 +7,12 @@ export class ANode extends Node {
     super.initProps();
     const {fill = 'white', size = 30} = this.state;
     Object.assign(this, {size, fill});
-    this.getPorts().map(([name, dir, x, y, {nx, ny, ...opts} = {}]) => this.addPort({
-      name, dir, x: x*size, y: y*size, nx: nx && nx*size, ny: ny && ny*size, ...opts
-    }));
+    this.getPorts().map(([_t, {x, y, nx, ny, ...opts}]) => this.addPort([_t, {
+      x: x*size, y: y*size, nx: nx && nx*size, ny: ny && ny*size, ...opts
+    }]));
   }
-  getPortClass(state) {
-    return AudioPort;
+  getPorts() {
+    return [];
   }
   getMainStroke() {
     const {$dragging, size} = this;
@@ -86,9 +86,9 @@ export class Gain extends ANode {
   }
   getPorts() {
     return [
-      ['inp',  PORT_DIR_IN, -1, -0],
-      ['gain', PORT_DIR_IN, 0, -1/2],
-      ['out',  PORT_DIR_OUT, +1, 0],
+      ['AudioIn', {name: 'inp',  x: -1, y: -0}],
+      ['AudioIn', {name: 'gain', x: 0, y: -0.5}],
+      ['AudioOut', {name: 'out', x: +1, y: 0}],
     ];
   }
   getParamList() {
@@ -102,11 +102,11 @@ export class Gain extends ANode {
   getShapePath() {
     return ['m', 1, 0, 'l', -2, 1, 'l', 0, -2, 'z'];
   }
-  renderGraph(idPrefix) {
-    return [
-      ['Gain', {id: idPrefix + this.id, gain: 0}]
-    ];
-  }
+  // renderGraph(idPrefix) {
+  //   return [
+  //     ['Gain', {id: idPrefix + this.id, gain: 0}]
+  //   ];
+  // }
 }
 
 export class Osc extends ANode {
@@ -118,10 +118,10 @@ export class Osc extends ANode {
   }
   getPorts() {
     return [
-      ['pitch',   PORT_DIR_IN, -1, 0, {}],
-      ['freq',   PORT_DIR_IN, 0, -1, {}],
-      ['detune', PORT_DIR_IN, 0, +1, {}],
-      ['out',  PORT_DIR_OUT, +1, 0, {}],
+      ['AudioIn',   {name: 'pitch',   x: -1, y: 0}],
+      ['AudioIn',   {name: 'freq',    x: 0, y: +1}],
+      // ['ControlIn', {name: 'control', x: 0, y: -1}],
+      ['AudioOut',  {name: 'out',     x: +1, y: 0}],
     ];
   }
   getParamList() {
@@ -133,11 +133,12 @@ export class Osc extends ANode {
         ['Option', {value: 'sawtooth', label: 'Saw'}],
       ],
       ['Float', {name: 'frequency'}],
+      ['Float', {name: 'detune'}],
     ];
   }
-  getControls() {
-    return ['on', 'cut'];
-  }
+  // getControls() {
+  //   return ['on', 'cut'];
+  // }
   getShapePath() {
     return ['m', -1, 0,
       'a', 1, 1, '0', '0', '0', 2, 0,
@@ -175,12 +176,12 @@ export class Osc extends ANode {
     }
     return typeShape[this.type] || [];
   }
-  renderGraph(idPrefix) {
-    const {type} = this;
-    return [
-      ['Oscillator', {id: idPrefix + this.id, type}]
-    ];
-  }
+  // renderGraph(idPrefix) {
+  //   const {type} = this;
+  //   return [
+  //     ['Oscillator', {id: idPrefix + this.id, type}]
+  //   ];
+  // }
 }
 
 export class Const extends ANode {
@@ -191,7 +192,7 @@ export class Const extends ANode {
   }
   getPorts() {
     return [
-      ['out',  PORT_DIR_OUT, +1, 0, {}],
+      ['AudioOut', {name: 'out', x: +1, y: 0}],
     ];
   }
   getParamList() {
@@ -221,12 +222,12 @@ export class Const extends ANode {
       ),
     ];
   }
-  renderGraph(idPrefix) {
-    const {value} = this;
-    return [
-      ['ConstantSource', {id: idPrefix + this.id, value}]
-    ];
-  }
+  // renderGraph(idPrefix) {
+  //   const {value} = this;
+  //   return [
+  //     ['ConstantSource', {id: idPrefix + this.id, value}]
+  //   ];
+  // }
 }
 
 export class Filter extends ANode {
@@ -237,11 +238,11 @@ export class Filter extends ANode {
   }
   getPorts() {
     return [
-      ['inp',  PORT_DIR_IN, -1, 0, {}],
-      ['freq', PORT_DIR_IN, -0.4, -1, {nx: 0, ny: -1}],
-      ['detune', PORT_DIR_IN, +0.4, -1, {nx: 0, ny: -1}],
-      ['Q', PORT_DIR_IN, 0, +1, {}],
-      ['out',  PORT_DIR_OUT, +1, 0, {}],
+      ['AudioIn',  {name: 'inp',    x: -1, y: 0 }],
+      ['AudioIn',  {name: 'freq',   x: -0.4, y: -1, nx: 0, ny: -1}],
+      ['AudioIn',  {name: 'detune', x: +0.4, y: -1, nx: 0, ny: -1}],
+      ['AudioIn',  {name: 'Q',      x: 0, y: +1}],
+      ['AudioOut', {name: 'out',    x: +1, y: 0}],
     ];
   }
   getParamList() {
@@ -288,12 +289,12 @@ export class Filter extends ANode {
     }
     return typeShape[this.type] || [];
   }
-  renderGraph(idPrefix) {
-    const {type} = this;
-    return [
-      ['BiQuadFilter', {id: idPrefix + this.id, type}]
-    ];
-  }
+  // renderGraph(idPrefix) {
+  //   const {type} = this;
+  //   return [
+  //     ['BiQuadFilter', {id: idPrefix + this.id, type}]
+  //   ];
+  // }
 }
 
 export class PatchPortNode extends ANode {
@@ -308,12 +309,15 @@ export class PatchPortNode extends ANode {
       'a', 1, 1, '0', '0', '0', -2, 0,
     ];
   }
+  getPortClass() {
+    return 'Audio';
+  }
 }
 
 export class PatchInput extends PatchPortNode {
   getPorts() {
     return [
-      ['out',  PORT_DIR_OUT, +1, 0, {}],
+      ['AudioOut', {name: 'out',  x: +1, y: 0}],
     ];
   }
   getInnerShapePath() {
@@ -325,6 +329,9 @@ export class PatchInput extends PatchPortNode {
       'L', -0.5, 0.5,
     ];
   }
+  getPortClass() {
+    return 'AudioIn';
+  }
 }
 
 export class AudioParam extends PatchInput {
@@ -333,10 +340,21 @@ export class AudioParam extends PatchInput {
 export class AudioIn extends PatchInput {
 }
 
+export class ControlIn extends PatchInput {
+  getPorts() {
+    return [
+      ['ControlOut', {name: 'out',  x: +1, y: 0}],
+    ];
+  }
+  getPortClass() {
+    return 'ControlIn';
+  }
+}
+
 export class PatchOutput extends PatchPortNode {
   getPorts() {
     return [
-      ['inp',  PORT_DIR_IN, -1, 0, {}],
+      ['AudioIn', {name: 'inp',  x: -1, y: 0}],
     ];
   }
   getInnerShapePath() {
@@ -347,9 +365,23 @@ export class PatchOutput extends PatchPortNode {
       'L', 1, 0.5,
     ];
   }
+  getPortClass() {
+    return 'AudioOut';
+  }
 }
 
 export class AudioOut extends PatchOutput {
+}
+
+export class ControlOut extends PatchInput {
+  getPorts() {
+    return [
+      ['ControlIn', {name: 'inp',  x: -1, y: 0}],
+    ];
+  }
+  getPortClass() {
+    return 'ControlIn';
+  }
 }
 
 export class ADSR extends ANode {
@@ -360,8 +392,9 @@ export class ADSR extends ANode {
   }
   getPorts() {
     return [
-      ['inp',  PORT_DIR_IN, -1, 0, {}],
-      ['out',  PORT_DIR_OUT, +1, 0, {}],
+      ['ControlIn', {name: 'control', x: 0, y: -1}],
+      ['AudioIn', {name: 'inp', x: -1, y: 0}],
+      ['AudioOut', {name: 'out', x: +1, y: 0}],
     ];
   }
   getParamList() {
@@ -372,9 +405,9 @@ export class ADSR extends ANode {
       ['Float', {name: 'r'}],
     ];
   }
-  getControls() {
-    return ['on', 'off', 'cut'];
-  }
+  // getControls() {
+  //   return ['on', 'off', 'cut'];
+  // }
   getShapePath() {
     return ['M', -1, -1,
       'L', 1, -1,
@@ -392,12 +425,12 @@ export class ADSR extends ANode {
       'L', 0.75, +0.75,
     ];
   }
-  renderGraph(idPrefix) {
-    const {type} = this;
-    return [
-      ['BiQuadFilter', {id: idPrefix + this.id, type}]
-    ];
-  }
+  // renderGraph(idPrefix) {
+  //   const {type} = this;
+  //   return [
+  //     ['BiQuadFilter', {id: idPrefix + this.id, type}]
+  //   ];
+  // }
 }
 
 export class Use extends ANode {
@@ -413,9 +446,9 @@ export class Use extends ANode {
   getSourceNodes() {
     return this.getSourceElems().filter(elem => elem instanceof Node);
   }
-  getPortClass(state) {
-    return PatchPort;
-  }
+  // getPortClass(state) {
+  //   return PatchPort;
+  // }
   getPorts() {
     const {patchId} = this.state;
     const source = this.getSource();
@@ -427,14 +460,14 @@ export class Use extends ANode {
     const sizeY = Math.max((Math.max(ins.length, outs.length))/3, 1);
     Object.assign(this, {patchId, source, ins, outs, sourceNodes, sizeY});
     const ports = [
-      ...ins.map(({id, kind}, i) => [id, PORT_DIR_IN, -1, (i - (ins.length - 1)/2)*2/3, {nx: -1, ny: 0}]),
-      ...outs.map(({id, kind}, i) => [id, PORT_DIR_OUT, 1, (i - (outs.length - 1)/2)*2/3, {nx: 1, ny: 0}]),
+      ...ins.map((port, i) => [port.getPortClass(), {name: port.id, x: -1, y: (i - (ins.length - 1)/2)*2/3, nx: -1, ny: 0}]),
+      ...outs.map((port, i) => [port.getPortClass(), {name: port.id, x: 1, y: (i - (outs.length - 1)/2)*2/3, nx: 1, ny: 0}]),
     ];
     return ports;
   }
-  getControls() {
-    return ['on', 'off', 'cut'];
-  }
+  // getControls() {
+  //   return ['on', 'off', 'cut'];
+  // }
   getShapePath() {
     const {sizeY} = this;
     return ['M', -1, -sizeY,
@@ -444,9 +477,9 @@ export class Use extends ANode {
       'Z'
     ];
   }
-  renderGraph(idPrefix) {
-    return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
-  }
+  // renderGraph(idPrefix) {
+  //   return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
+  // }
   *gen() {
     yield `const ${this.id} = _ctx.patches.${this.patchId}(_ctx);`;
   }

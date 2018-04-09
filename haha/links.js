@@ -28,12 +28,17 @@ export class ALink extends Link {
       this.all[this.to].getPort(this.toPort),
     ];
     if (!from) {
-      console.error('no from in', id);
+      console.error('no from in', this.id);
     }
     if (!to) {
-      console.error('no to in', id);
+      console.error('no to in', this.id);
     }
     return [from, to];
+  }
+  getStroke() {
+    return {
+      stroke: this.isDragging() ? 'black' : 'grey',
+    }
   }
   renderSVG(h, {setElemProps, selectElem}) {
     const [from, to] = this.getFromTo();
@@ -45,7 +50,7 @@ export class ALink extends Link {
         //'marker-mid': 'url(#markerCross)',
         d: `M${from.atx} ${from.aty} C${from.atx + from.nx} ${from.aty + from.ny}
         ${to.atx + to.nx} ${to.aty + to.ny} ${to.atx} ${to.aty}`,
-        stroke: dragging ? 'black' : 'grey', fill: 'none', 'stroke-width': this.isSelected() ? 5 : dragging || over ? 2 : 1,
+        ...this.getStroke(), fill: 'none', 'stroke-width': this.isSelected() ? 5 : dragging || over ? 2 : 1,
         onmouseover: e => {
           setElemProps({id, over: true})
         },
@@ -79,6 +84,19 @@ export class ALink extends Link {
 }
 
 export class AudioLink extends ALink {
+  *gen() {
+    const [from, to] = this.getFromTo();
+    yield `${from.getDotId()}.connect(${to.getDotId()});`;
+  }
+}
+
+export class ControlLink extends ALink {
+  getStroke() {
+    return {
+      ...super.getStroke(),
+      'stroke-dasharray': '8, 4, 2, 4, 8',
+    }
+  }
   *gen() {
     const [from, to] = this.getFromTo();
     yield `${from.getDotId()}.connect(${to.getDotId()});`;

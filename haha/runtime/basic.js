@@ -6,13 +6,14 @@ export function createOsc(ac, {type, frequency}) {
   const c = ac.createConstantSource();
   pitcher.connect(osc.detune);
   pitcher.gain.value = 100;
+  osc.start();
   return {
     out: osc,
     freq: osc.frequency,
     detune: osc.detune,
     pitch: pitcher,
-    _on: t => osc.start(t),
-    _cut: t => osc.stop(t + 0.01),
+    // _on: t => osc.start(t),
+    // _cut: t => osc.stop(t + 0.01),
   }
 }
 
@@ -65,26 +66,68 @@ export function createAudioOut(ac, params) {
   return createGain(ac, {gain: 1, ...params});
 }
 
+class Control {
+  constructor() {
+    this._subs = {};
+  }
+  on(what, func) {
+    if (typeof func != 'function') {
+      return;
+    }
+    if (!this._subs[what]) this._subs[what] = new Set();
+    this._subs[what].add(func);
+  }
+  send(what, t, data) {
+    for (let func of (this._subs[what] || [])) {
+      func(t, data);
+    }
+    for (let func of (this._subs['*'] || [])) {
+      func(what, t, data);
+    }
+  }
+  connect(other) {
+    this.on('*', (what, t, data) => other.send(what, t, data));
+  }
+}
+
+export function createControlIn(ac, params) {
+  const ctl = new Control();
+  return {
+    inp: ctl,
+    out: ctl,
+  }
+}
+
+export function createControlOut(ac, params) {
+  const ctl = new Control();
+  return {
+    inp: ctl,
+    out: ctl,
+  }
+}
+
 export function createADSR(ac, {a, d, s, r}) {
   const g = ac.createGain();
   g.gain.value = 0;
+  const control = new Control();
+  control.on('on', t => {
+    console.log('ADSR on', t);
+    g.gain.setTargetAtTime(1, t, a / 4);
+    g.gain.setTargetAtTime(s, t + a, d / 4);
+  });
+  control.on('off', t => {
+    console.log('ADSR off', t);
+    g.gain.cancelScheduledValues(t);
+    g.gain.setTargetAtTime(0, t, r / 4);
+  });
+  control.on('cut', t => {
+    console.log('ADSR cut', t);
+    g.gain.cancelScheduledValues(t);
+    g.gain.linearRampToValueAtTime(0, t + 0.01);
+  });
   return {
     inp: g,
     out: g,
-    _on: t => {
-      console.log('ADSR on', t);
-      g.gain.setTargetAtTime(1, t, a / 4);
-      g.gain.setTargetAtTime(s, t + a, d / 4);
-    },
-    _off: t => {
-      console.log('ADSR off', t);
-      g.gain.cancelScheduledValues(t);
-      g.gain.setTargetAtTime(0, t, r / 4);
-    },
-    _cut: t => {
-      console.log('ADSR cut', t);
-      g.gain.cancelScheduledValues(t);
-      g.gain.linearRampToValueAtTime(0, t + 0.01);
-    },
+    control,
   }
 }

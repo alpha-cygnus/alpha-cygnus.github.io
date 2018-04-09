@@ -1,5 +1,5 @@
 import { startDragOnMouseDown, mangleScale, snap, makeObject } from './utils.js';
-import { Port } from './ports.js';
+import * as PORT_CLASSES from './ports.js';
 import * as PARAM_CLASSES from './params.js';
 
 export class Elem {
@@ -52,19 +52,18 @@ export class Node extends Elem {
     Object.assign(this, {x, y, $dragging, $portOver});
     this.ports = [];
   }
-  getPortClass(state) {
-    return Port;
-  }
   getParamList() {
     return [];
   }
-  getControls() {
-    return [];
-  }
-  addPort(state) {
-    const name = state.name || this.ports.length;
-    const PortClass = this.getPortClass();
-    this.ports.push(new PortClass(this, {...state, name, isOver: name === this.$portOver}));
+  // getControls() {
+  //   return [];
+  // }
+  addPort(data) {
+    const [_t, state] = data;
+    const name = state.name;
+    const PortClass = PORT_CLASSES[`${_t}Port`];
+    console.log('port', PortClass.name, name, 'for', this.id, state);
+    this.ports.push(new PortClass(this, {...state, isOver: name === this.$portOver}));
   }
   dragMouseDown({setElemProps, selectElem, deleteElem}) {
     const {id, x, y} = this;

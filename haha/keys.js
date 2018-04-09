@@ -41,13 +41,13 @@ export function onKeyDown(audio, synthFn) {
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;
     if (playing[note]) {
-      playing[note]._cut(audio.currentTime);
+      playing[note].control.send('cut', audio.currentTime);
       playing[note] = null;
     }
     const synth = playing[note] = synthFn({audio, basic});
     synth.out.connect(audio.destination);
     synth.pitch.setValueAtTime(note - 69, audio.currentTime);
-    synth._on(audio.currentTime);
+    synth.control.send('on', audio.currentTime);
   }
 }
 
@@ -58,7 +58,7 @@ export function onKeyUp(audio, synthFn) {
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;
     if (playing[note]) {
-      playing[note]._off(audio.currentTime);
+      playing[note].control.send('off', audio.currentTime);
     }
   }
 }

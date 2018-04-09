@@ -168,15 +168,15 @@ export class Patch {
     for (const out of outs) {
       yield `  ${out.id}: ${out.id}.out,`;
     }
-    for (const ctl of ['on', 'off', 'cut']) {
-      yield `  _${ctl}: t => {`;
-      for (const node of nodes) {
-        if (node.getControls().includes(ctl)) {
-          yield `    ${node.id}._${ctl}(t);`;
-        }
-      }
-      yield `  },`;
-    }
+    // for (const ctl of ['on', 'off', 'cut']) {
+    //   yield `  _${ctl}: t => {`;
+    //   for (const node of nodes) {
+    //     if (node.getControls().includes(ctl)) {
+    //       yield `    ${node.id}._${ctl}(t);`;
+    //     }
+    //   }
+    //   yield `  },`;
+    // }
     yield '};';
   }
 }
