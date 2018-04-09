@@ -3,11 +3,11 @@ import { Port } from './ports.js';
 import * as PARAM_CLASSES from './params.js';
 
 export class Elem {
-  constructor ({id, state, module}) {
+  constructor ({id, state, parent}) {
     this.id = id;
     this.state = state;
-    this.all = module.all;
-    this.module = module;
+    this.all = parent.all;
+    this.parent = parent;
   }
   initProps() {
   }
@@ -25,7 +25,7 @@ export class Elem {
     selectElem({id: null}); 
   }
   getTopState() {
-    return this.module.state;
+    return this.parent.state;
   }
   renderEditor(h, actions) {
     return h('div', {},

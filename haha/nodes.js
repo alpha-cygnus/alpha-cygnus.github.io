@@ -1,5 +1,5 @@
 import { Elem, Node, Link } from './base.js';
-import { Port, PORT_DIR_IN, PORT_DIR_OUT, AudioPort, ModulePort } from './ports.js';
+import { Port, PORT_DIR_IN, PORT_DIR_OUT, AudioPort, PatchPort } from './ports.js';
 import { startDragOnMouseDown } from './utils.js';
 
 export class ANode extends Node {
@@ -296,7 +296,7 @@ export class Filter extends ANode {
   }
 }
 
-export class ModulePortNode extends ANode {
+export class PatchPortNode extends ANode {
   constructor(data) {
     super(data);
     const {kind = 'audio'} = this.state;
@@ -310,7 +310,7 @@ export class ModulePortNode extends ANode {
   }
 }
 
-export class ModuleInput extends ModulePortNode {
+export class PatchInput extends PatchPortNode {
   getPorts() {
     return [
       ['out',  PORT_DIR_OUT, +1, 0, {}],
@@ -327,10 +327,13 @@ export class ModuleInput extends ModulePortNode {
   }
 }
 
-export class AudioParam extends ModuleInput {
+export class AudioParam extends PatchInput {
 }
 
-export class ModuleOutput extends ModulePortNode {
+export class AudioIn extends PatchInput {
+}
+
+export class PatchOutput extends PatchPortNode {
   getPorts() {
     return [
       ['inp',  PORT_DIR_IN, -1, 0, {}],
@@ -346,59 +349,7 @@ export class ModuleOutput extends ModulePortNode {
   }
 }
 
-export class AudioOut extends ModuleOutput {
-}
-
-export class ModuleInstance extends ANode {
-  getSource() {
-    const {moduleId} = this.state;
-    return this.module.allModules[moduleId];
-  }
-  getSourceElems() {
-    const source = this.getSource();
-    return source.elems
-      .map(([_t, {id}]) => source.all[id]);
-  }
-  getSourceNodes() {
-    return this.getSourceElems().filter(elem => elem instanceof Node);
-  }
-  getPortClass(state) {
-    return ModulePort;
-  }
-  getPorts() {
-    const {moduleId} = this.state;
-    const source = this.getSource();
-    const sourceNodes = this.getSourceNodes();
-    const ins = sourceNodes
-      .filter(node => node instanceof ModuleInput);
-    const outs = sourceNodes
-      .filter(node => node instanceof ModuleOutput);
-    const sizeY = Math.max((Math.max(ins.length, outs.length))/3, 1);
-    Object.assign(this, {moduleId, source, ins, outs, sourceNodes, sizeY});
-    const ports = [
-      ...ins.map(({id, kind}, i) => [id, PORT_DIR_IN, -1, (i - (ins.length - 1)/2)*2/3, {nx: -1, ny: 0}]),
-      ...outs.map(({id, kind}, i) => [id, PORT_DIR_OUT, 1, (i - (outs.length - 1)/2)*2/3, {nx: 1, ny: 0}]),
-    ];
-    return ports;
-  }
-  getControls() {
-    return ['on', 'off', 'cut'];
-  }
-  getShapePath() {
-    const {sizeY} = this;
-    return ['M', -1, -sizeY,
-      'L', 1, -sizeY,
-      'L', 1, sizeY,
-      'L', -1, sizeY,
-      'Z'
-    ];
-  }
-  renderGraph(idPrefix) {
-    return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
-  }
-  *gen() {
-    yield `const ${this.id} = _ctx.modules.${this.moduleId}(_ctx);`;
-  }
+export class AudioOut extends PatchOutput {
 }
 
 export class ADSR extends ANode {
@@ -449,3 +400,58 @@ export class ADSR extends ANode {
   }
 }
 
+export class Use extends ANode {
+  getSource() {
+    const {patchId} = this.state;
+    return this.parent.allPatches[patchId];
+  }
+  getSourceElems() {
+    const source = this.getSource();
+    return source.elems
+      .map(([_t, {id}]) => source.all[id]);
+  }
+  getSourceNodes() {
+    return this.getSourceElems().filter(elem => elem instanceof Node);
+  }
+  getPortClass(state) {
+    return PatchPort;
+  }
+  getPorts() {
+    const {patchId} = this.state;
+    const source = this.getSource();
+    const sourceNodes = this.getSourceNodes();
+    const ins = sourceNodes
+      .filter(node => node instanceof PatchInput);
+    const outs = sourceNodes
+      .filter(node => node instanceof PatchOutput);
+    const sizeY = Math.max((Math.max(ins.length, outs.length))/3, 1);
+    Object.assign(this, {patchId, source, ins, outs, sourceNodes, sizeY});
+    const ports = [
+      ...ins.map(({id, kind}, i) => [id, PORT_DIR_IN, -1, (i - (ins.length - 1)/2)*2/3, {nx: -1, ny: 0}]),
+      ...outs.map(({id, kind}, i) => [id, PORT_DIR_OUT, 1, (i - (outs.length - 1)/2)*2/3, {nx: 1, ny: 0}]),
+    ];
+    return ports;
+  }
+  getControls() {
+    return ['on', 'off', 'cut'];
+  }
+  getShapePath() {
+    const {sizeY} = this;
+    return ['M', -1, -sizeY,
+      'L', 1, -sizeY,
+      'L', 1, sizeY,
+      'L', -1, sizeY,
+      'Z'
+    ];
+  }
+  renderGraph(idPrefix) {
+    return this.getSourceElems().reduce((result, elem) => result.concat(elem.renderGraph(idPrefix + this.id + '$')), []);
+  }
+  *gen() {
+    yield `const ${this.id} = _ctx.patches.${this.patchId}(_ctx);`;
+  }
+}
+
+export class Channel extends ANode {
+
+}

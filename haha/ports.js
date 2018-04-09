@@ -89,7 +89,7 @@ export class AudioPort extends Port {
   }
 }
 
-export class ModulePort extends Port {
+export class PatchPort extends Port {
   getIdsForLink(idPrefix) {
     const source = this.parent.getSource();
     const result = [];

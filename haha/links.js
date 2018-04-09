@@ -1,6 +1,6 @@
 import { Link } from './base.js';
 import { flatten } from './utils.js';
-import { ModulePortNode } from './nodes.js';
+import { PatchPortNode } from './nodes.js';
 
 export class TempNewLink extends Link {
   isDragging() {
@@ -65,8 +65,8 @@ export class ALink extends Link {
     );
   }
   renderGraph(idPrefix) {
-    if (this.all[this.from] instanceof ModulePortNode) return [];
-    if (this.all[this.to] instanceof ModulePortNode) return [];
+    if (this.all[this.from] instanceof PatchPortNode) return [];
+    if (this.all[this.to] instanceof PatchPortNode) return [];
     //console.log(this.id);
     const [f, t] = [
       this.all[this.from].getPort(this.fromPort),

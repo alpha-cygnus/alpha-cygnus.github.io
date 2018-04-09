@@ -2,7 +2,7 @@ import { h, app } from './hyperapp/index.js';
 
 import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
 
-import {Synth} from './synth.js';
+import {Project} from './project.js';
 
 import {onKeyDown, onKeyUp} from './keys.js';
 
@@ -21,110 +21,86 @@ const audio = new AudioContext();
 import * as basic from './runtime/basic.js';
 
 const fullState = [
-  'FullState',
+  'Project',
   {
-    currentSynth: 'testSynth',
+    currentPatch: 'testSynth',
   },
-  [
-    'Synth',
+  [ 'Synth',
     {
       id: 'testSynth',
-      currentModule: 'main',
+      title: 'TEST',
+      tx: 0,
+      ty: 0,
+      scale: 1,
     },
-    ['Module',
-      {
-        id: 'main',
-        title: 'Main',
-        scale: 1,
-        tx: 0,
-        ty: 0,
-      },
-      ['Gain', {id: 'gain0', x: 150, y: 0}],
-      ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
-      ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
-      // ['Osc', {id: 'osc1', x: -150, y: 0, type: 'triangle'}],
-      // ['Osc', {id: 'osc2', x: -150, y: -150, type: 'square'}],
-      ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
-      // ['Const', {id: 'const1', x: 0, y: 100, value: 600}],
-      // ['Const', {id: 'const2', x: 0, y: 200, value: 10}],
-      ['AudioParam', {id: 'pitch', x: -350, y: 0}],
-      ['AudioOut', {id: 'out', x: +350, y: 0}],
-      //['ModuleInstance', {id: 'flt4', x: +200, y: 0, moduleId: 'lowpass4'}],
-      // audioLink('osc0', 'gain0'),
-      // audioLink('osc1', 'gain0'),
-      // audioLink('osc2', 'gain0'),
-      audioLink('const0', 'gain0.gain'),
-      // audioLink('gain0', 'flt4'),
-      // audioLink('const1', 'flt4.freq'),
-      // audioLink('const2', 'flt4.Q'),
-      // audioLink('flt4', 'out'),
-      audioLink('pitch', 'osc0.pitch'),
-      audioLink('osc0', 'adsr0'),
-      audioLink('adsr0', 'gain0'),
-      audioLink('gain0', 'out'),
-    ],
-    ['Module',
-      {
-        id: 'lowpass4',
-        title: '4 Lowpass filters',
-        scale: 1,
-        tx: 0,
-        ty: 0,
-      },
-      ['Filter', {id: 'filter0', x: -200, y: 0, type: 'lowpass'}],
-      ['Filter', {id: 'filter1', x: -100, y: 0, type: 'lowpass'}],
-      ['Filter', {id: 'filter2', x: 0,   y: 0, type: 'lowpass'}],
-      ['Filter', {id: 'filter3', x: 100,  y: 0, type: 'lowpass'}],
-      // ['Gain', {id: 'gain0', x: 200,  y: 0}],
-      ['ModuleInput', {id: 'inp', x: -350, y: 0, kind: 'audio'}],
-      ['ModuleInput', {id: 'freq', x: -250, y: -150, kind: 'audio'}],
-      ['ModuleInput', {id: 'Q', x: -250, y: 150, kind: 'audio'}],
-      //['ModuleInput', {id: 'gain', x: 100, y: -150, kind: 'audio'}],
-      ['ModuleOutput', {id: 'out', x: +350, y: 0, kind: 'audio'}],
-      audioLink('inp', 'filter0'),
-      audioLink('filter0', 'filter1'),
-      audioLink('filter1', 'filter2'),
-      audioLink('filter2', 'filter3'),
-      audioLink('filter3', 'out'),
-      // audioLink('gain0', 'out'),
-      audioLink('freq', 'filter0.freq'),
-      audioLink('freq', 'filter1.freq'),
-      audioLink('freq', 'filter2.freq'),
-      audioLink('freq', 'filter3.freq'),
-      audioLink('Q', 'filter0.Q'),
-      audioLink('Q', 'filter1.Q'),
-      audioLink('Q', 'filter2.Q'),
-      audioLink('Q', 'filter3.Q'),
-      //audioLink('gain', 'gain0.gain'),
-    ],
-  ]
+    ['Gain', {id: 'gain0', x: 150, y: 0}],
+    ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
+    ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
+    ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
+    ['AudioParam', {id: 'pitch', x: -350, y: 0}],
+    ['AudioOut', {id: 'out', x: +350, y: 0}],
+    audioLink('const0', 'gain0.gain'),
+    audioLink('pitch', 'osc0.pitch'),
+    audioLink('osc0', 'adsr0'),
+    audioLink('adsr0', 'gain0'),
+    audioLink('gain0', 'out'),
+  ],
+  [ 'FXPatch',
+    {
+      id: 'lowpass4',
+      title: '4 Lowpass filters',
+      scale: 1,
+      tx: 0,
+      ty: 0,
+    },
+    ['Filter', {id: 'filter0', x: -200, y: 0, type: 'lowpass'}],
+    ['Filter', {id: 'filter1', x: -100, y: 0, type: 'lowpass'}],
+    ['Filter', {id: 'filter2', x: 0,   y: 0, type: 'lowpass'}],
+    ['Filter', {id: 'filter3', x: 100,  y: 0, type: 'lowpass'}],
+    ['AudioIn', {id: 'inp', x: -350, y: 0, kind: 'audio'}],
+    ['AudioParam', {id: 'freq', x: -250, y: -150, kind: 'audio'}],
+    ['AudioParam', {id: 'Q', x: -250, y: 150, kind: 'audio'}],
+    ['AudioOut', {id: 'out', x: +350, y: 0, kind: 'audio'}],
+    audioLink('inp', 'filter0'),
+    audioLink('filter0', 'filter1'),
+    audioLink('filter1', 'filter2'),
+    audioLink('filter2', 'filter3'),
+    audioLink('filter3', 'out'),
+    audioLink('freq', 'filter0.freq'),
+    audioLink('freq', 'filter1.freq'),
+    audioLink('freq', 'filter2.freq'),
+    audioLink('freq', 'filter3.freq'),
+    audioLink('Q', 'filter0.Q'),
+    audioLink('Q', 'filter1.Q'),
+    audioLink('Q', 'filter2.Q'),
+    audioLink('Q', 'filter3.Q'),
+  ],
 ];
 
 const view = (state, actions) => {
   const {fullState} = state;
-  const [_t, _o, synth0State] = fullState;
-  const synth = new Synth(synth0State);
-  const module = synth.currentModule;
-  const {$currentElem, $lastError, $portOverParent, $portOverName} = module.state;
+  const project = new Project(fullState);
+  const patch = project.currentPatch;
+  const {$currentElem, $lastError, $portOverParent, $portOverName} = patch.state;
   let status = h('span');
-  const {setModuleState} = actions;
+  const {setPatchState} = actions;
   if ($lastError) {
     status = [
       h('span', {
         class: 'x',
-        onclick: e => setModuleState({$lastError: null}),
+        onclick: e => setPatchState({$lastError: null}),
       }, 'x'),
       h('span', {class: 'error'}, $lastError),
     ];
   }
   else if ($portOverParent) {
-    const port = module.all[$portOverParent].getPort($portOverName);
+    const port = patch.all[$portOverParent].getPort($portOverName);
     status = [
       h('span', {class: 'info'}, port.getDesc()),
     ];
   }
-  const toEdit = $currentElem ? module.all[$currentElem] : module;
-  const synthFunc = new Function('_ctx', [...synth.gen()].join('\n'));
+  const toEdit = $currentElem ? patch.all[$currentElem] : patch;
+  const synthFunc = new Function('_ctx', [...patch.gen()].join('\n'));
   console.log(synthFunc);
   document.onkeydown = onKeyDown(audio, synthFunc);
   document.onkeyup = onKeyUp(audio, synthFunc);
@@ -156,7 +132,7 @@ const view = (state, actions) => {
             h('circle', {cx: 5, cy: 5, r: 1, fill: '#CCC', stroke: 'none'})
           )
         ),
-        module.renderSVG(h, actions, [-400, -400, 800, 800]),
+        patch.renderSVG(h, actions, [-400, -400, 800, 800]),
       ),
       h('div', {id: 'divProps'},
         toEdit.renderEditor(h, actions),
