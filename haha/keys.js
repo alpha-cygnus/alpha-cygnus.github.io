@@ -41,7 +41,9 @@ export function onKeyDown(audio, synthFn) {
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;
     if (playing[note]) {
-      playing[note].control.send('cut', audio.currentTime);
+      const oldSynth = playing[note];
+      oldSynth.control.send('cut', audio.currentTime);
+      setTimeout(() => oldSynth.out.disconnect(), 10);
       playing[note] = null;
     }
     const synth = playing[note] = synthFn({audio, basic});
