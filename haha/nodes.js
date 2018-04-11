@@ -1,6 +1,6 @@
 import { Elem, Node, Link } from './base.js';
 import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
-import { startDragOnMouseDown } from './utils.js';
+import { startDragOnMouseDown, yieldElemXML } from './utils.js';
 
 export class ANode extends Node {
   initProps() {
@@ -87,7 +87,7 @@ export class Gain extends ANode {
   getPorts() {
     return [
       ['AudioIn', {name: 'inp',  x: -1, y: -0}],
-      ['AudioIn', {name: 'gain', x: 0, y: -0.5}],
+      ['AudioIn', {name: 'gain', x: 0, y: +0.5}],
       ['AudioOut', {name: 'out', x: +1, y: 0}],
     ];
   }
@@ -98,6 +98,9 @@ export class Gain extends ANode {
   }
   getTextPos() {
     return [-1/3, 0];
+  }
+  getText() {
+    return '*' + this.gain;
   }
   getShapePath() {
     return ['m', 1, 0, 'l', -2, 1, 'l', 0, -2, 'z'];
@@ -209,16 +212,20 @@ export class Const extends ANode {
   getTextPos() {
     return [0, -0.3];
   }
+  getText() {
+    return '';
+  }
   renderInnerSVG(h) {
     const {x, y, size} = this;
-    const [tx, ty] = [0, 0.3*size];
+    const [tx, ty] = [0, 0*size];
+    const txt = (this.value > 0 ? '+' : '') + this.value;
     return [
       h('text',
         {
           transform: `translate(${x + tx}, ${y + ty}) scale(1.2)`,
           'text-anchor': 'middle', x: 0, y: 0, 'dominant-baseline': 'middle'
         },
-        this.value,
+        txt,
       ),
     ];
   }
@@ -487,4 +494,29 @@ export class Use extends ANode {
 
 export class Channel extends ANode {
 
+}
+
+export class NewNode extends ANode {
+  getShapePath() {
+    return ['m', -1, 0,
+      'a', 1, 1, '0', '0', '0', 2, 0,
+      'a', 1, 1, '0', '0', '0', -2, 0,
+    ];
+  }
+  getInnerShapePath() {
+    return [
+      'M', -0.75, 0,
+      'L', +0.75, 0,
+      'M', 0, -0.75,
+      'L', 0, +0.75,
+    ];
+  }
+  renderEditor(h, actions) {
+    return h('div', {},
+      h('h1', {}, 'New node'),
+      this.parent.getPresets().map(preset => {
+        return h('button', {title: [...yieldElemXML(preset)].join('\n')}, preset[1].id);
+      })
+    );
+  }
 }

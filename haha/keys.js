@@ -43,12 +43,13 @@ export function onKeyDown(audio, synthFn) {
     if (playing[note]) {
       const oldSynth = playing[note];
       oldSynth.control.send('cut', audio.currentTime);
-      setTimeout(() => oldSynth.out.disconnect(), 10);
+      //setTimeout(() => oldSynth.out.disconnect(), 10);
       playing[note] = null;
     }
     const synth = playing[note] = synthFn({audio, basic});
     synth.out.connect(audio.destination);
     synth.pitch.setValueAtTime(note - 69, audio.currentTime);
+    synth.vol.setValueAtTime(0.5, audio.currentTime)
     synth.control.send('on', audio.currentTime);
   }
 }

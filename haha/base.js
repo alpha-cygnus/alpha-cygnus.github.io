@@ -62,7 +62,6 @@ export class Node extends Elem {
     const [_t, state] = data;
     const name = state.name;
     const PortClass = PORT_CLASSES[`${_t}Port`];
-    console.log('port', PortClass.name, name, 'for', this.id, state);
     this.ports.push(new PortClass(this, {...state, isOver: name === this.$portOver}));
   }
   dragMouseDown({setElemProps, selectElem, deleteElem}) {
@@ -114,7 +113,6 @@ export class Node extends Elem {
   }
   renderEditor(h, actions) {
     const pars = this.getParamList();
-    ;
     return h('div', {},
       h('h1', {}, this.id),
       pars

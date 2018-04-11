@@ -150,6 +150,8 @@ export class Patch {
     }
     return g;
   }
+  *genAdditional() {
+  }
   *gen() {
     const nodes = Object.values(this.all).filter(e => !(e instanceof Link));
     const links = Object.values(this.all).filter(e => e instanceof Link);
@@ -159,6 +161,7 @@ export class Patch {
     for (const link of links) {
       yield * [...link.gen()];
     }
+    yield * this.genAdditional();
     yield `return {`;
     const inps = nodes.filter(node => node instanceof NODE_CLASSES.PatchInput);
     const outs = nodes.filter(node => node instanceof NODE_CLASSES.PatchOutput);
@@ -179,10 +182,21 @@ export class Patch {
     // }
     yield '};';
   }
+  getPresets() {
+    return [
+      ['Osc', {id: 'osc', frequency: 440}],
+      ['Osc', {id: 'lfo', frequency: 1}],
+      ['Gain', {id: 'gain', gain: 1}],
+      ['Gain', {id: 'vca', gain: 0}],
+      ['ADSR', {id: 'adsr', a: 0.1, d: 0.2, s: 0.3, r: 0.4}],
+    ];
+  }
 }
 
 export class Synth extends Patch {
-  
+  *genAdditional() {
+    yield `control.out.on('cut', t => setTimeout(() => out.out.disconnect(), (t - _ctx.audio.currentTime)*1000 + 10));`;
+  }
 }
 
 export class FXPatch extends Patch {

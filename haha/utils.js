@@ -6,7 +6,10 @@ export const rnd = (n, n0 = 0) => Math.floor(Math.random()*n) + n0;
 export const pick = arr => arr[rnd(arr.length)];
 
 export const startDragOnMouseDown = (ondown, onmove, onup, mangle = e => e) => e => {
-  if (e.button > 1) return;
+  if (e.button > 1) {
+    console.log(e);
+    return;
+  }
   const data = ondown(mangle(e));
   document.onmousemove = e => onmove(mangle(e), data);
   document.onmouseup = e => {

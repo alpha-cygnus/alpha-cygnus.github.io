@@ -2,6 +2,8 @@ import { h, app } from './hyperapp/index.js';
 
 import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
 
+import {NewNode} from './nodes.js';
+
 import {Project} from './project.js';
 
 import {onKeyDown, onKeyUp} from './keys.js';
@@ -36,18 +38,21 @@ const fullState = [
       ty: 0,
       scale: 1,
     },
-    ['Gain', {id: 'gain0', x: 150, y: 0}],
+    ['Gain', {id: 'gain0', x: 150, y: 0, gain: 0}],
+    ['Gain', {id: 'gain1', x: 0, y: 100, gain: 0}],
     ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
     ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
-    ['Const', {id: 'const0', x: 0, y: -150, value: 0.2}],
+    ['Const', {id: 'const0', x: -100, y: +250, value: 0.2}],
     ['ControlIn', {id: 'control', x: -350, y: -100}],
     ['AudioParam', {id: 'pitch', x: -350, y: 0}],
     ['AudioParam', {id: 'vol', x: -350, y: 100}],
     ['AudioOut', {id: 'out', x: +350, y: 0}],
-    audioLink('const0', 'gain0.gain'),
+    audioLink('vol', 'gain1'),
+    audioLink('const0', 'gain1.gain'),
     audioLink('pitch', 'osc0.pitch'),
     audioLink('osc0', 'adsr0'),
     audioLink('adsr0', 'gain0'),
+    audioLink('gain1', 'gain0.gain'),
     audioLink('gain0', 'out'),
     controlLink('control', 'adsr0.control'),
   ],
@@ -106,6 +111,8 @@ const fullState = [
   ],
 ];
 
+let prevSynthSrc = '';
+
 const view = (state, actions) => {
   const {fullState} = state;
   const project = new Project(fullState);
@@ -128,11 +135,21 @@ const view = (state, actions) => {
       h('span', {class: 'info'}, port.getDesc()),
     ];
   }
-  const toEdit = $currentElem ? patch.all[$currentElem] : patch;
-  const synthFunc = new Function('_ctx', [...patch.gen()].join('\n'));
-  console.log(synthFunc);
-  document.onkeydown = onKeyDown(audio, synthFunc);
-  document.onkeyup = onKeyUp(audio, synthFunc);
+  const newNode = new NewNode({state: {x: 350, y: -350, fill: '#C88'}, id: '__new', parent: patch});
+  newNode.initProps();
+  const toEdit = $currentElem
+    ? $currentElem === '__new'
+      ? newNode
+      : patch.all[$currentElem]
+    : patch;
+  const synthSrc = [...patch.gen()].join('\n');
+  if (synthSrc != prevSynthSrc) {
+    const synthFunc = new Function('_ctx', synthSrc);
+    console.log(synthFunc);
+    document.onkeydown = onKeyDown(audio, synthFunc);
+    document.onkeyup = onKeyUp(audio, synthFunc);
+    prevSynthSrc = synthSrc;
+  }
   // document.onkeyup = e => {
   //   if (e.key === 'Backspace' && $currentElem) {
   //     toEdit.onDelete(actions);
@@ -162,6 +179,11 @@ const view = (state, actions) => {
           )
         ),
         patch.renderSVG(h, actions, [-400, -400, 800, 800]),
+        newNode.renderSVG(h, actions),
+        // h('g', {transform: 'translate(350, -350)', onclick: e => console.log(e)},
+        //   h('circle', {cx: 0, cy: -0, r: 20, fill: 'red'}),
+        //   h('path', {d: 'M0 -0 m -15 0 l +30 0 m -15 -15 l 0 30', stroke: 'black', 'stroke-width': 2}),
+        // )
       ),
       h('div', {id: 'divProps'},
         toEdit.renderEditor(h, actions),
