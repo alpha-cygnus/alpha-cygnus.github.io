@@ -1,19 +1,18 @@
-export function createOsc(ac, {type, frequency}) {
+export function createOsc(ac, {type, frequency = 440, detune = -900, octave = 0}) {
   const osc = ac.createOscillator();
   osc.type = type;
   osc.frequency.value = frequency;
-  const pitcher = ac.createGain();
+  osc.detune.value = detune + octave*1200;
+  const pitch = ac.createGain();
   const c = ac.createConstantSource();
-  pitcher.connect(osc.detune);
-  pitcher.gain.value = 100;
+  pitch.connect(osc.detune);
+  pitch.gain.value = 1200;
   osc.start();
   return {
     out: osc,
     freq: osc.frequency,
     detune: osc.detune,
-    pitch: pitcher,
-    // _on: t => osc.start(t),
-    // _cut: t => osc.stop(t + 0.01),
+    pitch,
   }
 }
 
@@ -36,9 +35,11 @@ export function createConst(ac, {value}) {
   }
 }
 
-export function createFilter(ac, {type, frequency}) {
+export function createFilter(ac, {type, frequency, detune, q}) {
   const filter = ac.createBiquadFilter();
   filter.frequency.value = frequency;
+  filter.detune.value = frequency;
+  filter.Q.value = q;
   filter.type = type;
   return {
     inp: filter,

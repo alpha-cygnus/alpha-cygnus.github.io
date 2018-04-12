@@ -48,7 +48,7 @@ export function onKeyDown(audio, synthFn) {
     }
     const synth = playing[note] = synthFn({audio, basic});
     synth.out.connect(audio.destination);
-    synth.pitch.setValueAtTime(note - 69, audio.currentTime);
+    synth.pitch.setValueAtTime((note - 60)/12, audio.currentTime);
     synth.vol.setValueAtTime(0.5, audio.currentTime)
     synth.control.send('on', audio.currentTime);
   }

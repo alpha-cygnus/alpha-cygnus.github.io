@@ -115,28 +115,32 @@ export class Gain extends ANode {
 export class Osc extends ANode {
   constructor(data) {
     super(data);
-    const {type = 'sine', frequency = 440} = this.state;
+    const {type = 'sine', frequency = 440, detune = -900, octave = 0} = this.state;
     this.type = type;
     this.frequency = frequency;
+    this.detune = detune;
+    this.octave = octave;
   }
   getPorts() {
     return [
       ['AudioIn',   {name: 'pitch',   x: -1, y: 0}],
-      ['AudioIn',   {name: 'freq',    x: 0, y: +1}],
+      ['AudioIn',   {name: 'frequency',    x: 0, y: -1}],
+      ['AudioIn',   {name: 'detune',    x: 0, y: +1}],
       // ['ControlIn', {name: 'control', x: 0, y: -1}],
       ['AudioOut',  {name: 'out',     x: +1, y: 0}],
     ];
   }
   getParamList() {
     return [
-      ['Select', {name: 'type', type: 'string'},
+      ['Radio', {name: 'type', type: 'string'},
         ['Option', {value: 'sine', label: 'Sine'}],
         ['Option', {value: 'triangle', label: 'Tri'}],
         ['Option', {value: 'square', label: 'Square'}],
         ['Option', {value: 'sawtooth', label: 'Saw'}],
       ],
-      ['Float', {name: 'frequency'}],
-      ['Float', {name: 'detune'}],
+      ['Float', {name: 'frequency', step: 1}],
+      ['Float', {name: 'detune', step: 1}],
+      ['Float', {name: 'octave', step: 1}],
     ];
   }
   // getControls() {
@@ -240,8 +244,8 @@ export class Const extends ANode {
 export class Filter extends ANode {
   constructor(data) {
     super(data);
-    const {type = 'lowpass'} = this.state;
-    this.type = type;
+    const {type = 'lowpass', frequency = 1000, detune = 0, q = 0} = this.state;
+    Object.assign(this, {type, frequency, detune, q});
   }
   getPorts() {
     return [
@@ -254,13 +258,15 @@ export class Filter extends ANode {
   }
   getParamList() {
     return [
-      ['Select', {name: 'type', type: 'string'},
+      ['Radio', {name: 'type', type: 'string'},
         ['Option', {value: 'lowpass', label: 'LP'}],
         ['Option', {value: 'highpass', label: 'HP'}],
         ['Option', {value: 'bandpass', label: 'BP'}],
         ['Option', {value: 'notch', label: 'Notch'}],
       ],
-      ['Float', {name: 'frequency'}],
+      ['Float', {name: 'frequency', step: 1}],
+      ['Float', {name: 'detune', step: 1}],
+      ['Float', {name: 'q', step: 0.1}],
     ];
   }
   getShapePath() {
@@ -512,11 +518,27 @@ export class NewNode extends ANode {
     ];
   }
   renderEditor(h, actions) {
+    const {setPatchState, selectElem} = actions;
+    const {parent: {state: {$toAdd}}} = this;
     return h('div', {},
       h('h1', {}, 'New node'),
       this.parent.getPresets().map(preset => {
-        return h('button', {title: [...yieldElemXML(preset)].join('\n')}, preset[1].id);
-      })
+        return h('button', {
+          title: [...yieldElemXML(preset)].join('\n'),
+          onclick: e => {
+            console.log('selected', preset);
+            setPatchState({$toAdd: preset});
+          },
+        }, preset[1].id);
+      }),
+      $toAdd ? [
+        h('pre', {}, [...yieldElemXML($toAdd)].join('\n')),
+        h('button', {
+          onclick: e => {
+            setPatchState({$toAdd: null, $currentElem: null});
+          },
+        }, 'CANCEL'),
+      ] : [],
     );
   }
 }

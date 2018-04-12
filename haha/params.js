@@ -11,14 +11,14 @@ export class ParamEditor {
     return [];
   }
   render(h, actions, value) {
-    return h('div', {}, h('label', {}, this.label, ' ', this.renderEditor(h, actions, value)));
+    return h('div', {}, h('span', {}, this.label), ' ', this.renderEditor(h, actions, value));
   }
 }
 
 export class Float extends ParamEditor {
   renderEditor(h, actions, value) {
-    const {name} = this;
-    return h('input', {name, type: 'number', step: 0.1, value, onchange: e => {
+    const {name, attrs: {step = 0.1}} = this;
+    return h('input', {name, type: 'number', step, value, onchange: e => {
       actions.setElemProps({[this.name]: e.target.value});
       //console.log(e.target.value);
     }});
@@ -32,11 +32,29 @@ export class Select extends ParamEditor {
         name,
         onchange: e => {
           //console.log(e.target.value);
-          actions.setElemProps({[this.name]: e.target.value});
+          actions.setElemProps({[name]: e.target.value});
         }
       },
       this.children.map(({attrs: {value: v, label}}) => h('option', {value: v, selected: v === value}, label))
     )];
+  }
+}
+
+export class Radio extends ParamEditor {
+  renderEditor(h, actions, value) {
+    const {name} = this;
+    return this.children.map(
+      ({attrs: {value: v, label}}) => [
+        h('input', {
+          type: 'radio',
+          checked: v === value,
+          onclick: e => actions.setElemProps({[name]: v}),
+        }),
+        h('span', {
+          onclick: e => actions.setElemProps({[name]: v}),
+        }, label),
+      ]
+    );
   }
 }
 

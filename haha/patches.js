@@ -14,9 +14,9 @@ export class Patch {
     this.parent = parent;
     this.allPatches = parent.allPatches;
     this.state = props;
-    const {id, title, scale, tx, ty, $currentElem, snapTo = 10} = props;
+    const {id, title, scale, tx, ty, $currentElem, $toAdd, snapTo = 10} = props;
     this.name = id;
-    Object.assign(this, {id, elems, title, scale, tx, ty, $currentElem, snapTo});
+    Object.assign(this, {id, elems, title, scale, tx, ty, $currentElem, $toAdd, snapTo});
     const all = {};
     this.all = all;
     for (const [_t, props, ...subs] of elems) {
@@ -44,8 +44,8 @@ export class Patch {
   }
   renderSVG(h, actions, viewBox) {
     const [x = -400, y = -400, width = 800, height = 800] = viewBox || [];
-    const {setPatchState, selectElem} = actions;
-    const {tx, ty, scale, elems, all, snapTo} = this;
+    const {setPatchState, selectElem, newElem} = actions;
+    const {tx, ty, scale, elems, all, snapTo, $toAdd, $currentElem} = this;
     const grid = [];
     if (snapTo) {
       var path = [];
@@ -65,21 +65,22 @@ export class Patch {
         // fill: '#EEE',
         fill: 'none',
         stroke: 'black',
-        onmousedown: startDragOnMouseDown(
-          e => {
-            const [dx, dy] = [tx - e.x, ty - e.y];
-            return {dx, dy};
-          },
-          (e, {dx, dy}) => {
-            setPatchState({tx: e.x + dx, ty: e.y + dy});
-          },
-          (e, {dx, dy}) => {
-            const [dx1, dy1] = [tx - e.x, ty - e.y];
-            if (dx1 === dx && dy1 === dy) {
-              selectElem({id: null});
-            }
-          },
-        )
+        // onmousedown: startDragOnMouseDown(
+        //   e => {
+        //     const [dx, dy] = [tx - e.x, ty - e.y];
+        //     return {dx, dy};
+        //   },
+        //   (e, {dx, dy}) => {
+        //     setPatchState({tx: e.x + dx, ty: e.y + dy});
+        //   },
+        //   (e, {dx, dy}) => {
+        //     const [dx1, dy1] = [tx - e.x, ty - e.y];
+        //     if (dx1 === dx && dy1 === dy) {
+        //       console.log('RECT1 click'),
+        //       selectElem({id: null});
+        //     }
+        //   },
+        // )
       }),
       h('g', {transform: `translate(${tx + 0.5}, ${ty + 0.5}) scale(${scale})`},
         grid,
@@ -97,7 +98,22 @@ export class Patch {
             (e, {dx, dy}) => {
               const [dx1, dy1] = [tx - e.x, ty - e.y];
               if (dx1 === dx && dy1 === dy) {
-                selectElem({id: null});
+                if ($toAdd && $currentElem === '__new') {
+                  const [_t, state, ...subs] = $toAdd;
+                  let id = state.id;
+                  for (let i = 0; i < 100; i++) {
+                    if (!this.all[id + i]) {
+                      id = id + i; break;
+                    }
+                  }
+                  state.id = id;
+                  state.x = (e.x + x - tx)/scale;
+                  state.y = (e.y + y - ty)/scale;
+                  newElem([_t, state, ...subs]);
+                  setPatchState({$toAdd: null, $currentElem: id});
+                } else {
+                  selectElem({id: null});
+                }
               }
             },
           )
@@ -184,11 +200,13 @@ export class Patch {
   }
   getPresets() {
     return [
-      ['Osc', {id: 'osc', frequency: 440}],
-      ['Osc', {id: 'lfo', frequency: 1}],
+      ['Osc', {id: 'osc'}],
+      ['Osc', {id: 'lfo', frequency: 1, detune: 0}],
       ['Gain', {id: 'gain', gain: 1}],
       ['Gain', {id: 'vca', gain: 0}],
       ['ADSR', {id: 'adsr', a: 0.1, d: 0.2, s: 0.3, r: 0.4}],
+      ['Const', {id: 'const', value: 1}],
+      ['Filter', {id: 'filter', type: 'lowpass', frequency: 2000, detune: 0, q: 0}],
     ];
   }
 }
