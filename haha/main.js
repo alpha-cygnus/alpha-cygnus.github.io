@@ -47,6 +47,8 @@ const fullState = [
     ['AudioParam', {id: 'pitch', x: -350, y: 0}],
     ['AudioParam', {id: 'vol', x: -350, y: 100}],
     ['AudioOut', {id: 'out', x: +350, y: 0}],
+    ['Delay', {id: 'delay0', x: 100, y: 100}],
+    ['Pan', {id: 'pan0', x: 100, y: -100}],
     audioLink('vol', 'gain1'),
     audioLink('const0', 'gain1.gain'),
     audioLink('pitch', 'osc0.pitch'),

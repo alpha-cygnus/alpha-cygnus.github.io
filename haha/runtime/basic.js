@@ -49,6 +49,26 @@ export function createFilter(ac, {type, frequency, detune, q}) {
   }
 }
 
+export function createDelay(ac, {maxDelayTime, delayTime}) {
+  const d = ac.createDelay(maxDelayTime);
+  d.delayTime.value = delayTime;
+  return {
+    inp: d,
+    out: d,
+    time: d.delayTime,
+  }
+}
+
+export function createPan(ac, {pan}) {
+  const p = ac.createStereoPanner();
+  p.pan.value = pan;
+  return {
+    inp: p,
+    out: p,
+    pan: p.pan,
+  }
+}
+
 export function createAudioParam(ac, params) {
   const c = ac.createConstantSource();
   c.offset.value = 0;

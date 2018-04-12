@@ -310,6 +310,71 @@ export class Filter extends ANode {
   // }
 }
 
+export class Delay extends ANode {
+  constructor(data) {
+    super(data);
+    const {maxDelayTime = 1, delayTime = 0} = this.state;
+    Object.assign(this, {maxDelayTime, delayTime});
+  }
+  getPorts() {
+    return [
+      ['AudioIn',  {name: 'inp',    x: -1, y: 0 }],
+      ['AudioIn',  {name: 'time', x: -0.25, y: 0.75, nx: 0, ny: 1}],
+      ['AudioOut', {name: 'out',    x: +1, y: 0}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'maxDelayTime', step: 0.5}],
+      ['Float', {name: 'delayTime', step: 0.01}],
+    ];
+  }
+  getShapePath() {
+    return [
+      'M', -1.25, 0.75,
+      'L', -0.75, -0.75,
+      'L', 1.25, -0.75,
+      'L', 0.75, 0.75,
+      'z',
+    ];
+  }
+}
+
+export class Pan extends ANode {
+  constructor(data) {
+    super(data);
+    const {pan = 0} = this.state;
+    Object.assign(this, {pan});
+  }
+  getPorts() {
+    return [
+      ['AudioIn',  {name: 'inp',    x: -1, y: 0 }],
+      ['AudioIn',  {name: 'pan',    x: 0, y: 0.5, nx: 0, ny: 1}],
+      ['AudioOut', {name: 'out',    x: +1, y: 0}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'pan', step: 0.1}],
+    ];
+  }
+  getShapePath() {
+    // return ['M', 0, 0.5,
+    //   'A', 0.63, 0.63, '0', '1', '0', 0, -0.5,
+    //   'A', 0.63, 0.63, '0', '1', '0', 0, +0.5,
+    // ];
+    return [
+      'M', -1, -1,
+      'L', -1, 1,
+      'L', 0, 0.5,
+      'L', 1, 1,
+      'L', 1, -1,
+      'L', 0, -0.5,
+      'z',
+    ];
+  }
+}
+
 export class PatchPortNode extends ANode {
   constructor(data) {
     super(data);
