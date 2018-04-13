@@ -86,9 +86,9 @@ export class Gain extends ANode {
   }
   getPorts() {
     return [
-      ['AudioIn', {name: 'inp',  x: -1, y: -0}],
-      ['AudioIn', {name: 'gain', x: 0, y: +0.5}],
-      ['AudioOut', {name: 'out', x: +1, y: 0}],
+      ['AudioIn', {name: 'inp',  x: -0.75, y: -0}],
+      ['AudioIn', {name: 'gain', x: 0, y: +0.375}],
+      ['AudioOut', {name: 'out', x: +0.75, y: 0}],
     ];
   }
   getParamList() {
@@ -103,7 +103,7 @@ export class Gain extends ANode {
     return '*' + this.gain;
   }
   getShapePath() {
-    return ['m', 1, 0, 'l', -2, 1, 'l', 0, -2, 'z'];
+    return ['M', 0.75, 0, 'L', -0.75, -0.75, 'L', -0.75, 0.75, 'z'];
   }
   // renderGraph(idPrefix) {
   //   return [
