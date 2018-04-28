@@ -15,7 +15,7 @@ export function isElem(elem, cond, state) {
 export function normPath(path) {
   if (Array.isArray(path)) return path;
   if (typeof path === 'string') {
-    return path.split('/');
+    return path.split('/').filter(x => x);
   }
   return path;
 }

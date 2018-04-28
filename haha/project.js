@@ -16,6 +16,7 @@ export class Project {
     this.currentPatch = allPatches[currentPatch];
     this.props = props;
     this.id = props.id;
+    this.main = allPatches.main;
   }
   // *gen() {
   //   yield `  const _patches = {};`;

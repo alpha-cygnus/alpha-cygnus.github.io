@@ -40,9 +40,10 @@ export class ALink extends Link {
       stroke: this.isDragging() ? 'black' : 'grey',
     }
   }
-  renderSVG(h, {setElemProps, selectElem}) {
+  renderSVG(h, {setElemProps, setPatchState, selectElem}) {
     const [from, to] = this.getFromTo();
-    const {id, state: {over}} = this;
+    const {id} = this;
+    const over = this.parent.state.$currentOver === id;
     const dragging = this.isDragging();
     return h('g', {},
       h('path', {
@@ -52,9 +53,9 @@ export class ALink extends Link {
         ${to.atx + to.nx} ${to.aty + to.ny} ${to.atx} ${to.aty}`,
         ...this.getStroke(), fill: 'none', 'stroke-width': this.isSelected() ? 5 : dragging || over ? 2 : 1,
         onmouseover: e => {
-          setElemProps({id, over: true})
+          setPatchState({$currentOver: id})
         },
-        onmouseout: e => setElemProps({id, over: false}),
+        onmouseout: e => setPatchState({$currentOver: null}),
         onclick: e => {
           selectElem({id});
         },

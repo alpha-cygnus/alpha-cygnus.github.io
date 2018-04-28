@@ -133,12 +133,11 @@ export class Node extends Elem {
 }
 
 export class Link extends Elem {
-  initProps() {
-    super.initProps();
-    this.from = this.state.from;
-    this.to = this.state.to;
-    this.fromPort = this.state.fromPort;
-    this.toPort = this.state.toPort;
+  constructor(data) {
+    super(data);
+    const {from, fromPort, to, toPort} = this.state;
+    this.id = `l${from}.${fromPort}-${to}.${toPort}`;
+    Object.assign(this, {from, fromPort, to, toPort});
     this.layer = 0;
   }
   isDragging() {

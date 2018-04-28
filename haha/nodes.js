@@ -564,7 +564,23 @@ export class Use extends ANode {
 }
 
 export class Channel extends ANode {
-
+  getShapePath() {
+    return ['M', -1, -1,
+      'L', 1, -1,
+      'L', 1, 1,
+      'L', -1, 1,
+      'z',
+    ];
+  }
+  getPorts() {
+    return [
+      ['ControlOut', {name: 'control', x: 0, y: -1}],
+      ['AudioOut', {name: 'out',  x: +1, y: 0}],
+      ['AudioOut', {name: 'mix1', x: -0.75, y: +1, nx: 0}],
+      ['AudioOut', {name: 'mix2', x: 0, y: +1}],
+      ['AudioOut', {name: 'mix3', x: +0.75, y: +1, nx: 0}],
+    ];
+  }
 }
 
 export class NewNode extends ANode {

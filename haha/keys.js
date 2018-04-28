@@ -56,7 +56,6 @@ export function onKeyDown(audio, synthFn) {
 
 export function onKeyUp(audio, synthFn) {
   return e => {
-    console.log(e);
     if (e.target !== window.document.body) return;
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;

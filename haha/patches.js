@@ -23,7 +23,8 @@ export class Patch {
       const Cls = ELEM_CLASSES[_t];
       const {id, ...state} = props;
       if (!Cls) console.error({_t, id});
-      all[id] = new Cls({id, state, parent: this});
+      const elem = new Cls({id, state, parent: this});
+      all[elem.id] = elem;
     }
   }
   initProps() {
@@ -130,10 +131,22 @@ export class Patch {
       )
     ];
   }
-  renderEditor(h, {setPatchState, logState, newElem}) {
+  renderEditor(h, {setPatchState, setProjectState, logState, newElem}) {
     const {scale} = this;
     return h('div', {},
-      h('h2', {}, this.title),
+      h('h2', {}, this.title,
+        h('select', {
+            name: 'selectPatch',
+            class: 'patch',
+            onchange: e => {
+              setProjectState({currentPatch: e.target.value});
+            },
+          },
+          Object.values(this.parent.allPatches).map(
+            patch => h('option', {value: patch.id, selected: patch.id === this.id ? 'selected' : ''}, `${patch.title}: ${patch.constructor.name}`),
+          ),
+        ),
+      ),
       h('button', {
         onclick: e => setPatchState({scale: scale * Math.sqrt(2)})
       }, '+'),

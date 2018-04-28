@@ -12,6 +12,8 @@ import * as actions from './actions.js';
 
 //import * as asi from './asi/index.js';
 
+import {xl} from './xmllike.js';
+
 const aLink = (f, t, c) => {
   const [from, fromPort = 'out'] = f.split('.');
   const [to, toPort = 'inp'] = t.split('.');
@@ -88,35 +90,23 @@ const fullState = [
     audioLink('Q', 'filter2.Q'),
     audioLink('Q', 'filter3.Q'),
   ],
-  [ 'MainPatch',
-    {
-      id: 'main',
-      title: 'Test',
-      tx: 0, ty: 0, scale: 1,
-    },
-    ['Channel', {
-      id: 'channel0',
-      x: -200, y: -150,
-    }],
-    ['Channel', {
-      id: 'channel1',
-      x: -200, y: -50,
-    }],
-    ['Channel', {
-      id: 'channel2',
-      x: -200, y: +50,
-    }],
-    ['Channel', {
-      id: 'channel3',
-      x: -200, y: +150,
-    }],
-  ],
+  xl`
+  <MainPatch id="main" title="Test" tx=0 ty=0 scale=1>
+    <Channel id="channel1" x=-200 y=-150 />
+    <Channel id="channel2" x=-200 y=-50 />
+    <Channel id="channel3" x=-200 y=+50 />
+    <Channel id="channel4" x=-200 y=+150 />
+  </MainPatch>
+  `,
 ];
 
 let prevSynthSrc = '';
+let prevMainSrc = '';
+let mainPatch = null;
 
 const view = (state, actions) => {
   const {fullState} = state;
+  console.log(state);
   const project = new Project(fullState);
   const patch = project.currentPatch;
   const {$currentElem, $lastError, $portOverParent, $portOverName} = patch.state;
@@ -144,6 +134,15 @@ const view = (state, actions) => {
       ? newNode
       : patch.all[$currentElem]
     : patch;
+  const mainSrc = [...project.main.gen()].join('\n');
+  if (mainSrc != prevMainSrc) {
+    if (mainPatch) mainPatch.send('cut');
+    console.log(mainSrc);
+    const mainPatchFunc = new Function('_ctx', mainSrc);
+    console.log(mainPatchFunc);
+    prevMainSrc = mainSrc;
+    mainPatch = mainPatchFunc({audio, basic});
+  }
   const synthSrc = [...patch.gen()].join('\n');
   if (synthSrc != prevSynthSrc) {
     const synthFunc = new Function('_ctx', synthSrc);

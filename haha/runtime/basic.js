@@ -132,17 +132,14 @@ export function createADSR(ac, {a, d, s, r}) {
   g.gain.value = 0;
   const control = new Control();
   control.on('on', t => {
-    console.log('ADSR on', t);
     g.gain.setTargetAtTime(1, t, a / 4);
     g.gain.setTargetAtTime(s, t + a, d / 4);
   });
   control.on('off', t => {
-    console.log('ADSR off', t);
     g.gain.cancelScheduledValues(t);
     g.gain.setTargetAtTime(0, t, r / 4);
   });
   control.on('cut', t => {
-    console.log('ADSR cut', t);
     g.gain.cancelScheduledValues(t);
     g.gain.linearRampToValueAtTime(0, t + 0.01);
   });
@@ -151,4 +148,8 @@ export function createADSR(ac, {a, d, s, r}) {
     out: g,
     control,
   }
+}
+
+export function createChannel(ac, {voices}) {
+  return {};
 }
