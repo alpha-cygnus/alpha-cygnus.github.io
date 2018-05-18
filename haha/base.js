@@ -49,7 +49,8 @@ export class Elem {
 export class Node extends Elem {
   initProps() {
     const {x, y, $dragging, $portOver} = this.state;
-    Object.assign(this, {x, y, $dragging, $portOver});
+    const undeletable = this.parent.isUndeletable(this);
+    Object.assign(this, {x, y, $dragging, $portOver, undeletable});
     this.ports = [];
   }
   getParamList() {
@@ -64,9 +65,10 @@ export class Node extends Elem {
     const PortClass = PORT_CLASSES[`${_t}Port`];
     this.ports.push(new PortClass(this, {...state, isOver: name === this.$portOver}));
   }
-  dragMouseDown({setElemProps, selectElem, deleteElem}) {
+  dragMouseDown(actions) {
+    const {setElemProps, selectElem, deleteElem, newLink} = actions;
     const {id, x, y} = this;
-    const {scale} = this.getTopState();
+    const {scale, $currentElem} = this.getTopState();
     return startDragOnMouseDown(
       e => {
         const [dx, dy] = [x - e.x, y - e.y];
@@ -80,8 +82,15 @@ export class Node extends Elem {
         setElemProps({id, $dragging: false});
         const [dx1, dy1] = [x - e.x, y - e.y];
         if (dx1 === dx && dy1 === dy) {
-          selectElem({id});
-          if (e.shiftKey) {
+          if (e.original.metaKey && e.original.altKey) {
+            return this.onDelete(actions);
+          }
+          if ($currentElem && (e.original.ctrlKey || e.original.altKey)) {
+            const [from, fromPort = 'out'] = $currentElem.split('.');
+            newLink({from, fromPort, to: id, toPort: 'inp', all: this.all});
+          }
+          if (!e.original.shiftKey) {
+            selectElem({id});
           }
         }
       },
@@ -89,12 +98,15 @@ export class Node extends Elem {
     );
   }
   onDelete({deleteElem, selectElem}) {
+    if (this.undeletable) return;
     const {id} = this;
     deleteElem({id});
     selectElem({id: null}); 
-    Object.values(this.all)
-      .filter(elem => elem instanceof Link && elem.from === id || elem.to === id)
-      .map(deleteElem)
+    deleteElem({from: id});
+    deleteElem({to: id});
+    // Object.values(this.all)
+    //   .filter(elem => elem instanceof Link && elem.from === id || elem.to === id)
+    //   .map(({from, fromPort, to, toPort}) => deleteElem({from, fromPort, to, toPort}));
   }
   isDragging() {
     return this.$dragging;

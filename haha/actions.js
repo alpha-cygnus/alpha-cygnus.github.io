@@ -5,11 +5,13 @@ import {insert, remove, setAttr, wrap, getElems} from './state.js';
 const curPatchPath = '@currentPatch';
 const projectPath = [];
 
+const condByProps = ({id, ...props}) => id ? `#${id}` : Object.entries(props).map(([pn, pv]) => [pn, pv].join('=')).join('&');
+
 export const setElemProps = ({id, ...it}) => ({fullState}) => wrap(setAttr(fullState, id ? `${curPatchPath}/#${id}` : `${curPatchPath}/@$currentElem`, it));
 
 export const newElem = elem => ({fullState}) => wrap(insert(fullState, curPatchPath, elem));
 
-export const deleteElem = ({id}) => ({fullState}) => wrap(remove(fullState, `${curPatchPath}/#${id}`));
+export const deleteElem = (props) => ({fullState}) => wrap(remove(fullState, `${curPatchPath}/${condByProps(props)}`));
 
 export const setPatchState = it => ({fullState}) => wrap(setAttr(fullState, curPatchPath, it));
 
@@ -29,33 +31,42 @@ export const setPortOver = (port) => (state, actions) => {
   }
 };
 
-export const newLink = ({from, fromPort, all}) => (state, actions) => {
-  const topState = getPatchProps(state);
-  const {$portOverParent, $portOverName} = topState;
-  if ($portOverParent) {
-    const [to, toPort] = [$portOverParent, $portOverName];
-    let can = true;
-    const src = all[from].getPort(fromPort);
-    const dst = all[to].getPort(toPort);
-    const [connectError, linkClass = 'AudioLink'] = src && dst && src.connectError(dst) || ['NO PORTS'];
-    if (connectError && connectError !== 'SWAP') {
-      console.error(connectError);
-      return actions.setPatchState({$lastError: connectError});
-    }
-    const state = connectError === 'SWAP'
-      ? {
-        id: `l${to}.${toPort}-${from}.${fromPort}`,
-        from: to, fromPort: toPort, to: from, toPort: fromPort,
-      }
-      : {
-        id: `l${from}.${fromPort}-${to}.${toPort}`,
-        from, fromPort, to, toPort,
-      }
-    ;
-    actions.setPatchState({$lastError: null});
-    return actions.newElem([linkClass, state]);
+export const newLink = ({from, fromPort, to, toPort, all}) => (state, actions) => {
+  const error = msg => {
+    console.error(msg);
+    return actions.setPatchState({$lastError: msg});
   }
-  return state;
+
+  const {fullState} = state;
+  let can = true;
+  const src = all[from].getPort(fromPort);
+  const dst = all[to].getPort(toPort);
+  if (!src) {
+    return error(`Source port not found: ${from}.${fromPort}`);
+  }
+  if (!dst) {
+    return error(`Destination port not found: ${to}.${toPort}`);
+  }
+  const [connectError, linkClass = 'AudioLink'] = src && dst && src.connectError(dst) || ['NO PORTS'];
+  if (connectError && connectError !== 'SWAP') {
+    return error(connectError);
+  }
+  const linkState = connectError === 'SWAP'
+    ? {
+      // id: `l${to}.${toPort}-${from}.${fromPort}`,
+      from: to, fromPort: toPort, to: from, toPort: fromPort,
+    }
+    : {
+      // id: `l${from}.${fromPort}-${to}.${toPort}`,
+      from, fromPort, to, toPort,
+    }
+  ;
+  const prevLinks = getElems(fullState, `${curPatchPath}/${condByProps(linkState)}`);
+  if (prevLinks.length) {
+    return actions.deleteElem(linkState);
+  }
+  actions.setPatchState({$lastError: null});
+  return actions.newElem([linkClass, linkState]);
 };
 
 export const selectElem = ({id}) => (state, actions) => {

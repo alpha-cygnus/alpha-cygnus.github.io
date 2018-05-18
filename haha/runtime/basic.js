@@ -151,5 +151,8 @@ export function createADSR(ac, {a, d, s, r}) {
 }
 
 export function createChannel(ac, {voices}) {
-  return {};
+  const out = ac.createGain();
+  return {
+    out,
+  };
 }

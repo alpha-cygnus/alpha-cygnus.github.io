@@ -23,9 +23,15 @@ export class TempNewLink extends Link {
 
 export class ALink extends Link {
   getFromTo() {
+    const [fe, te] = [
+      this.all[this.from],
+      this.all[this.to],
+    ];
+    if (!fe) throw new Error('from not found: ', this.from);
+    if (!te) throw new Error('to not found: ', this.to);
     const [from, to] = [
-      this.all[this.from].getPort(this.fromPort),
-      this.all[this.to].getPort(this.toPort),
+      fe.getPort(this.fromPort),
+      te.getPort(this.toPort),
     ];
     if (!from) {
       console.error('no from in', this.id);

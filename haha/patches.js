@@ -27,6 +27,9 @@ export class Patch {
       all[elem.id] = elem;
     }
   }
+  isUndeletable(elem) {
+    return false;
+  }
   initProps() {
     for (const elem of Object.values(this.all)) {
       elem.initProps();
@@ -131,6 +134,15 @@ export class Patch {
       )
     ];
   }
+  getCurrentElem() {
+    const {$currentElem, all} = this;
+    if (!$currentElem) return this;
+    const [ce, cp] = $currentElem.split('.');
+    const elem = all[ce];
+    if (!elem) return this;
+    if (cp) return elem.getPort(cp);
+    return elem;
+  }
   renderEditor(h, {setPatchState, setProjectState, logState, newElem}) {
     const {scale} = this;
     return h('div', {},
@@ -219,7 +231,10 @@ export class Patch {
       ['Gain', {id: 'vca', gain: 0}],
       ['ADSR', {id: 'adsr', a: 0.1, d: 0.2, s: 0.3, r: 0.4}],
       ['Const', {id: 'const', value: 1}],
-      ['Filter', {id: 'filter', type: 'lowpass', frequency: 2000, detune: 0, q: 0}],
+      ['Filter', {id: 'lpf', type: 'lowpass', frequency: 2000, detune: 0, q: 0}],
+      ['Filter', {id: 'hpf', type: 'highpass', frequency: 2000, detune: 0, q: 0}],
+      ['Pan', {id: 'pan'}],
+      ['Delay', {id: 'delay'}],
     ];
   }
 }
@@ -228,6 +243,11 @@ export class Synth extends Patch {
   *genAdditional() {
     yield `control.out.on('cut', t => setTimeout(() => out.out.disconnect(), (t - _ctx.audio.currentTime)*1000 + 10));`;
   }
+  isUndeletable(elem) {
+    return elem.id in {
+      control: 1, pitch: 1, vol: 1, out: 1,
+    };
+  }
 }
 
 export class FXPatch extends Patch {
@@ -235,5 +255,9 @@ export class FXPatch extends Patch {
 }
 
 export class MainPatch extends Patch {
-
+  isUndeletable(elem) {
+    return elem.id in {
+      out: 1,
+    };
+  }
 }

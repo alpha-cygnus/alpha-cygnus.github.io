@@ -9,6 +9,12 @@ export function isElem(elem, cond, state) {
     if (m = cond.match(/^#(.+)$/)) {
       return eOpts.id === m[1];
     }
+    if (cond.match(/\w+=\w+(&\w+=\w+)*/)) {
+      for (const [cn, cv] of cond.split('&').map(c => c.split('='))) {
+        if (eOpts[cn] != cv) return false;
+      }
+      return true;
+    }
   }
 }
 

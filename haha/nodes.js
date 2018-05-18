@@ -2,6 +2,8 @@ import { Elem, Node, Link } from './base.js';
 import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
 import { startDragOnMouseDown, yieldElemXML } from './utils.js';
 
+import {xl} from './xmllike.js';
+
 export class ANode extends Node {
   initProps() {
     super.initProps();
@@ -15,11 +17,12 @@ export class ANode extends Node {
     return [];
   }
   getMainStroke() {
-    const {$dragging, size} = this;
+    const {$dragging, size, undeletable} = this;
     return {
       stroke: $dragging ? 'black' : '#444',
       'stroke-width': this.isSelected() ? 5 : $dragging ? 2 : 1,
       'stroke-linejoin': 'round',
+      ...(undeletable ? {'stroke-dasharray': '8, 2'} : {})
     };
   }
   getShapePath() {
@@ -583,6 +586,34 @@ export class Channel extends ANode {
   }
 }
 
+const aLink = (f, t, c) => {
+  const [from, fromPort = 'out'] = f.split('.');
+  const [to, toPort = 'inp'] = t.split('.');
+  return [c, {from, fromPort, to, toPort}];
+}
+
+const audioLink = (f, t) => aLink(f, t, 'AudioLink');
+const controlLink = (f, t) => aLink(f, t, 'ControlLink');
+
+export const patchPresets = [
+  xl`
+  <Synth id="synth" tx=0 ty=0 scale=1>
+    <ControlIn id="control" x=-350 y=-100 />
+    <AudioParam id="pitch" x=-350 y=0 />
+    <AudioParam id="vol" x=-350 y=100 />
+    <AudioOut id="out" x=+350 y=0 />
+    <Osc id="osc0" x=-150 y=0 />
+    <ADSR id="adsr0" x=0 y=0 a=0.5 d=0.3 s=0.1 r=0.5 />
+    <Gain id="gain0" x=150 y=0 gain=0/>
+    ${audioLink('vol', 'gain0.gain')}
+    ${audioLink('pitch', 'osc0.pitch')}
+    ${audioLink('osc0', 'adsr0')}
+    ${audioLink('adsr0', 'gain0')}
+    ${audioLink('gain0', 'out')}
+    ${controlLink('control', 'adsr0.control')}
+  </Synth>`,
+];
+
 export class NewNode extends ANode {
   getShapePath() {
     return ['m', -1, 0,
@@ -620,6 +651,15 @@ export class NewNode extends ANode {
           },
         }, 'CANCEL'),
       ] : [],
+      h('h1', {}, 'New patch'),
+      patchPresets.map(preset => {
+        return h('button', {
+          onclick: e => {
+            // console.log('selected', preset);
+            // setPatchState({$toAdd: preset});
+          },
+        }, preset[1].id);
+      }),
     );
   }
 }

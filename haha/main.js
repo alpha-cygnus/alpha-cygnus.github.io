@@ -17,7 +17,10 @@ import {xl} from './xmllike.js';
 const aLink = (f, t, c) => {
   const [from, fromPort = 'out'] = f.split('.');
   const [to, toPort = 'inp'] = t.split('.');
-  return [c, {id: `l${from}.${fromPort}-${to}.${toPort}`, from, fromPort, to, toPort}];
+  return [c, {
+    // id: `l${from}.${fromPort}-${to}.${toPort}`,
+    from, fromPort, to, toPort
+  }];
 }
 
 const audioLink = (f, t) => aLink(f, t, 'AudioLink');
@@ -96,6 +99,11 @@ const fullState = [
     <Channel id="channel2" x=-200 y=-50 />
     <Channel id="channel3" x=-200 y=+50 />
     <Channel id="channel4" x=-200 y=+150 />
+    <AudioOut id="out" x=+350 y=0 />
+    ${audioLink('channel1', 'out')}
+    ${audioLink('channel2', 'out')}
+    ${audioLink('channel3', 'out')}
+    ${audioLink('channel4', 'out')}
   </MainPatch>
   `,
 ];
@@ -106,7 +114,6 @@ let mainPatch = null;
 
 const view = (state, actions) => {
   const {fullState} = state;
-  console.log(state);
   const project = new Project(fullState);
   const patch = project.currentPatch;
   const {$currentElem, $lastError, $portOverParent, $portOverName} = patch.state;
@@ -129,11 +136,10 @@ const view = (state, actions) => {
   }
   const newNode = new NewNode({state: {x: 350, y: -350, fill: '#C88'}, id: '__new', parent: patch});
   newNode.initProps();
-  const toEdit = $currentElem
-    ? $currentElem === '__new'
-      ? newNode
-      : patch.all[$currentElem]
-    : patch;
+  
+  const toEdit = $currentElem === '__new'
+    ? newNode
+    : patch.getCurrentElem();
   const mainSrc = [...project.main.gen()].join('\n');
   if (mainSrc != prevMainSrc) {
     if (mainPatch) mainPatch.send('cut');
@@ -160,7 +166,6 @@ const view = (state, actions) => {
   window.testSynth = (n, v, d, cutAfter) => {
     const synth = synthFunc({audio, basic});
     synth.pitch.value = n - 69;
-    console.log(synth.pitch);
     const t = audio.currentTime;
     synth.out.connect(audio.destination);
     synth._on(t);

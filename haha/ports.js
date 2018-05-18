@@ -21,23 +21,26 @@ export class Port {
     const ny = isDef(this.state.ny) ? this.state.ny : y*2;
     const nx1 = nx ? nx/Math.abs(nx) : 0;
     const ny1 = ny ? ny/Math.abs(ny) : 0;
-    Object.assign(this, {name, x, y, nx, ny, dir, kind});
+    Object.assign(this, {name, x, y, nx, ny, dir, kind, isOver});
     this.cx = parent.x + x + nx1*r;
     this.cy = parent.y + y + ny1*r;
     this.atx = this.cx + nx1*r;
     this.aty = this.cy + ny1*r;
     this.fill = fill || (dir === PORT_DIR_OUT ? 'red' : 'green');
-    this.stroke = isOver ? 'black' : 'grey';
     this.id = parent.id + '.' + name;
   }
   getDefState() {
     return {};
   }
-  renderSVG(h, {setElemProps, newElem, deleteElem, setPortOver, newLink}) {
-    const {id, cx, cy, r, fill, stroke, parent, name} = this;
+  renderSVG(h, {setElemProps, newElem, deleteElem, setPortOver, newLink, selectElem}) {
+    const {id, cx, cy, r, fill, parent, name, isOver} = this;
+    const {$currentElem} = this.parent.parent;
+    const isSelected = $currentElem === this.id;
+    const stroke = isSelected || isOver ? 'black' : 'grey';
+    const strokeWidth = isSelected ? 3 : 1;
     const all = this.parent.all;
     const {scale} = this.parent.getTopState();
-    return h('circle', {'class': 'port', id: id, cx, cy, r, fill, stroke,
+    return h('circle', {'class': 'port', id: this.getDotId(), cx, cy, r, fill, stroke, 'stroke-width': strokeWidth,
       onmouseover: e => {
         setElemProps({id: parent.id, $portOver: name});
         setPortOver(this);
@@ -49,19 +52,38 @@ export class Port {
       onmousedown: startDragOnMouseDown(
         e => {
           const [dx, dy] = [cx - e.x, cy - e.y - 5];
-          newElem(['TempNewLink', {
-            id: '__newLink', from: parent.id, fromPort: name, x: cx, y: cy,
-          }]);
+          // newElem(['TempNewLink', {
+          //   id: '__newLink', from: parent.id, fromPort: name, x: cx, y: cy,
+          // }]);
           return {dx, dy};
         },
         (e, {dx, dy}) => {
-          setElemProps({id: '__newLink', x: dx + e.x, y: dy + e.y});
+          // setElemProps({id: '__newLink', x: dx + e.x, y: dy + e.y});
         },
-        e => {
-          const [from, fromPort] = [this.parent.id, this.name];
-          newLink({from, fromPort, all});
-          // deleteElem({id: '__fakeNode'});
-          deleteElem({id: '__newLink'});
+        (e, {dx, dy}) => {
+          const [dx1, dy1] = [cx - e.x, cy - e.y - 5];
+          if (dx1 === dx && dy1 === dy) {
+            if (e.original.metaKey && e.original.altKey) {
+              deleteElem({from: this.parent.id, fromPort: this.name});
+              deleteElem({to: this.parent.id, toPort: this.name});
+              return;
+            }
+            if ($currentElem && (e.original.ctrlKey || e.original.altKey)) {
+              const [from, fromPort = 'out'] = $currentElem.split('.');
+
+              newLink({from, fromPort, to: this.parent.id, toPort: this.name, all: this.parent.all});
+              console.log('E', e);
+              if (!e.original.shiftKey) selectElem({id: null});
+            } else {
+              selectElem({id: this.id});
+            }
+            return;
+          }
+
+          // const [from, fromPort] = [this.parent.id, this.name];
+          // newLink({from, fromPort, all});
+          // // deleteElem({id: '__fakeNode'});
+          // deleteElem({id: '__newLink'});
         },
         mangleScale(scale),
       ),
@@ -85,6 +107,9 @@ export class Port {
   // }
   getDotId() {
     return [this.parent.id, this.name].join('.');
+  }
+  renderEditor(h, actions) {
+    return h('div', {}, 'PORT ' + this.name);
   }
 }
 

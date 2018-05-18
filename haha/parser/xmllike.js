@@ -4,6 +4,7 @@
  * http://pegjs.org/
  */
 import {SyntaxError as peg$SyntaxError, buildMessage} from './peg-common.js';
+peg$SyntaxError.buildMessage = buildMessage;
 
 export default function peg$parse(input, options) {
   options = options !== void 0 ? options : {};
