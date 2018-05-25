@@ -20,11 +20,6 @@ export const startDragOnMouseDown = (ondown, onmove, onup, mangle = e => e) => e
 }
   
 export const mangleScale = scale => e => {
-  // const ee = Object.create(e);
-  // Object.assign(ee, {x: e.x/scale, y: e.y/scale});
-  // // ee.x = e.x/scale;
-  // // ee.y = e.y/scale;
-  // return ee;
   return {original: e, x: e.x/scale, y: e.y/scale}
 };
   

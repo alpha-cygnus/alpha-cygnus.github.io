@@ -1,5 +1,3 @@
-import * as basic from './runtime/basic.js';
-
 const KeyToNote = {
   'z': 48,
   's': 49,
@@ -34,33 +32,49 @@ const KeyToNote = {
 
 const playing = {};
 
-export function onKeyDown(audio, synthFn) {
+export function synthKeyDown(core, main, synthFn) {
   return e => {
     if (e.target !== window.document.body) return;
     if (e.repeat) return;
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;
+    
+    const channel = main.channels[0];
+    channel.setSynth(synthFn);
+    channel.noteOn(note);
+    /*
     if (playing[note]) {
       const oldSynth = playing[note];
-      oldSynth.control.send('cut', audio.currentTime);
+      oldSynth.control.send('cut', core.currentTime);
       //setTimeout(() => oldSynth.out.disconnect(), 10);
       playing[note] = null;
     }
-    const synth = playing[note] = synthFn({audio, basic});
-    synth.out.connect(audio.destination);
-    synth.pitch.setValueAtTime((note - 60)/12, audio.currentTime);
-    synth.vol.setValueAtTime(0.5, audio.currentTime)
-    synth.control.send('on', audio.currentTime);
+    const synth = playing[note] = synthFn({core});
+    synth.out.connect(core.destination);
+    synth.pitch.setValueAtTime((note - 60)/12, core.currentTime);
+    synth.vol.setValueAtTime(0.5, core.currentTime)
+    synth.control.send('on', core.currentTime);
+    */
   }
 }
 
-export function onKeyUp(audio, synthFn) {
+export function synthKeyUp(core, main, synthFn) {
   return e => {
     if (e.target !== window.document.body) return;
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;
-    if (playing[note]) {
-      playing[note].control.send('off', audio.currentTime);
-    }
+    const channel = main.channels[0];
+    channel.noteOff(note);
+    // if (playing[note]) {
+    //   playing[note].control.send('off', core.currentTime);
+    // }
   }
+}
+
+export function mainPatchKeyDown() {
+
+}
+
+export function mainPatchKeyUp() {
+
 }

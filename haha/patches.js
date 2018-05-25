@@ -191,36 +191,36 @@ export class Patch {
     }
     return g;
   }
-  *genAdditional() {
-  }
-  *gen() {
+  *genNodes() {
     const nodes = Object.values(this.all).filter(e => !(e instanceof Link));
-    const links = Object.values(this.all).filter(e => e instanceof Link);
     for (const node of nodes) {
       yield * [...node.gen()];
     }
+  }
+  *genLinks() {
+    const links = Object.values(this.all).filter(e => e instanceof Link);
     for (const link of links) {
       yield * [...link.gen()];
     }
-    yield * this.genAdditional();
-    yield `return {`;
-    const inps = nodes.filter(node => node instanceof NODE_CLASSES.PatchInput);
-    const outs = nodes.filter(node => node instanceof NODE_CLASSES.PatchOutput);
+  }
+  *genAdditional() {
+  }
+  *genReturn() {
+    const inps = Object.values(this.all).filter(node => node instanceof NODE_CLASSES.PatchInput);
+    const outs = Object.values(this.all).filter(node => node instanceof NODE_CLASSES.PatchOutput);
     for (const inp of inps) {
       yield `  ${inp.id}: ${inp.id}.inp,`;
     }
     for (const out of outs) {
       yield `  ${out.id}: ${out.id}.out,`;
     }
-    // for (const ctl of ['on', 'off', 'cut']) {
-    //   yield `  _${ctl}: t => {`;
-    //   for (const node of nodes) {
-    //     if (node.getControls().includes(ctl)) {
-    //       yield `    ${node.id}._${ctl}(t);`;
-    //     }
-    //   }
-    //   yield `  },`;
-    // }
+  }
+  *gen() {
+    yield * this.genNodes();
+    yield * this.genLinks();
+    yield * this.genAdditional();
+    yield `return {`;
+    yield * this.genReturn();
     yield '};';
   }
   getPresets() {
@@ -241,7 +241,7 @@ export class Patch {
 
 export class Synth extends Patch {
   *genAdditional() {
-    yield `control.out.on('cut', t => setTimeout(() => out.out.disconnect(), (t - _ctx.audio.currentTime)*1000 + 10));`;
+    yield `control.out.on('cut', t => setTimeout(() => out.out.disconnect(), (t - _ctx.core.currentTime)*1000 + 10));`;
   }
   isUndeletable(elem) {
     return elem.id in {
@@ -256,8 +256,26 @@ export class FXPatch extends Patch {
 
 export class MainPatch extends Patch {
   isUndeletable(elem) {
+    if (elem instanceof NODE_CLASSES.Channel) {
+      return Object.values(this.all)
+        .filter(node => node instanceof NODE_CLASSES.Channel).length <= 1;
+    }
     return elem.id in {
       out: 1,
     };
+  }
+  *genReturn() {
+    yield * super.genReturn();
+    const chNum = ch => parseInt(ch.id.match(/[a-z]*(\d+)/)[0]);
+    const chs = Object.values(this.all)
+      .filter(node => node instanceof NODE_CLASSES.Channel)
+      .sort((a, b) => chNum(a) - chNum(b));
+    yield `channels: [${chs.map(ch => ch.id).join(', ')}],`;
+    yield `send() {},`;
+  }
+  getPresets() {
+    return [
+      ['Channel', {id: 'channel'}],
+    ].concat(super.getPresets());
   }
 }

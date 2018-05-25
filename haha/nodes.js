@@ -71,7 +71,7 @@ export class ANode extends Node {
     return [];
   }
   *gen() {
-    yield `const ${this.id} = _ctx.basic.create${this.constructor.name}(_ctx.audio, {${
+    yield `const ${this.id} = _ctx.core.create${this.constructor.name}({${
       this.getParamList().map(
         ([_t, {name, type}]) => {
           const v = this.getParamValue(name);

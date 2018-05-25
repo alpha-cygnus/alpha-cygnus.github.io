@@ -6,9 +6,11 @@ import {NewNode} from './nodes.js';
 
 import {Project} from './project.js';
 
-import {onKeyDown, onKeyUp} from './keys.js';
+import {synthKeyDown, synthKeyUp, mainPatchKeyDown, mainPatchKeyUp} from './keys.js';
 
 import * as actions from './actions.js';
+
+import {Synth, MainPatch} from './patches.js';
 
 //import * as asi from './asi/index.js';
 
@@ -26,9 +28,9 @@ const aLink = (f, t, c) => {
 const audioLink = (f, t) => aLink(f, t, 'AudioLink');
 const controlLink = (f, t) => aLink(f, t, 'ControlLink');
 
-const audio = new AudioContext();
+import {Core} from './runtime/core.js';
 
-import * as basic from './runtime/basic.js';
+const core = new Core();
 
 const fullState = [
   'Project',
@@ -99,11 +101,13 @@ const fullState = [
     <Channel id="channel2" x=-200 y=-50 />
     <Channel id="channel3" x=-200 y=+50 />
     <Channel id="channel4" x=-200 y=+150 />
+    <Gain id="masterVolume" x=0 y=0 />
     <AudioOut id="out" x=+350 y=0 />
-    ${audioLink('channel1', 'out')}
-    ${audioLink('channel2', 'out')}
-    ${audioLink('channel3', 'out')}
-    ${audioLink('channel4', 'out')}
+    ${audioLink('channel1', 'masterVolume')}
+    ${audioLink('channel2', 'masterVolume')}
+    ${audioLink('channel3', 'masterVolume')}
+    ${audioLink('channel4', 'masterVolume')}
+    ${audioLink('masterVolume', 'out')}
   </MainPatch>
   `,
 ];
@@ -111,6 +115,7 @@ const fullState = [
 let prevSynthSrc = '';
 let prevMainSrc = '';
 let mainPatch = null;
+let lastSynth = null;
 
 const view = (state, actions) => {
   const {fullState} = state;
@@ -147,15 +152,20 @@ const view = (state, actions) => {
     const mainPatchFunc = new Function('_ctx', mainSrc);
     console.log(mainPatchFunc);
     prevMainSrc = mainSrc;
-    mainPatch = mainPatchFunc({audio, basic});
+    mainPatch = mainPatchFunc({core});
+    document.onkeydown = mainPatchKeyDown(core, mainPatch, lastSynth);
+    document.onkeyup = mainPatchKeyUp(core, mainPatch, lastSynth);
   }
-  const synthSrc = [...patch.gen()].join('\n');
-  if (synthSrc != prevSynthSrc) {
-    const synthFunc = new Function('_ctx', synthSrc);
-    console.log(synthFunc);
-    document.onkeydown = onKeyDown(audio, synthFunc);
-    document.onkeyup = onKeyUp(audio, synthFunc);
-    prevSynthSrc = synthSrc;
+  if (patch instanceof Synth) {
+    const synthSrc = [...patch.gen()].join('\n');
+    if (synthSrc != prevSynthSrc) {
+      const synthFunc = new Function('_ctx', synthSrc);
+      console.log(synthFunc);
+      prevSynthSrc = synthSrc;
+      lastSynth = synthFunc;
+    }
+    document.onkeydown = synthKeyDown(core, mainPatch, lastSynth);
+    document.onkeyup = synthKeyUp(core, mainPatch, lastSynth);
   }
   // document.onkeyup = e => {
   //   if (e.key === 'Backspace' && $currentElem) {
@@ -163,15 +173,6 @@ const view = (state, actions) => {
   //     // actions.deleteElem({id: $currentElem});
   //   }
   // };
-  window.testSynth = (n, v, d, cutAfter) => {
-    const synth = synthFunc({audio, basic});
-    synth.pitch.value = n - 69;
-    const t = audio.currentTime;
-    synth.out.connect(audio.destination);
-    synth._on(t);
-    synth._off(t + d);
-    synth._cut(t + d + (cutAfter || 1));
-  }
   return h('div', {},
     h('div',
       {
