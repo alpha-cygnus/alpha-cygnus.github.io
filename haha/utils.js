@@ -47,3 +47,7 @@ export const makeObject = (classes, [_t, attrs, ...children]) => {
   childObjs.forEach(child => child.parent = obj);
   return obj;
 }
+
+export const makeSubObjects = (classes, parent, list) => list.map(([_t, props, ...elems]) => new classes[_t](parent, props, elems));
+
+export const hashList = (list, idProp = 'id') => list.reduce((res, elem) => ({...res, [elem[idProp]]: elem}), {});

@@ -206,7 +206,7 @@ export class Core {
         synth.control.send('on', t);
         control.send('on', t, {note, v});
       },
-      notesDo(notes, what, t) {
+      _notesDo(notes, what, t) {
         t = t || core.currentTime;
         for (const note of notes) {
           if (playing[note]) {
@@ -216,11 +216,11 @@ export class Core {
         }
       },
       noteOff(note, t) {
-        this.notesDo(note ? [note] : Object.keys(playing), 'off', t);
+        this._notesDo(note ? [note] : Object.keys(playing), 'off', t);
         control.send('off', t, {note});
       },
       noteCut(note, t) {
-        this.notesDo(note ? [note] : Object.keys(playing), 'cut', t);
+        this._notesDo(note ? [note] : Object.keys(playing), 'cut', t);
         control.send('cut', t, {note});
       },
       out,

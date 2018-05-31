@@ -31,3 +31,16 @@ export const xl = (strings, ...values) => {
   }
   return parse(ts.join(''));
 }
+
+export function applyH(data, h) {
+  if (Array.isArray(data)) {
+    const [tag, props, ...children] = data;
+    return h(tag, props, ...children.map(child => applyH(child, h)));
+  }
+  return data;
+}
+
+export const xlh = h => (strings, ...values) => {
+  const data = xl(strings, ...values);
+  return applyH(data, h);
+}

@@ -37,79 +37,92 @@ const fullState = [
   {
     currentPatch: 'testSynth',
   },
-  [ 'Synth',
-    {
-      id: 'testSynth',
-      title: 'TEST',
-      tx: 0,
-      ty: 0,
-      scale: 1,
-    },
-    ['Gain', {id: 'gain0', x: 150, y: 0, gain: 0}],
-    ['Gain', {id: 'gain1', x: 0, y: 100, gain: 0}],
-    ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
-    ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
-    ['Const', {id: 'const0', x: -100, y: +250, value: 0.2}],
-    ['ControlIn', {id: 'control', x: -350, y: -100}],
-    ['AudioParam', {id: 'pitch', x: -350, y: 0}],
-    ['AudioParam', {id: 'vol', x: -350, y: 100}],
-    ['AudioOut', {id: 'out', x: +350, y: 0}],
-    ['Delay', {id: 'delay0', x: 100, y: 100}],
-    ['Pan', {id: 'pan0', x: 100, y: -100}],
-    audioLink('vol', 'gain1'),
-    audioLink('const0', 'gain1.gain'),
-    audioLink('pitch', 'osc0.pitch'),
-    audioLink('osc0', 'adsr0'),
-    audioLink('adsr0', 'gain0'),
-    audioLink('gain1', 'gain0.gain'),
-    audioLink('gain0', 'out'),
-    controlLink('control', 'adsr0.control'),
-  ],
-  [ 'FXPatch',
-    {
-      id: 'lowpass4',
-      title: '4 Lowpass filters',
-      scale: 1,
-      tx: 0,
-      ty: 0,
-    },
-    ['Filter', {id: 'filter0', x: -200, y: 0, type: 'lowpass'}],
-    ['Filter', {id: 'filter1', x: -100, y: 0, type: 'lowpass'}],
-    ['Filter', {id: 'filter2', x: 0,   y: 0, type: 'lowpass'}],
-    ['Filter', {id: 'filter3', x: 100,  y: 0, type: 'lowpass'}],
-    ['AudioIn', {id: 'inp', x: -350, y: 0, kind: 'audio'}],
-    ['AudioParam', {id: 'freq', x: -250, y: -150, kind: 'audio'}],
-    ['AudioParam', {id: 'Q', x: -250, y: 150, kind: 'audio'}],
-    ['AudioOut', {id: 'out', x: +350, y: 0, kind: 'audio'}],
-    audioLink('inp', 'filter0'),
-    audioLink('filter0', 'filter1'),
-    audioLink('filter1', 'filter2'),
-    audioLink('filter2', 'filter3'),
-    audioLink('filter3', 'out'),
-    audioLink('freq', 'filter0.freq'),
-    audioLink('freq', 'filter1.freq'),
-    audioLink('freq', 'filter2.freq'),
-    audioLink('freq', 'filter3.freq'),
-    audioLink('Q', 'filter0.Q'),
-    audioLink('Q', 'filter1.Q'),
-    audioLink('Q', 'filter2.Q'),
-    audioLink('Q', 'filter3.Q'),
+  ['patches', {},
+    [ 'Synth',
+      {
+        id: 'testSynth',
+        title: 'TEST',
+        tx: 0,
+        ty: 0,
+        scale: 1,
+      },
+      ['Gain', {id: 'gain0', x: 150, y: 0, gain: 0}],
+      ['Gain', {id: 'gain1', x: 0, y: 100, gain: 0}],
+      ['Osc', {id: 'osc0', x: -150, y: 0, type: 'triangle'}],
+      ['ADSR', {id: 'adsr0', x: 0, y: 0, a: 0.5, d: 0.3, s: 0.1, r: 0.5}],
+      ['Const', {id: 'const0', x: -100, y: +250, value: 0.2}],
+      ['ControlIn', {id: 'control', x: -350, y: -100}],
+      ['AudioParam', {id: 'pitch', x: -350, y: 0}],
+      ['AudioParam', {id: 'vol', x: -350, y: 100}],
+      ['AudioOut', {id: 'out', x: +350, y: 0}],
+      ['Delay', {id: 'delay0', x: 100, y: 100}],
+      ['Pan', {id: 'pan0', x: 100, y: -100}],
+      audioLink('vol', 'gain1'),
+      audioLink('const0', 'gain1.gain'),
+      audioLink('pitch', 'osc0.pitch'),
+      audioLink('osc0', 'adsr0'),
+      audioLink('adsr0', 'gain0'),
+      audioLink('gain1', 'gain0.gain'),
+      audioLink('gain0', 'out'),
+      controlLink('control', 'adsr0.control'),
+    ],
+    [ 'FXPatch',
+      {
+        id: 'lowpass4',
+        title: '4 Lowpass filters',
+        scale: 1,
+        tx: 0,
+        ty: 0,
+      },
+      ['Filter', {id: 'filter0', x: -200, y: 0, type: 'lowpass'}],
+      ['Filter', {id: 'filter1', x: -100, y: 0, type: 'lowpass'}],
+      ['Filter', {id: 'filter2', x: 0,   y: 0, type: 'lowpass'}],
+      ['Filter', {id: 'filter3', x: 100,  y: 0, type: 'lowpass'}],
+      ['AudioIn', {id: 'inp', x: -350, y: 0, kind: 'audio'}],
+      ['AudioParam', {id: 'freq', x: -250, y: -150, kind: 'audio'}],
+      ['AudioParam', {id: 'Q', x: -250, y: 150, kind: 'audio'}],
+      ['AudioOut', {id: 'out', x: +350, y: 0, kind: 'audio'}],
+      audioLink('inp', 'filter0'),
+      audioLink('filter0', 'filter1'),
+      audioLink('filter1', 'filter2'),
+      audioLink('filter2', 'filter3'),
+      audioLink('filter3', 'out'),
+      audioLink('freq', 'filter0.freq'),
+      audioLink('freq', 'filter1.freq'),
+      audioLink('freq', 'filter2.freq'),
+      audioLink('freq', 'filter3.freq'),
+      audioLink('Q', 'filter0.Q'),
+      audioLink('Q', 'filter1.Q'),
+      audioLink('Q', 'filter2.Q'),
+      audioLink('Q', 'filter3.Q'),
+    ],
+    xl`
+    <MainPatch id="main" title="Test" tx=0 ty=0 scale=1>
+      <Channel id="channel1" x=-200 y=-150 />
+      <Channel id="channel2" x=-200 y=-50 />
+      <Channel id="channel3" x=-200 y=+50 />
+      <Channel id="channel4" x=-200 y=+150 />
+      <Gain id="masterVolume" x=0 y=0 />
+      <AudioOut id="out" x=+350 y=0 />
+      ${audioLink('channel1', 'masterVolume')}
+      ${audioLink('channel2', 'masterVolume')}
+      ${audioLink('channel3', 'masterVolume')}
+      ${audioLink('channel4', 'masterVolume')}
+      ${audioLink('masterVolume', 'out')}
+    </MainPatch>
+    `,
   ],
   xl`
-  <MainPatch id="main" title="Test" tx=0 ty=0 scale=1>
-    <Channel id="channel1" x=-200 y=-150 />
-    <Channel id="channel2" x=-200 y=-50 />
-    <Channel id="channel3" x=-200 y=+50 />
-    <Channel id="channel4" x=-200 y=+150 />
-    <Gain id="masterVolume" x=0 y=0 />
-    <AudioOut id="out" x=+350 y=0 />
-    ${audioLink('channel1', 'masterVolume')}
-    ${audioLink('channel2', 'masterVolume')}
-    ${audioLink('channel3', 'masterVolume')}
-    ${audioLink('channel4', 'masterVolume')}
-    ${audioLink('masterVolume', 'out')}
-  </MainPatch>
-  `,
+  <songs>
+    <Song title="test song">
+      <Instrument x=0 patch="synth0"/>
+      <Channel x=0 channelId="channel1" />
+      <Pattern x=0 length=64>
+        <r x=0><c x=0 n=69 i=0 v=55 c="x" d=20/></r>
+      </Pattern>
+    </Song>
+  </songs>
+  `
 ];
 
 let prevSynthSrc = '';
@@ -120,6 +133,7 @@ let lastSynth = null;
 const view = (state, actions) => {
   const {fullState} = state;
   const project = new Project(fullState);
+  console.log(project.songs);
   const patch = project.currentPatch;
   const {$currentElem, $lastError, $portOverParent, $portOverName} = patch.state;
   let status = h('span');

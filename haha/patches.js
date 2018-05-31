@@ -12,7 +12,6 @@ const ELEM_CLASSES = {...NODE_CLASSES, ...LINK_CLASSES};
 export class Patch {
   constructor(parent, props, elems) {
     this.parent = parent;
-    this.allPatches = parent.allPatches;
     this.state = props;
     const {id, title, scale, tx, ty, $currentElem, $toAdd, snapTo = 10} = props;
     this.name = id;
@@ -31,6 +30,7 @@ export class Patch {
     return false;
   }
   initProps() {
+    this.allPatches = parent.allPatches;
     for (const elem of Object.values(this.all)) {
       elem.initProps();
     }

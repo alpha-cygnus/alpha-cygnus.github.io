@@ -161,3 +161,8 @@ export class Link extends Elem {
   }
 }
 
+export class ProjectPart {
+  constructor(parent, props, elems) {
+
+  }
+}
