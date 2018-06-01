@@ -1,6 +1,6 @@
 import { h, app } from './hyperapp/index.js';
 
-import { snap, rnd, pick, mangleScale, startDragOnMouseDown } from './utils.js';
+import { snap, rnd, pick, mangleScale, startDragOnMouseDown, times } from './utils.js';
 
 import {NewNode} from './nodes.js';
 
@@ -33,11 +33,13 @@ import {Core} from './runtime/core.js';
 const core = new Core();
 
 const fullState = [
-  'Project',
-  {
-    currentPatch: 'testSynth',
+  'Project', {
+    $mode: 'song',
   },
-  ['patches', {},
+  ['patches',
+    {
+      currentPatch: 'testSynth',
+    },
     [ 'Synth',
       {
         id: 'testSynth',
@@ -117,8 +119,12 @@ const fullState = [
     <Song title="test song">
       <Instrument x=0 patch="synth0"/>
       <Channel x=0 channelId="channel1" />
+      <Channel x=1 channelId="channel2" />
+      <Channel x=2 channelId="channel3" />
+      <Channel x=3 channelId="channel4" />
       <Pattern x=0 length=64>
-        <r x=0><c x=0 n=69 i=0 v=55 c="x" d=20/></r>
+      <r x=0><c x=0 n=69 i=0 v=55 c="x" d=20/></r>
+      <r x=1><c x=1 n=60 i=2 v=64 c="x" d=255/></r>
       </Pattern>
     </Song>
   </songs>
@@ -130,84 +136,115 @@ let prevMainSrc = '';
 let mainPatch = null;
 let lastSynth = null;
 
+const modes = [
+  ['patch', {}],
+  ['song', {}],
+]
+
 const view = (state, actions) => {
   const {fullState} = state;
   const project = new Project(fullState);
-  console.log(project.songs);
-  const patch = project.currentPatch;
-  const {$currentElem, $lastError, $portOverParent, $portOverName} = patch.state;
+  const {$mode = 'patch'} = project.state;
+
   let status = h('span');
-  const {setPatchState} = actions;
-  if ($lastError) {
-    status = [
-      h('span', {
-        class: 'x',
-        onclick: e => setPatchState({$lastError: null}),
-      }, 'x'),
-      h('span', {class: 'error'}, $lastError),
-    ];
-  }
-  else if ($portOverParent) {
-    const port = patch.all[$portOverParent].getPort($portOverName);
-    status = [
-      h('span', {class: 'info'}, port.getDesc()),
-    ];
-  }
-  const newNode = new NewNode({state: {x: 350, y: -350, fill: '#C88'}, id: '__new', parent: patch});
-  newNode.initProps();
-  
-  const toEdit = $currentElem === '__new'
-    ? newNode
-    : patch.getCurrentElem();
-  const mainSrc = [...project.main.gen()].join('\n');
-  if (mainSrc != prevMainSrc) {
-    if (mainPatch) mainPatch.send('cut');
-    console.log(mainSrc);
-    const mainPatchFunc = new Function('_ctx', mainSrc);
-    console.log(mainPatchFunc);
-    prevMainSrc = mainSrc;
-    mainPatch = mainPatchFunc({core});
-    document.onkeydown = mainPatchKeyDown(core, mainPatch, lastSynth);
-    document.onkeyup = mainPatchKeyUp(core, mainPatch, lastSynth);
-  }
-  if (patch instanceof Synth) {
-    const synthSrc = [...patch.gen()].join('\n');
-    if (synthSrc != prevSynthSrc) {
-      const synthFunc = new Function('_ctx', synthSrc);
-      console.log(synthFunc);
-      prevSynthSrc = synthSrc;
-      lastSynth = synthFunc;
+  let mainEditor = [];
+  let propEditor = [];
+
+  if ($mode === 'patch') {
+    const patch = project.currentPatch;
+    const {$currentElem, $lastError, $portOverParent, $portOverName} = patch.state;
+    const {setPatchState} = actions;
+    if ($lastError) {
+      status = [
+        h('span', {
+          class: 'x',
+          onclick: e => setPatchState({$lastError: null}),
+        }, 'x'),
+        h('span', {class: 'error'}, $lastError),
+      ];
     }
-    document.onkeydown = synthKeyDown(core, mainPatch, lastSynth);
-    document.onkeyup = synthKeyUp(core, mainPatch, lastSynth);
+    else if ($portOverParent) {
+      const port = patch.all[$portOverParent].getPort($portOverName);
+      status = [
+        h('span', {class: 'info'}, port.getDesc()),
+      ];
+    }
+  
+    const newNode = new NewNode({state: {x: 350, y: -350, fill: '#C88'}, id: '__new', parent: patch});
+    newNode.initProps();
+    
+    const toEdit = $currentElem === '__new'
+      ? newNode
+      : patch.getCurrentElem();
+    const mainSrc = [...project.main.gen()].join('\n');
+    if (mainSrc != prevMainSrc) {
+      if (mainPatch) mainPatch.send('cut');
+      console.log(mainSrc);
+      const mainPatchFunc = new Function('_ctx', mainSrc);
+      console.log(mainPatchFunc);
+      prevMainSrc = mainSrc;
+      mainPatch = mainPatchFunc({core});
+      document.onkeydown = mainPatchKeyDown(core, mainPatch, lastSynth);
+      document.onkeyup = mainPatchKeyUp(core, mainPatch, lastSynth);
+    }
+    if (patch instanceof Synth) {
+      const synthSrc = [...patch.gen()].join('\n');
+      if (synthSrc != prevSynthSrc) {
+        const synthFunc = new Function('_ctx', synthSrc);
+        console.log(synthFunc);
+        prevSynthSrc = synthSrc;
+        lastSynth = synthFunc;
+      }
+      document.onkeydown = synthKeyDown(core, mainPatch, lastSynth);
+      document.onkeyup = synthKeyUp(core, mainPatch, lastSynth);
+    }
+    // document.onkeyup = e => {
+    //   if (e.key === 'Backspace' && $currentElem) {
+    //     toEdit.onDelete(actions);
+    //     // actions.deleteElem({id: $currentElem});
+    //   }
+    // };
+    mainEditor = h('svg', {width: '801px', height: '801px', viewBox: '-400 -400 800 800', style: 'border: 1px solid red'},
+      h('defs', {},
+        h('pattern', {id: 'gridPattern', x: -5, y: -5, width: 10, height: 10, patternUnits: 'userSpaceOnUse'},
+          h('circle', {cx: 5, cy: 5, r: 1, fill: '#CCC', stroke: 'none'})
+        )
+      ),
+      patch.renderSVG(h, actions, [-400, -400, 800, 800]),
+      newNode.renderSVG(h, actions),
+      // h('g', {transform: 'translate(350, -350)', onclick: e => console.log(e)},
+      //   h('circle', {cx: 0, cy: -0, r: 20, fill: 'red'}),
+      //   h('path', {d: 'M0 -0 m -15 0 l +30 0 m -15 -15 l 0 30', stroke: 'black', 'stroke-width': 2}),
+      // )
+    );
+    propEditor = toEdit.renderEditor(h, actions);
   }
-  // document.onkeyup = e => {
-  //   if (e.key === 'Backspace' && $currentElem) {
-  //     toEdit.onDelete(actions);
-  //     // actions.deleteElem({id: $currentElem});
-  //   }
-  // };
+  if ($mode === 'song') {
+    const song = project.songs[0];
+    const pattern = song.patterns[0];
+    mainEditor = h('div', {style: {width: '801px', height: '801px', border: '1px solid black'}},
+      h('table', {class: 'pattern'},
+        times(pattern.length).map(ri => pattern.getRow(ri).render(h, actions)),
+      ),
+    );
+    propEditor = h('div');
+  }
+
   return h('div', {},
+    h('div', {id: 'divTabs'}, 
+      modes.map(([mode, props]) => h('span', {
+        class: 'tab' + ($mode === mode ? ' selected' : ''),
+        onclick: e => actions.setProjectState({$mode: mode}),
+      }, props.title || mode)),
+    ),
     h('div',
       {
         id: 'divMain',
         onkeydown: e => console.log('kd', e),
       },
-      h('svg', {width: '801px', height: '801px', viewBox: '-400 -400 800 800', style: 'border: 1px solid red'},
-        h('defs', {},
-          h('pattern', {id: 'gridPattern', x: -5, y: -5, width: 10, height: 10, patternUnits: 'userSpaceOnUse'},
-            h('circle', {cx: 5, cy: 5, r: 1, fill: '#CCC', stroke: 'none'})
-          )
-        ),
-        patch.renderSVG(h, actions, [-400, -400, 800, 800]),
-        newNode.renderSVG(h, actions),
-        // h('g', {transform: 'translate(350, -350)', onclick: e => console.log(e)},
-        //   h('circle', {cx: 0, cy: -0, r: 20, fill: 'red'}),
-        //   h('path', {d: 'M0 -0 m -15 0 l +30 0 m -15 -15 l 0 30', stroke: 'black', 'stroke-width': 2}),
-        // )
-      ),
+      mainEditor,
       h('div', {id: 'divProps'},
-        toEdit.renderEditor(h, actions),
+        propEditor,
       ),
     ),
     h('div', {id: 'divStatus'}, status),

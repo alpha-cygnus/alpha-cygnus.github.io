@@ -42,6 +42,33 @@
         background: #F44;
         padding-left: 4px;
     }
+    span.tab {
+        display: inline-block;
+        padding: 4px 16px;
+        border-left: solid 1px black;
+        border-right: solid 1px black;
+        border-top: solid 1px black;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        cursor: pointer;
+        margin: 0px 2px;
+    }
+    span.tab.selected {
+        background: black;
+        color: white;
+    }
+    table.pattern td {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 14px;
+        cursor: pointer;
+        border-right: solid black 1px;
+    }
+    table.pattern tr:nth-child(odd) {
+        background: #EEE;
+    }
+    table.pattern tr:nth-child(8n + 1) {
+        background: #DDD;
+    }
 </style>
 </head>
 <body>

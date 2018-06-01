@@ -143,7 +143,7 @@ export class Patch {
     if (cp) return elem.getPort(cp);
     return elem;
   }
-  renderEditor(h, {setPatchState, setProjectState, logState, newElem}) {
+  renderEditor(h, {setPatchState, setPatchesState, logState, newElem}) {
     const {scale} = this;
     return h('div', {},
       h('h2', {}, this.title,
@@ -151,7 +151,7 @@ export class Patch {
             name: 'selectPatch',
             class: 'patch',
             onchange: e => {
-              setProjectState({currentPatch: e.target.value});
+              setPatchesState({currentPatch: e.target.value});
             },
           },
           Object.values(this.parent.allPatches).map(

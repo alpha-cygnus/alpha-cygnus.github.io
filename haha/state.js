@@ -3,6 +3,9 @@ export function isElem(elem, cond, state) {
   const [_, sOpts] = state;
   if (typeof cond === 'string') {
     let m;
+    if (m = cond.match(/^\w+$/)) {
+      return eType === cond;
+    }
     if (m = cond.match(/^@([$\w]+)$/)) {
       return eOpts.id === sOpts[m[1]];
     }

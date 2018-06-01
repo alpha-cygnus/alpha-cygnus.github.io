@@ -51,3 +51,5 @@ export const makeObject = (classes, [_t, attrs, ...children]) => {
 export const makeSubObjects = (classes, parent, list) => list.map(([_t, props, ...elems]) => new classes[_t](parent, props, elems));
 
 export const hashList = (list, idProp = 'id') => list.reduce((res, elem) => ({...res, [elem[idProp]]: elem}), {});
+
+export const times = n => [...new Array(n)].map((_, i) => i);

@@ -2,7 +2,8 @@ import {yieldElemXML} from './utils.js';
 
 import {insert, remove, setAttr, wrap, getElems} from './state.js';
 
-const curPatchPath = '@currentPatch';
+const curPatchPath = 'patches/@currentPatch';
+const patchesPath = 'patches';
 const projectPath = [];
 
 const condByProps = ({id, ...props}) => id ? `#${id}` : Object.entries(props).map(([pn, pv]) => [pn, pv].join('=')).join('&');
@@ -14,6 +15,8 @@ export const newElem = elem => ({fullState}) => wrap(insert(fullState, curPatchP
 export const deleteElem = (props) => ({fullState}) => wrap(remove(fullState, `${curPatchPath}/${condByProps(props)}`));
 
 export const setPatchState = it => ({fullState}) => wrap(setAttr(fullState, curPatchPath, it));
+
+export const setPatchesState = it => ({fullState}) => wrap(setAttr(fullState, patchesPath, it));
 
 export const setProjectState = it => ({fullState}) => wrap(setAttr(fullState, projectPath, it));
 
