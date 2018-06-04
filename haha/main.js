@@ -34,7 +34,7 @@ const core = new Core();
 
 const fullState = [
   'Project', {
-    $mode: 'song',
+    $mode: 'pattern',
   },
   ['patches',
     {
@@ -116,15 +116,15 @@ const fullState = [
   ],
   xl`
   <songs>
-    <Song title="test song">
+    <Song title="test song" currentPattern=0>
       <Instrument x=0 patch="synth0"/>
       <Channel x=0 channelId="channel1" />
       <Channel x=1 channelId="channel2" />
       <Channel x=2 channelId="channel3" />
       <Channel x=3 channelId="channel4" />
       <Pattern x=0 length=64>
-      <r x=0><c x=0 n=69 i=0 v=55 c="x" d=20/></r>
-      <r x=1><c x=1 n=60 i=2 v=64 c="x" d=255/></r>
+        <r x=0><c x=0 n=69 i=0 v=55 c="x" d=20/></r>
+        <r x=1><c x=1 n=60 i=2 v=64 c="x" d=255/></r>
       </Pattern>
     </Song>
   </songs>
@@ -136,8 +136,9 @@ let prevMainSrc = '';
 let mainPatch = null;
 let lastSynth = null;
 
-const modes = [
+const MODES = [
   ['patch', {}],
+  ['pattern', {}],
   ['song', {}],
 ]
 
@@ -219,20 +220,17 @@ const view = (state, actions) => {
     );
     propEditor = toEdit.renderEditor(h, actions);
   }
-  if ($mode === 'song') {
+  if ($mode === 'pattern') {
     const song = project.songs[0];
-    const pattern = song.patterns[0];
-    mainEditor = h('div', {style: {width: '801px', height: '801px', border: '1px solid black'}},
-      h('table', {class: 'pattern'},
-        times(pattern.length).map(ri => pattern.getRow(ri).render(h, actions)),
-      ),
-    );
+    const pattern = song.getPattern(0);
+    mainEditor = h('div', {class: 'divPattern'}, pattern.render(h, actions));
+    console.log('pattern', pattern);
     propEditor = h('div');
   }
 
   return h('div', {},
     h('div', {id: 'divTabs'}, 
-      modes.map(([mode, props]) => h('span', {
+      MODES.map(([mode, props]) => h('span', {
         class: 'tab' + ($mode === mode ? ' selected' : ''),
         onclick: e => actions.setProjectState({$mode: mode}),
       }, props.title || mode)),
@@ -248,6 +246,31 @@ const view = (state, actions) => {
       ),
     ),
     h('div', {id: 'divStatus'}, status),
+    // h('div', {class: 'gen'},
+    //   project.patches.map(patch => {
+    //     const src = [...patch.gen()].join('\n');
+    //     return h('div',
+    //       {
+    //         id: 'patch_' + patch.id,
+    //         oncreate: elem => console.log('created', elem.id),
+    //         onupdate: (elem, old) => {
+    //           const oldSrc = old['data-src'];
+    //           if (oldSrc !== src) {
+    //             console.log('updated', elem, old);
+    //           }
+    //         },
+    //         onremove: elem => console.log('remove', elem),
+    //         'data-src': src,
+    //       },
+    //       // patch.genGraph(h).map(node => {
+    //       //   node.props.oncreate = elem => console.log('create', patch.id, node.props.id, elem);
+    //       //   node.props.onupdate = (elem, old) => console.log('update', patch.id, node.props.id, old);
+    //       //   node.props.onremove = elem => console.log('remove', patch.id, node.props.id);
+    //       //   return node;
+    //       // }),
+    //     );
+    //   }),
+    // ),
   );
 }
 

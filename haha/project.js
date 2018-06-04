@@ -8,7 +8,8 @@ export class Project {
     const parts = partList.reduce((res, [tag, props, ...elems]) => ({...res, [tag]: elems, [tag + 'Props']: props}), {});
     const {patches = [], patchesProps: {currentPatch}, songs = []} = parts;
     this.state = props;
-    const allPatches = this.allPatches = hashList(makeSubObjects(PATCH_CLASSES, this, patches));
+    this.patches = makeSubObjects(PATCH_CLASSES, this, patches);
+    const allPatches = this.allPatches = hashList(this.patches);
     for (const m of Object.values(this.allPatches)) {
       m.initProps();
     }

@@ -88,13 +88,20 @@ export class ALink extends Link {
     const ts = t.getIdsForLink(idPrefix);
     return flatten(fs.map(from => ts.map(to => ['Link', {from, to}])));
   }
-}
-
-export class AudioLink extends ALink {
   *gen() {
     const [from, to] = this.getFromTo();
     yield `${from.getDotId()}.connect(${to.getDotId()});`;
   }
+  genGraph(h) {
+    const [from, to] = this.getFromTo();
+    return h('link', {
+      from: from.getDotId(),
+      to: to.getDotId(),
+    });
+  }
+}
+
+export class AudioLink extends ALink {
 }
 
 export class ControlLink extends ALink {
@@ -103,9 +110,5 @@ export class ControlLink extends ALink {
       ...super.getStroke(),
       'stroke-dasharray': '8, 4, 2, 4, 8',
     }
-  }
-  *gen() {
-    const [from, to] = this.getFromTo();
-    yield `${from.getDotId()}.connect(${to.getDotId()});`;
   }
 }

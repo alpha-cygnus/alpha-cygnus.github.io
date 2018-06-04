@@ -12,9 +12,16 @@ export function isElem(elem, cond, state) {
     if (m = cond.match(/^#(.+)$/)) {
       return eOpts.id === m[1];
     }
-    if (cond.match(/\w+=\w+(&\w+=\w+)*/)) {
+    if (m = cond.match(/^(\w+)\[(.*)\]$/)) {
+      return eType === m[1] && isElem(elem, m[2], state);
+    }
+    if (cond.match(/\w+=@?\w+(&\w+=@?\w+)*/)) {
       for (const [cn, cv] of cond.split('&').map(c => c.split('='))) {
-        if (eOpts[cn] != cv) return false;
+        if (cv.startsWith('@')) {
+          if (eOpts[cn] != sOpts[cv.slice(1)]) return false;
+        } else {
+          if (eOpts[cn] != cv) return false;
+        }
       }
       return true;
     }

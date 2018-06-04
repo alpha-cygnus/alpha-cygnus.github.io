@@ -79,6 +79,13 @@ export class ANode extends Node {
         }
       ).join(', ')}});`;
   }
+  genGraph(h) {
+    return h('node', 
+      this.getParamList().reduce((res, [_t, {name, type}]) => ({...res, [name]: this.getParamValue(name)}), {
+        id: this.id, class: this.constructor.name
+      })
+    );
+  }
 }
 
 export class Gain extends ANode {

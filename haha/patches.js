@@ -237,6 +237,11 @@ export class Patch {
       ['Delay', {id: 'delay'}],
     ];
   }
+  genGraph(h) {
+    const nodes = Object.values(this.all).filter(e => !(e instanceof Link));
+    const links = Object.values(this.all).filter(e => e instanceof Link);
+    return [...nodes.map(node => node.genGraph(h)), ...links.map(link => link.genGraph(h))];
+  }
 }
 
 export class Synth extends Patch {

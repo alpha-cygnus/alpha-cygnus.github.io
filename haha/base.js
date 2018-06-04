@@ -44,6 +44,9 @@ export class Elem {
   }
   *gen() {
   }
+  genGraph(h) {
+    return [];
+  }
 }
 
 export class Node extends Elem {
@@ -164,5 +167,18 @@ export class Link extends Elem {
 export class ProjectPart {
   constructor(parent, props, elems) {
 
+  }
+}
+
+export class SongPart {
+  constructor (parent, props) {
+    this.props = props;
+    const pl = this.getParentList();
+    if (pl && Array.isArray(parent[pl])) parent[pl][props.x] = this;
+    Object.assign(this, props);
+    this.parent = parent;
+  }
+  getParentList() {
+    return '';
   }
 }

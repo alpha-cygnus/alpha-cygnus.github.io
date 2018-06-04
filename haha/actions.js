@@ -1,10 +1,11 @@
-import {yieldElemXML} from './utils.js';
+import {yieldElemXML, selectionToString} from './utils.js';
 
 import {insert, remove, setAttr, wrap, getElems} from './state.js';
 
 const curPatchPath = 'patches/@currentPatch';
 const patchesPath = 'patches';
 const projectPath = [];
+const curPatternPath = 'songs/Song/Pattern[x=@currentPattern]';
 
 const condByProps = ({id, ...props}) => id ? `#${id}` : Object.entries(props).map(([pn, pv]) => [pn, pv].join('=')).join('&');
 
@@ -19,6 +20,8 @@ export const setPatchState = it => ({fullState}) => wrap(setAttr(fullState, curP
 export const setPatchesState = it => ({fullState}) => wrap(setAttr(fullState, patchesPath, it));
 
 export const setProjectState = it => ({fullState}) => wrap(setAttr(fullState, projectPath, it));
+
+export const setPatternState = it => ({fullState}) => wrap(setAttr(fullState, curPatternPath, it));
 
 function getPatchProps({fullState}) {
   const [[_t, props]] = getElems(fullState, curPatchPath);
@@ -79,4 +82,8 @@ export const selectElem = ({id}) => (state, actions) => {
 export const logState = () => state => {
   console.log([...yieldElemXML(state.fullState)].join('\n'));
   return state;
+}
+
+export const setPatternSelection = (from, to = []) => (state, actions) => {
+  return actions.setPatternState({$selection: selectionToString([from, to])})
 }

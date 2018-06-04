@@ -53,3 +53,11 @@ export const makeSubObjects = (classes, parent, list) => list.map(([_t, props, .
 export const hashList = (list, idProp = 'id') => list.reduce((res, elem) => ({...res, [elem[idProp]]: elem}), {});
 
 export const times = n => [...new Array(n)].map((_, i) => i);
+
+export const cursorFromString = s => ((s || '').toString() + '::').split(':').map(n => parseInt(n || '0', 10)).slice(0, 3);
+export const cursorToString = c => c.join(':');
+export const selectionFromString = s => {
+  const [f, t] = (s || '').toString().split('-');
+  return [f, t || f].map(cursorFromString);
+}
+export const selectionToString = ([f, t]) => [f, t].filter(x => x && x.length).map(cursorToString).join('-');
