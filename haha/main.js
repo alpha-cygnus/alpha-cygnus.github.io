@@ -123,8 +123,8 @@ const fullState = [
       <Channel x=2 channelId="channel3" />
       <Channel x=3 channelId="channel4" />
       <Pattern x=0 length=64>
-        <r x=0><c x=0 n=69 i=0 v=55 c="x" d=20/></r>
-        <r x=1><c x=1 n=60 i=2 v=64 c="x" d=255/></r>
+        <r x=0><c x=0 d="c50080xFF"/></r>
+        <r x=1><c x=1 d="C50080xFF"/></r>
       </Pattern>
     </Song>
   </songs>

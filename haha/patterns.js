@@ -4,19 +4,23 @@ import {makeSubObjects, hashList, times, selectionFromString} from './utils.js';
 class PtnPart extends SongPart {
 }
 
-const notes = ['C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-'];
+const cNotes = 'cCdDefFgGaAb=';
+const sNotes = ['..', 'C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-', '=='];
 const fixString = (s, w, pad) => (s || '').toString().slice(-w).padStart(w, pad);
-const numString = (n, w = 2, rx = 10) => typeof n === 'number' ? fixString(n.toString(rx).toUpperCase(), w, '0') : ''.padStart(w, '.');
-const noteString = n => n > 0 ? notes[n % 12] + numString(Math.floor(n/12), 1): n < 0 ? '===' : '...';
+const numString = (n, rx = 10, w = 1) => typeof n === 'number' ? fixString(n.toString(rx).toUpperCase(), w, '0') : ''.padStart(w, '.');
+const cHexes = '0123456789ABCDEF';
+const cDecs = '01234567890';
+// const noteString = n => n > 0 ? notes[n % 12] + numString(Math.floor(n/12), 1): n < 0 ? '===' : '...';
 
-class SubCell {
-  constructor(parent, value, x) {
-    this.parent = parent;
-    this.value = value;
-    this.x = x;
+class SubCell extends PtnPart {
+  constructor(parent, props) {
+    super(parent, props);
+  }
+  getParentList() {
+    return 'subs';
   }
   toString() {
-    return '';
+    return this._toString ? this._toString(this.v) : this.v;
   }
   getPattern() {
     return this.parent.getPattern();
@@ -31,7 +35,7 @@ class SubCell {
     return true;
   }
   hasPreSpace() {
-    return true;
+    return !!this._hasPreSpace;
   }
   render(h, {setPatternSelection}) {
     return h('span',
@@ -44,61 +48,32 @@ class SubCell {
   }
 }
 
-class EmptySubCell extends SubCell {
-  toString() {
-    return ' ';
-  }
-  render() {
-    return ' ';
-  }
+const msc = (_toString, _hasPreSpace) => (parent, x, v) => {
+  return new SubCell(parent, {x, v, _toString, _hasPreSpace});
 }
 
-class NSubCell extends SubCell {
-  toString() {
-    return noteString(this.value);
-  }
-  hasPreSpace() {
-    return false;
-  }
-}
+const aDigit = o => fixString(o, 1, '.');
 
-class ISubCell extends SubCell {
-  toString() {
-    return numString(this.value, 2);
-  }
-}
-
-class VSubCell extends SubCell {
-  toString() {
-    return numString(this.value, 2, 16);
-  }
-}
-
-class CSubCell extends SubCell {
-  toString() {
-    return fixString(this.value, 1, '.');
-  }
-}
-
-class DSubCell extends SubCell {
-  hasPreSpace() {
-    return false;
-  }
-  toString() {
-    return numString(this.value, 2, 16);
-  }
-}
-
-const ESC = new EmptySubCell();
+const SubCells = [
+  msc(n => sNotes[cNotes.indexOf(n) + 1]),
+  msc(aDigit),
+  msc(aDigit, true),
+  msc(aDigit),
+  msc(aDigit, true),
+  msc(aDigit),
+  msc(aDigit, true),
+  msc(aDigit),
+  msc(aDigit),
+];
 
 class Cell extends PtnPart {
   constructor(parent, props) {
     super(parent, props);
-    const {n, i, v, c, d} = props;
-    const cs = [NSubCell, ISubCell, VSubCell, CSubCell, DSubCell];
-    const vs = [n, i, v, c, d];
-    const [nsc, isc, vsc, csc, dsc] = vs.map((v, x) => new cs[x](this, v, x));
-    Object.assign(this, {n: nsc, i: isc, v: vsc, c: csc, d: dsc});
+    const vs = [...(props.d || '').toString()];
+    this.subs = [];
+    for (let x = 0; x < SubCells.length; x++) {
+      SubCells[x](this, x, vs[x] || '.');
+    }
   }
   getParentList() {
     return 'cells';
@@ -113,11 +88,9 @@ class Cell extends PtnPart {
     return this.x >= c0 && this.x <= c1;
   }
   render(h, actions) {
-    const {n, i, v, c, d} = this;
-    // const e = ESC;
     const selected = this.isSelected();
     return h('td', {class: 'cell' + (selected ? ' selected' : '')},
-      [n, i, v, c, d].map(sc => sc.render(h, actions))
+      this.subs.map(sc => sc.render(h, actions))
     );
   }
 }
@@ -145,7 +118,7 @@ class Row extends PtnPart {
   render(h, actions) {
     const song = this.parent.parent;
     return h('tr', {class: this.isSelected() ? ' selected' : ''},
-      h('td', {class: 'rowNum'}, numString(this.x, 2, 16)),
+      h('td', {class: 'rowNum'}, numString(this.x, 16, 2)),
       times(song.channels.length).map(ci => this.getCell(ci).render(h, actions))
     );
   }
