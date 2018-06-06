@@ -26,6 +26,9 @@ export class Core {
   constructor (audio = null) {
     this._audio = audio || new AudioContext();
   }
+  async init() {
+    return this._audio.audioWorklet.addModule('runtime/awn.js');
+  }
   get audio() {
     return this._audio;
   }

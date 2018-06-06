@@ -32,6 +32,8 @@ import {Core} from './runtime/core.js';
 
 const core = new Core();
 
+window.CORE = core;
+
 const fullState = [
   'Project', {
     $mode: 'pattern',
@@ -287,5 +289,8 @@ const view = (state, actions) => {
 // //logAsync(asi.sampleBy(tks, bodyKeys, bodyClicks));
 // logAsync(asi.take(5, asi.audioTicks(ctx, 3)));
 
-app({fullState}, actions, view, document.body);
+core.init().then(() => {
+  console.log('initialized');
+  app({fullState}, actions, view, document.body);
+})
 
