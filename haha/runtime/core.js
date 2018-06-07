@@ -52,7 +52,7 @@ export class Core {
     osc.start();
     return {
       out: osc,
-      freq: osc.frequency,
+      frequency: osc.frequency,
       detune: osc.detune,
       pitch,
     }
@@ -140,9 +140,15 @@ export class Core {
   createControlIn(params) {
     const ac = this.audio;
     const ctl = new Control();
+    const trigger = ac.createConstantSource();
+    trigger.offset.value = 0;
+    trigger.start();
+    ctl.on('on', t => trigger.offset.setValueAtTime(1, t));
+    ctl.on('off', t => trigger.offset.setValueAtTime(0, t));
     return {
       inp: ctl,
       out: ctl,
+      trigger,
     }
   }
 
@@ -230,5 +236,69 @@ export class Core {
       mix1, mix2, mix3,
       control,
     };
+  }
+
+  createNoise({type}) {
+    const awn = new AudioWorkletNode(this._audio, 'noise');
+    return {
+      out: awn,
+    }
+  }
+
+  createLFO({frequency = 10, type = 'sine', shape = 0}) {
+    const awn = new AudioWorkletNode(this._audio, 'lfo', {processorOptions: {type}});
+    const shapeParam = awn.parameters.get('shape');
+    const frequencyParam = awn.parameters.get('frequency');
+    const trigger = awn.parameters.get('trigger');
+    shapeParam.value = shape;
+    frequencyParam.value = frequency;
+    return {
+      frequency: frequencyParam,
+      shape: shapeParam,
+      out: awn,
+      trigger,
+    }
+  }
+
+  createLinADSR({a = 0, d = 0.1, s = 0.5, r = 0.5}) {
+    const awn = new AudioWorkletNode(this._audio, 'linADSR');
+    const trigger = awn.parameters.get('trigger');
+    const attack = awn.parameters.get('attack');
+    const decay = awn.parameters.get('decay');
+    const sustain = awn.parameters.get('sustain');
+    const release = awn.parameters.get('release');
+    attack.value = a;
+    decay.value = d;
+    sustain.value = s;
+    release.value = r;
+    return {
+      out: awn,
+      trigger,
+      attack,
+      decay,
+      sustain,
+      release,
+    }
+  }
+
+  createSnH({}) {
+    const awn = new AudioWorkletNode(this._audio, 's&h');
+    const trigger = awn.parameters.get('trigger');
+    return {
+      inp: awn,
+      out: awn,
+      trigger,
+    };
+  }
+
+  createSlew({rate}) {
+    const awn = new AudioWorkletNode(this._audio, 'slew');
+    const rateParam = awn.parameters.get('rate');
+    rateParam.value = a;
+    return {
+      inp: awn,
+      out: awn,
+      rate: rateParam,
+    }
   }
 }

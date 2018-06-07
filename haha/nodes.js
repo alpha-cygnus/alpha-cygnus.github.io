@@ -1,6 +1,6 @@
 import { Elem, Node, Link } from './base.js';
 import { Port, PORT_DIR_IN, PORT_DIR_OUT } from './ports.js';
-import { startDragOnMouseDown, yieldElemXML } from './utils.js';
+import { startDragOnMouseDown, yieldElemXML, times } from './utils.js';
 
 import {xl} from './xmllike.js';
 
@@ -432,6 +432,7 @@ export class ControlIn extends PatchInput {
   getPorts() {
     return [
       ['ControlOut', {name: 'out',  x: +1, y: 0}],
+      ['AudioOut', {name: 'trigger',  x: 0, y: +1}],
     ];
   }
   getPortClass() {
@@ -668,5 +669,155 @@ export class NewNode extends ANode {
         }, preset[1].id);
       }),
     );
+  }
+}
+
+export class AWNode extends ANode {
+  getShapePath() {
+    return [
+      'M', -1, -0.9,
+      'L', -0.9, -1,
+      'L', +0.9, -1,
+      'L', +1, -0.9,
+      'L', +1, +0.9,
+      'L', +0.9, +1,
+      'L', -0.9, +1,
+      'L', -1, +0.9,
+      'z',
+    ];
+  }
+}
+
+export class LinADSR extends AWNode {
+  constructor(data) {
+    super(data);
+    const {a = 0.01, d = 0.2, s = 0.5, r = 1} = this.state;
+    Object.assign(this, {a, d, s, r});
+  }
+  getPorts() {
+    return [
+      ['AudioIn', {name: 'trigger', x: 0, y: -1}],
+      ['AudioIn', {name: 'attack', x: -0.6, y: +1, nx: 0}],
+      ['AudioIn', {name: 'decay', x: -0.2, y: +1, nx: 0}],
+      ['AudioIn', {name: 'sustain', x: +0.2, y: +1, nx: 0}],
+      ['AudioIn', {name: 'release', x: +0.6, y: +1, nx: 0}],
+      ['AudioOut', {name: 'out', x: +1, y: 0}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'a'}],
+      ['Float', {name: 'd'}],
+      ['Float', {name: 's'}],
+      ['Float', {name: 'r'}],
+    ];
+  }
+  getInnerShapePath() {
+    return [
+      'M', -0.75, +0.75,
+      'L', -0.7, -0.75,
+      'L', -0.25, +0.25,
+      'L', 0.25, 0.25,
+      'L', 0.75, +0.75,
+    ];
+  }
+}
+
+export class Noise extends AWNode {
+  getPorts() {
+    return [
+      ['AudioOut', {name: 'out', x: +1, y: 0}],
+    ];
+  }
+  getParamList() {
+    return [
+    ];
+  }
+  getInnerShapePath() {
+    const res =[
+      'M', -0.75, 0
+    ]
+    for (let i = -14; i < 16; i++) {
+      res.push('L', i*0.05, Math.random()*1.5 - 0.75);
+    }
+    return res;
+  }
+}
+
+export class LFO extends AWNode {
+  constructor(data) {
+    super(data);
+    const {type = 'sine', shape = 0} = this.state;
+    Object.assign(this, {type, shape});
+  }
+  getPorts() {
+    return [
+      ['AudioIn',   {name: 'trigger',   x: -1, y: 0}],
+      ['AudioIn',   {name: 'frequency', x: 0, y: -1}],
+      ['AudioIn',   {name: 'shape',     x: 0, y: +1}],
+      ['AudioOut',  {name: 'out',       x: +1, y: 0}],
+    ];
+  }
+  getParamList() {
+    return [
+      ['Radio', {name: 'type', type: 'string'},
+        ['Option', {value: 'sine', label: 'Sine'}],
+        ['Option', {value: 'saw', label: 'Saw'}],
+        ['Option', {value: 'square', label: 'Square'}],
+        ['Option', {value: 'triSaw', label: 'Tri/Saw'}],
+        ['Option', {value: 'rect', label: 'Rectangle'}],
+      ],
+      ['Float', {name: 'frequency', step: 1}],
+      ['Float', {name: 'shape', step: 0.1}],
+    ];
+  }
+  getInnerShapePath() {
+    const typeShape = {
+      sine: [
+        'M', -0.75, 0,
+        'C', -0.7, -0.75, -0.05, -0.75, 0, 0, 
+        'S', 0.7, 0.75, 0.75, 0, 
+      ],
+      square: [
+        'M', -0.75, 0,
+        'L', -0.75, -0.375,
+        'L', 0, -0.375,
+        'L', 0, +0.375, 
+        'L', 0.75, 0.375,
+        'L', 0.75, 0,
+      ],
+      saw: [
+        'M', -0.75, +0.375,
+        'L', -0.75, -0.375,
+        'L', 0, +0.375,
+        'L', 0, -0.375, 
+        'L', 0.75, +0.375,
+      ],
+      triSaw: [
+        'M', -0.75, 0,
+        'L', -0.6, -0.5,
+        'L', 0.6, 0.5,
+        'L', 0.75, 0, 
+      ],
+      rect: [
+        'M', -0.75, 0,
+        'L', -0.75, -0.6,
+        'L', 0, -0.6,
+        'L', 0, +0.6,
+        'L', 0.75, 0.6,
+        'L', 0.75, 0,
+      ],
+    }
+    return typeShape[this.type] || [];
+  }
+}
+
+export class SnH extends AWNode {
+  getPorts() {
+    return [
+      ['AudioIn',   {name: 'trigger',   x: 0, y: -1}],
+      ['AudioIn',   {name: 'inp',       x: -1, y: 0}],
+      ['AudioOut',  {name: 'out',       x: +1, y: 0}],
+    ];
   }
 }
