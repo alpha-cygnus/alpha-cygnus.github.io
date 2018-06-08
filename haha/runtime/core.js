@@ -294,7 +294,7 @@ export class Core {
   createSlew({rate}) {
     const awn = new AudioWorkletNode(this._audio, 'slew');
     const rateParam = awn.parameters.get('rate');
-    rateParam.value = a;
+    rateParam.value = rate;
     return {
       inp: awn,
       out: awn,

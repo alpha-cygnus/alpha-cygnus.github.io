@@ -165,9 +165,6 @@ class SampleAndHold extends AudioWorkletProcessor {
   process(inputs, outputs, parameters) {
     const input = inputs[0][0];
     const output = outputs[0][0];
-    const f = parameters.frequency[0];
-    const shape = (parameters.shape[0] + 1)/2;
-    const dph = f/sampleRate;
     let {state, value} = this;
     for (let i = 0; i < output.length; ++i) {
       const trig = parameters.trigger[i];
@@ -197,7 +194,7 @@ class Slew extends AudioWorkletProcessor {
   }
   constructor(options) {
     super(options);
-    this.target = value;
+    this.value = 0;
   }
 
   process(inputs, outputs, parameters) {

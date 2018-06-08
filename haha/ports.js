@@ -68,7 +68,7 @@ export class Port {
               deleteElem({to: this.parent.id, toPort: this.name});
               return;
             }
-            if ($currentElem && (e.original.ctrlKey || e.original.altKey)) {
+            if ($currentElem && (e.original.ctrlKey || e.original.altKey || $currentElem.match(/\w+\.\w+/))) {
               const [from, fromPort = 'out'] = $currentElem.split('.');
 
               newLink({from, fromPort, to: this.parent.id, toPort: this.name, all: this.parent.all});

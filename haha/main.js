@@ -66,6 +66,7 @@ const fullState = [
       ['LFO', {id: 'lfo0', x: -200, y: -100}],
       ['LinADSR', {id: 'linAdsr0', x: -200, y: 0}],
       ['SnH', {id: 'snh0', x: -200, y: 100}],
+      ['Slew', {id: 'slew0', x: -200, y: 100}],
       audioLink('vol', 'gain1'),
       audioLink('const0', 'gain1.gain'),
       audioLink('pitch', 'osc0.pitch'),

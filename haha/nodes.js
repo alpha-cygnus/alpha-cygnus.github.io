@@ -675,14 +675,14 @@ export class NewNode extends ANode {
 export class AWNode extends ANode {
   getShapePath() {
     return [
-      'M', -1, -0.9,
-      'L', -0.9, -1,
-      'L', +0.9, -1,
-      'L', +1, -0.9,
-      'L', +1, +0.9,
-      'L', +0.9, +1,
-      'L', -0.9, +1,
-      'L', -1, +0.9,
+      'M', -1, -0.75,
+      'L', -0.75, -1,
+      'L', +0.75, -1,
+      'L', +1, -0.75,
+      'L', +1, +0.75,
+      'L', +0.75, +1,
+      'L', -0.75, +1,
+      'L', -1, +0.75,
       'z',
     ];
   }
@@ -816,6 +816,26 @@ export class SnH extends AWNode {
   getPorts() {
     return [
       ['AudioIn',   {name: 'trigger',   x: 0, y: -1}],
+      ['AudioIn',   {name: 'inp',       x: -1, y: 0}],
+      ['AudioOut',  {name: 'out',       x: +1, y: 0}],
+    ];
+  }
+}
+
+export class Slew extends AWNode {
+  constructor(data) {
+    super(data);
+    const {rate = 1} = this.state;
+    Object.assign(this, {rate});
+  }
+  getParamList() {
+    return [
+      ['Float', {name: 'rate', step: 0.1}],
+    ];
+  }
+  getPorts() {
+    return [
+      ['AudioIn',   {name: 'rate',   x: 0, y: 1}],
       ['AudioIn',   {name: 'inp',       x: -1, y: 0}],
       ['AudioOut',  {name: 'out',       x: +1, y: 0}],
     ];
