@@ -20,4 +20,11 @@ export class Project {
 
     this.songs = makeSubObjects(SONG_CLASSES, this, songs);
   }
+  renderEditor(h, {loadProject}) {
+    return h('div', {},
+      h('button', {
+        onclick: e => loadProject(document.getElementById('theProjectXL').value),
+      }, '<-- load this'),
+    )
+  }
 }

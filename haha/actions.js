@@ -2,6 +2,8 @@ import {yieldElemXML, selectionToString} from './utils.js';
 
 import {insert, remove, setAttr, wrap, getElems} from './state.js';
 
+import {parse} from './xmllike';
+
 const curPatchPath = 'patches/@currentPatch';
 const patchesPath = 'patches';
 const projectPath = [];
@@ -22,6 +24,13 @@ export const setPatchesState = it => ({fullState}) => wrap(setAttr(fullState, pa
 export const setProjectState = it => ({fullState}) => wrap(setAttr(fullState, projectPath, it));
 
 export const setPatternState = it => ({fullState}) => wrap(setAttr(fullState, curPatternPath, it));
+
+export const setProject = prj => () => wrap(prj);
+
+export const loadProject = prjXL => (state, actions) => {
+  const prj = parse(prjXL);
+  return actions.setProject(prj);
+}
 
 function getPatchProps({fullState}) {
   const [[_t, props]] = getElems(fullState, curPatchPath);

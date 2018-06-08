@@ -3,7 +3,11 @@ import parse from './parser/xmllike.js';
 export {parse};
 
 export function * yieldXL([_t, props = {}, ...subs], prefix = '') {
-  const begin = `${prefix}<${_t}${Object.entries(props).map(([k, v]) => k.match(/^\$/) ? '' : ` ${k}="${v}"`).join('')}`;
+  const begin = `${prefix}<${_t}${Object.entries(props).map(([k, v]) => {
+    if (k.match(/^\$/)) return '';
+    if (typeof v === 'number') return ` ${k}=${v}`;
+    return ` ${k}="${v}"`;
+  }).join('')}`;
   if (subs.length) {
     yield `${begin}>`;
     for (const sub of subs) {

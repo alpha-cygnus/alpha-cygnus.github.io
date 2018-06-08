@@ -14,7 +14,7 @@ import {Synth, MainPatch} from './patches.js';
 
 //import * as asi from './asi/index.js';
 
-import {xl} from './xmllike.js';
+import {xl, stringify} from './xmllike.js';
 
 const aLink = (f, t, c) => {
   const [from, fromPort = 'out'] = f.split('.');
@@ -145,13 +145,16 @@ let mainPatch = null;
 let lastSynth = null;
 
 const MODES = [
+  ['project', {}],
   ['patch', {}],
   ['pattern', {}],
   ['song', {}],
-]
+];
 
 const view = (state, actions) => {
   const {fullState} = state;
+  const projectXL = stringify(fullState);
+  localStorage.setItem('theProjectXL', projectXL);
   const project = new Project(fullState);
   const {$mode = 'patch'} = project.state;
 
@@ -235,6 +238,10 @@ const view = (state, actions) => {
     console.log('pattern', pattern);
     propEditor = h('div');
   }
+  if ($mode === 'project') {
+    mainEditor = h('div', {class: 'divProject'}, h('textarea', {id: 'theProjectXL'}, projectXL));
+    propEditor = project.renderEditor(h, actions);
+  }
 
   return h('div', {},
     h('div', {id: 'divTabs'}, 
@@ -297,6 +304,8 @@ const view = (state, actions) => {
 
 core.init().then(() => {
   console.log('initialized');
-  app({fullState}, actions, view, document.body);
+  const appActions = app({fullState}, actions, view, document.body);
+  const projectXL = localStorage.getItem('theProjectXL');
+  if (projectXL) appActions.loadProject(projectXL);
 })
 
