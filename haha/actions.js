@@ -27,6 +27,8 @@ export const setPatternState = it => ({fullState}) => wrap(setAttr(fullState, cu
 
 export const setProject = prj => () => wrap(prj);
 
+export const newPatch = patch => ({fullState}) => wrap(insert(fullState, patchesPath, patch));
+
 export const loadProject = prjXL => (state, actions) => {
   const prj = parse(prjXL);
   return actions.setProject(prj);
@@ -91,8 +93,13 @@ export const selectElem = ({id}) => (state, actions) => {
 export const logState = () => state => {
   console.log([...yieldElemXML(state.fullState)].join('\n'));
   return state;
-}
+};
 
 export const setPatternSelection = (from, to = []) => (state, actions) => {
   return actions.setPatternState({$selection: selectionToString([from, to])})
-}
+};
+
+export const addPatch = patch => (state, actions) => {
+  actions.newPatch(patch);
+  actions.setProjectState({$currentPatch: patch[1].id});
+};

@@ -8,14 +8,17 @@ Tag = _ "<" _ n:TagName _ as:Attr* _ et:TagEnd _ {
 TagEnd = "/>" { return {subs: []} }
 	/ ">" _ subs:Tag* _ "</" _ name:TagName _ ">" { return {subs, name} }
     
-TagName = $(letter (letter / digit)*)
+Id = $((letter/"$") (letter / "_" /  digit)*)
 
-Attr = n:AttrName _ ("="/":") _ v:AttrValue _ { return {[n]: v} }
+TagName = Id
 
-AttrName = $(letter (letter / digit)*)
+Attr = n:AttrName _ ("=") _ v:AttrValue _ { return {[n]: v} }
+
+AttrName = Id
 
 AttrValue = '"' s:($([^"]) / '\\' c:[.] { return c })* '"' {return s.join(''); }
-  / ds:$(("+"/"-")? digit+ ('.' digit+)?) { return parseInt(ds, 10); }
+  / ds:$(("+"/"-")? digit+ ('.' digit+)?) { return parseFloat(ds); }
+  / Id
 
 letter = [a-zA-Z]
 digit = [0-9]

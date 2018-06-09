@@ -15,7 +15,7 @@ export class Patch {
     this.state = props;
     const {id, title, scale, tx, ty, $currentElem, $toAdd, snapTo = 10} = props;
     this.name = id;
-    Object.assign(this, {id, elems, title, scale, tx, ty, $currentElem, $toAdd, snapTo});
+    Object.assign(this, {id, elems, title: title || id, scale, tx, ty, $currentElem, $toAdd, snapTo});
     const all = {};
     this.all = all;
     for (const [_t, props, ...subs] of elems) {
@@ -146,42 +146,41 @@ export class Patch {
   renderEditor(h, {setPatchState, setPatchesState, logState, newElem}) {
     const {scale} = this;
     return h('div', {},
-      h('h2', {}, this.title,
         h('select', {
-            name: 'selectPatch',
-            class: 'patch',
-            onchange: e => {
-              setPatchesState({currentPatch: e.target.value});
-            },
+          name: 'selectPatch',
+          class: 'patch',
+          onchange: e => {
+            setPatchesState({currentPatch: e.target.value});
           },
-          Object.values(this.parent.allPatches).map(
-            patch => h('option', {value: patch.id, selected: patch.id === this.id ? 'selected' : ''}, `${patch.title}: ${patch.constructor.name}`),
-          ),
+        },
+        Object.values(this.parent.allPatches).map(
+          patch => h('option', {value: patch.id, selected: patch.id === this.id ? 'selected' : ''}, `${patch.title}: ${patch.constructor.name}`),
         ),
       ),
+      h('h2', {}, this.title),
       h('button', {
         onclick: e => setPatchState({scale: scale * Math.sqrt(2)})
-      }, '+'),
+      }, 'Zoom in'),
       h('button', {
         onclick: e => setPatchState({scale: scale / Math.sqrt(2)})
-      }, '-'),
-      h('button', {
-        onclick: e => logState()
-      }, 'log'),
-      h('button', {
-        onclick: e => {
-          console.log([...yieldElemXML(this.renderGraph())].join('\n'));
-        }
-      }, 'G'),
-      h('button', {
-        onclick: e => {
-          console.log([...this.parent.gen()].join('\n'));
-        }
-      }, 'gen'),
-      h('button', {
-        onclick: e => newElem(['Osc', {id: 'newOsc', x: 0, y: 0}]),
-      }, 'new test'),
-      h('pre', {id: 'preProps', style: {height: '600px', overflow: 'auto'}}, JSON.stringify([this.state, this.elems], null, '  ')),
+      }, 'Zoom out'),
+      // h('button', {
+      //   onclick: e => logState()
+      // }, 'log'),
+      // h('button', {
+      //   onclick: e => {
+      //     console.log([...yieldElemXML(this.renderGraph())].join('\n'));
+      //   }
+      // }, 'G'),
+      // h('button', {
+      //   onclick: e => {
+      //     console.log([...this.parent.gen()].join('\n'));
+      //   }
+      // }, 'gen'),
+      // h('button', {
+      //   onclick: e => newElem(['Osc', {id: 'newOsc', x: 0, y: 0}]),
+      // }, 'new test'),
+      // h('pre', {id: 'preProps', style: {height: '600px', overflow: 'auto'}}, JSON.stringify([this.state, this.elems], null, '  ')),
     );
   }
   renderGraph() {
@@ -226,7 +225,6 @@ export class Patch {
   getPresets() {
     return [
       ['Osc', {id: 'osc'}],
-      ['Osc', {id: 'lfo', frequency: 1, detune: 0}],
       ['Gain', {id: 'gain', gain: 1}],
       ['Gain', {id: 'vca', gain: 0}],
       ['ADSR', {id: 'adsr', a: 0.1, d: 0.2, s: 0.3, r: 0.4}],
@@ -235,6 +233,11 @@ export class Patch {
       ['Filter', {id: 'hpf', type: 'highpass', frequency: 2000, detune: 0, q: 0}],
       ['Pan', {id: 'pan'}],
       ['Delay', {id: 'delay'}],
+      ['Noise', {id: 'noise'}],
+      ['LinADSR', {id: 'linAdsr'}],
+      ['SnH', {id: 'snh'}],
+      ['Slew', {id: 'slew'}],
+      ['LFO', {id: 'lfo'}],
     ];
   }
   genGraph(h) {
@@ -242,11 +245,18 @@ export class Patch {
     const links = Object.values(this.all).filter(e => e instanceof Link);
     return [...nodes.map(node => node.genGraph(h)), ...links.map(link => link.genGraph(h))];
   }
+  makeFun() {
+    const src = [...this.gen()].map(l => '  ' + l).join('\n');
+    return eval(`(function ${this.id}(_ctx) {\n${src}\n})`);
+  }
 }
 
 export class Synth extends Patch {
   *genAdditional() {
-    yield `control.out.on('cut', t => setTimeout(() => out.out.disconnect(), (t - _ctx.core.currentTime)*1000 + 10));`;
+    yield `control.out.on('cut', t => {`;
+    yield `  setTimeout(() => out.out.disconnect(), (t - _ctx.core.currentTime)*1000 + 50);`;
+    yield `  out.out.gain.linearRampToValueAtTime(0, t + 0.04);`;
+    yield `});`;
   }
   isUndeletable(elem) {
     return elem.id in {

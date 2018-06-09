@@ -66,6 +66,7 @@ export class Core {
       inp: g,
       out: g,
       gain: g.gain,
+      again: g.gain,
     }
   }
 
@@ -201,7 +202,7 @@ export class Core {
       },
       noteOn(note, v, t) {
         v = v || 0.5;
-        t = t || core.currentTime;
+        t = t || core.currentTime + 0.01;
         if (playing[note]) {
           const oldSynth = playing[note];
           oldSynth.control.send('cut', core.currentTime);
@@ -209,7 +210,7 @@ export class Core {
         }
         if (!_synth) return;
         const synth = playing[note] = _synth({core});
-        synth.out.connect(core.destination);
+        synth.out.connect(this.out);
         synth.pitch.setValueAtTime((note - 60)/12, t);
         synth.vol.setValueAtTime(v, t)
         synth.control.send('on', t);

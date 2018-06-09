@@ -153,7 +153,7 @@ const MODES = [
 
 const view = (state, actions) => {
   const {fullState} = state;
-  const projectXL = stringify(fullState);
+  const projectXL = stringify(fullState, true);
   localStorage.setItem('theProjectXL', projectXL);
   const project = new Project(fullState);
   const {$mode = 'patch'} = project.state;
@@ -196,13 +196,14 @@ const view = (state, actions) => {
       console.log(mainPatchFunc);
       prevMainSrc = mainSrc;
       mainPatch = mainPatchFunc({core});
+      mainPatch.out.connect(core.destination);
       document.onkeydown = mainPatchKeyDown(core, mainPatch, lastSynth);
       document.onkeyup = mainPatchKeyUp(core, mainPatch, lastSynth);
     }
     if (patch instanceof Synth) {
       const synthSrc = [...patch.gen()].join('\n');
       if (synthSrc != prevSynthSrc) {
-        const synthFunc = new Function('_ctx', synthSrc);
+        const synthFunc = patch.makeFun(); //new Function('_ctx', synthSrc);
         console.log(synthFunc);
         prevSynthSrc = synthSrc;
         lastSynth = synthFunc;
@@ -306,6 +307,7 @@ core.init().then(() => {
   console.log('initialized');
   const appActions = app({fullState}, actions, view, document.body);
   const projectXL = localStorage.getItem('theProjectXL');
+  console.log(projectXL);
   if (projectXL) appActions.loadProject(projectXL);
 })
 

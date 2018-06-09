@@ -38,6 +38,7 @@ export function synthKeyDown(core, main, synthFn) {
     if (e.repeat) return;
     const note = KeyToNote[e.key.toLowerCase()];
     if (!note) return;
+    console.log(note);
     
     const channel = main.channels[0];
     channel.setSynth(synthFn);

@@ -31,6 +31,12 @@ export class ANode extends Node {
   getInnerShapePath() {
     return [];
   }
+  getInnerShapePath2() {
+    return [];
+  }
+  getInnerShapePaths() {
+    return [this.getInnerShapePath(), this.getInnerShapePath2()];
+  }
   getTextPos() {
     return [0, 0];
   }
@@ -40,6 +46,7 @@ export class ANode extends Node {
   renderSVG(h, actions) {
     const {id, x, y, size, fill} = this;
     const [tx, ty] = this.getTextPos().map(x => x*size);
+    const [innerShape1, innerShape2] = this.getInnerShapePaths();
     return h('g', {id}, 
       h('path', {
         transform: `translate(${x}, ${y})`,
@@ -49,8 +56,15 @@ export class ANode extends Node {
       }),
       h('path', {
         transform: `translate(${x}, ${y})`,
-        d: `M0 0 ${this.getInnerShapePath().map(x => typeof x === 'number' ? x*size : x).join(' ')}`, fill: 'none',
+        d: `M0 0 ${innerShape1.map(x => typeof x === 'number' ? x*size : x).join(' ')}`, fill: 'none',
         stroke: '#BBB', 'stroke-width': 2,
+        onmousedown: this.dragMouseDown(actions),
+      }),
+      h('path', {
+        transform: `translate(${x}, ${y})`,
+        d: `M0 0 ${innerShape2.map(x => typeof x === 'number' ? x*size : x).join(' ')}`, fill: 'none',
+        stroke: '#BBB', 'stroke-width': 2,
+        'stroke-dasharray': '2, 2',
         onmousedown: this.dragMouseDown(actions),
       }),
       h('text',
@@ -98,6 +112,7 @@ export class Gain extends ANode {
     return [
       ['AudioIn', {name: 'inp',  x: -0.75, y: -0}],
       ['AudioIn', {name: 'gain', x: 0, y: +0.375}],
+      ['AudioIn', {name: 'again', x: 0, y: -0.375}],
       ['AudioOut', {name: 'out', x: +0.75, y: 0}],
     ];
   }
@@ -432,7 +447,7 @@ export class ControlIn extends PatchInput {
   getPorts() {
     return [
       ['ControlOut', {name: 'out',  x: +1, y: 0}],
-      ['AudioOut', {name: 'trigger',  x: 0, y: +1}],
+      ['AudioOut', {name: 'trigger',  x: 0, y: -1}],
     ];
   }
   getPortClass() {
@@ -638,8 +653,17 @@ export class NewNode extends ANode {
     ];
   }
   renderEditor(h, actions) {
-    const {setPatchState, selectElem} = actions;
-    const {parent: {state: {$toAdd}}} = this;
+    const {setPatchState, selectElem, setProjectState, addPatch} = actions;
+    const {parent: {state: {$toAdd}, parent: {state: {$toAddPatch}}}} = this;
+    let newPatchId = '';
+    if ($toAddPatch) {
+      const newPatchIdPref = $toAddPatch[1].id;
+      let newPatchIdSuff = 0;
+      while (this.parent.parent.allPatches[newPatchIdPref + newPatchIdSuff]) {
+        newPatchIdSuff++;
+      }
+      newPatchId = newPatchIdPref + newPatchIdSuff;
+    }
     return h('div', {},
       h('h1', {}, 'New node'),
       this.parent.getPresets().map(preset => {
@@ -664,10 +688,26 @@ export class NewNode extends ANode {
         return h('button', {
           onclick: e => {
             // console.log('selected', preset);
-            // setPatchState({$toAdd: preset});
+            setProjectState({$toAddPatch: preset});
           },
         }, preset[1].id);
       }),
+      h('div', {}),
+      $toAddPatch ? [
+        h('span', {}, `Add ${$toAddPatch[1].id}:`),
+        h('input', {id: 'newPatchId', value: newPatchId, type: 'text'}),
+        h('button', {
+          onclick: e => {
+            const [_t, props, ...elems] = $toAddPatch;
+            addPatch([_t, {...props, id: document.getElementById('newPatchId').value}, ...elems]);
+          },
+        }, 'add'),
+        h('button', {
+          onclick: e => {
+            setProjectState({$toAddPatch: null});
+          },
+        }, 'CANCEL'),
+      ] : [],
     );
   }
 }
@@ -820,6 +860,20 @@ export class SnH extends AWNode {
       ['AudioOut',  {name: 'out',       x: +1, y: 0}],
     ];
   }
+  getInnerShapePaths() {
+    const p0 = [];
+    const p1 = [];
+    const step = 0.3;
+    for (let i = -2; i <= 2; i++) {
+      const x = i*step;
+      // const y = 0.6*Math.sin(x/0.8 * Math.PI);
+      const y = x;
+      p0.push(i > -2 ? 'L' : 'M', x, y, 'L', x + step, y);
+      p1.push(i > -2 ? 'L' : 'M', x, y);
+    }
+    //return [[...p0, ...p1], []];
+    return [p0, p1];
+  }
 }
 
 export class Slew extends AWNode {
@@ -839,5 +893,18 @@ export class Slew extends AWNode {
       ['AudioIn',   {name: 'inp',       x: -1, y: 0}],
       ['AudioOut',  {name: 'out',       x: +1, y: 0}],
     ];
+  }
+  getInnerShapePaths() {
+    return [[
+      'M', -0.75, +0.6,
+      'L', -0.2, +0.6,
+      'L', 0.2, -0.6,
+      'L', +0.75, -0.6,
+    ], [
+      'M', -0.75, +0.6,
+      'L', -0.2, +0.6,
+      'L', -0.2, -0.6,
+      'L', +0.75, -0.6,
+    ]];
   }
 }

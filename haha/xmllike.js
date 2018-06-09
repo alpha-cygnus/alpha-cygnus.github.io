@@ -2,16 +2,21 @@ import parse from './parser/xmllike.js';
 
 export {parse};
 
-export function * yieldXL([_t, props = {}, ...subs], prefix = '') {
+export function * yieldXL([_t, props = {}, ...subs], full = false, prefix = '') {
   const begin = `${prefix}<${_t}${Object.entries(props).map(([k, v]) => {
-    if (k.match(/^\$/)) return '';
+    if (typeof v === 'object') return '';
+    if (v == null) return '';
+    if (v === false) return '';
+    if (v === true) v = 1;
+    if (!full && k.match(/^\$/)) return '';
     if (typeof v === 'number') return ` ${k}=${v}`;
+    if (typeof v === 'string' && v.match(/^[\$\w_][\w_]*$/)) return ` ${k}=${v}`;
     return ` ${k}="${v}"`;
   }).join('')}`;
   if (subs.length) {
     yield `${begin}>`;
     for (const sub of subs) {
-      yield * yieldXL(sub, prefix + '  ');
+      yield * yieldXL(sub, full, prefix + '  ');
     }
     yield `${prefix}</${_t}>`;
   } else {
@@ -19,7 +24,7 @@ export function * yieldXL([_t, props = {}, ...subs], prefix = '') {
   }
 }
 
-export const stringify = obj => [...yieldXL(obj)].join('\n');
+export const stringify = (obj, full = false) => [...yieldXL(obj, full)].join('\n');
 
 export const xl = (strings, ...values) => {
   const ts = [strings[0]];
