@@ -1,0 +1,560 @@
+var _user$project$Main$subscriptions = function (model) {
+	return _elm_lang$core$Platform_Sub$none;
+};
+var _user$project$Main$setIntFromString = F3(
+	function (eSetter, setter, s) {
+		var _p0 = _elm_lang$core$String$toInt(s);
+		if (_p0.ctor === 'Err') {
+			return eSetter(_p0._0);
+		} else {
+			return setter(_p0._0);
+		}
+	});
+var _user$project$Main$getCell = F3(
+	function (x, y, _p1) {
+		var _p2 = _p1;
+		var _p3 = A2(_elm_lang$core$Array$get, y, _p2.rows);
+		if (_p3.ctor === 'Just') {
+			return A2(_elm_lang$core$Array$get, x, _p3._0);
+		} else {
+			return _elm_lang$core$Maybe$Nothing;
+		}
+	});
+var _user$project$Main$newCell = function (bomb) {
+	return {flag: false, count: 0, bomb: bomb, open: false};
+};
+var _user$project$Main$newField = F2(
+	function (w, h) {
+		return {
+			w: w,
+			h: h,
+			rows: A2(
+				_elm_lang$core$Array$repeat,
+				h,
+				A2(
+					_elm_lang$core$Array$repeat,
+					w,
+					_user$project$Main$newCell(false)))
+		};
+	});
+var _user$project$Main$init = {
+	ctor: '_Tuple2',
+	_0: {
+		w: 10,
+		h: 10,
+		b: 20,
+		field: A2(_user$project$Main$newField, 10, 10),
+		err: ''
+	},
+	_1: _elm_lang$core$Platform_Cmd$none
+};
+var _user$project$Main$changeElem = F3(
+	function (i, changer, arr) {
+		var _p4 = A2(_elm_lang$core$Array$get, i, arr);
+		if (_p4.ctor === 'Just') {
+			return A3(
+				_elm_lang$core$Array$set,
+				i,
+				changer(_p4._0),
+				arr);
+		} else {
+			return arr;
+		}
+	});
+var _user$project$Main$changeCell = F4(
+	function (x, y, changer, field) {
+		var changeRows = A2(
+			_user$project$Main$changeElem,
+			y,
+			A2(_user$project$Main$changeElem, x, changer));
+		return _elm_lang$core$Native_Utils.update(
+			field,
+			{
+				rows: changeRows(field.rows)
+			});
+	});
+var _user$project$Main$putBomb = F3(
+	function (x, y, field) {
+		return A4(
+			_user$project$Main$changeCell,
+			x,
+			y - 1,
+			function (c) {
+				return _elm_lang$core$Native_Utils.update(
+					c,
+					{count: c.count + 1});
+			},
+			A4(
+				_user$project$Main$changeCell,
+				x,
+				y + 1,
+				function (c) {
+					return _elm_lang$core$Native_Utils.update(
+						c,
+						{count: c.count + 1});
+				},
+				A4(
+					_user$project$Main$changeCell,
+					x - 1,
+					y,
+					function (c) {
+						return _elm_lang$core$Native_Utils.update(
+							c,
+							{count: c.count + 1});
+					},
+					A4(
+						_user$project$Main$changeCell,
+						x + 1,
+						y,
+						function (c) {
+							return _elm_lang$core$Native_Utils.update(
+								c,
+								{count: c.count + 1});
+						},
+						A4(
+							_user$project$Main$changeCell,
+							x - 1,
+							y + 1,
+							function (c) {
+								return _elm_lang$core$Native_Utils.update(
+									c,
+									{count: c.count + 1});
+							},
+							A4(
+								_user$project$Main$changeCell,
+								x - 1,
+								y - 1,
+								function (c) {
+									return _elm_lang$core$Native_Utils.update(
+										c,
+										{count: c.count + 1});
+								},
+								A4(
+									_user$project$Main$changeCell,
+									x + 1,
+									y - 1,
+									function (c) {
+										return _elm_lang$core$Native_Utils.update(
+											c,
+											{count: c.count + 1});
+									},
+									A4(
+										_user$project$Main$changeCell,
+										x + 1,
+										y + 1,
+										function (c) {
+											return _elm_lang$core$Native_Utils.update(
+												c,
+												{count: c.count + 1});
+										},
+										A4(
+											_user$project$Main$changeCell,
+											x,
+											y,
+											function (c) {
+												return _elm_lang$core$Native_Utils.update(
+													c,
+													{bomb: true});
+											},
+											field)))))))));
+	});
+var _user$project$Main$stylesheet = A3(
+	_elm_lang$html$Html$node,
+	'link',
+	{
+		ctor: '::',
+		_0: A2(_elm_lang$html$Html_Attributes$attribute, 'rel', 'stylesheet'),
+		_1: {
+			ctor: '::',
+			_0: A2(_elm_lang$html$Html_Attributes$attribute, 'property', 'stylesheet'),
+			_1: {
+				ctor: '::',
+				_0: A2(_elm_lang$html$Html_Attributes$attribute, 'href', '0.css'),
+				_1: {ctor: '[]'}
+			}
+		}
+	},
+	{ctor: '[]'});
+var _user$project$Main$Field = F3(
+	function (a, b, c) {
+		return {w: a, h: b, rows: c};
+	});
+var _user$project$Main$Cell = F4(
+	function (a, b, c, d) {
+		return {bomb: a, flag: b, count: c, open: d};
+	});
+var _user$project$Main$Model = F5(
+	function (a, b, c, d, e) {
+		return {w: a, h: b, b: c, field: d, err: e};
+	});
+var _user$project$Main$OpenCell = F2(
+	function (a, b) {
+		return {ctor: 'OpenCell', _0: a, _1: b};
+	});
+var _user$project$Main$showField = function (_p5) {
+	var _p6 = _p5;
+	var showCell = F3(
+		function (y, x, _p7) {
+			var _p8 = _p7;
+			var _p11 = _p8.open;
+			var _p10 = _p8.count;
+			var _p9 = _p8.bomb;
+			var attrs = A2(
+				_elm_lang$core$Basics_ops['++'],
+				_p11 ? {
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$class('open'),
+					_1: {ctor: '[]'}
+				} : {
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$class('closed'),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$class(
+							_p8.flag ? 'flag' : ''),
+						_1: {ctor: '[]'}
+					}
+				},
+				_p9 ? {
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$class('bomb'),
+					_1: {ctor: '[]'}
+				} : {ctor: '[]'});
+			var content = _p11 ? (_p9 ? 'x' : _elm_lang$core$Basics$toString(_p10)) : '.';
+			return A2(
+				_elm_lang$html$Html$span,
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					attrs,
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html_Events$onClick(
+							A2(_user$project$Main$OpenCell, x, y)),
+						_1: {
+							ctor: '::',
+							_0: _elm_lang$html$Html_Attributes$class(
+								A2(
+									_elm_lang$core$Basics_ops['++'],
+									'count-',
+									_elm_lang$core$Basics$toString(_p10))),
+							_1: {ctor: '[]'}
+						}
+					}),
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text(content),
+					_1: {ctor: '[]'}
+				});
+		});
+	var showRow = function (y) {
+		return function (_p12) {
+			return A2(
+				_elm_lang$html$Html$div,
+				{ctor: '[]'},
+				_elm_lang$core$Array$toList(
+					A2(
+						_elm_lang$core$Array$indexedMap,
+						showCell(y),
+						_p12)));
+		};
+	};
+	return A2(
+		_elm_lang$html$Html$div,
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html_Attributes$class('field'),
+			_1: {
+				ctor: '::',
+				_0: _elm_lang$html$Html_Attributes$width(_p6.w * 22),
+				_1: {
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$height(_p6.h * 22),
+					_1: {ctor: '[]'}
+				}
+			}
+		},
+		_elm_lang$core$Array$toList(
+			A2(_elm_lang$core$Array$indexedMap, showRow, _p6.rows)));
+};
+var _user$project$Main$SetBombs = function (a) {
+	return {ctor: 'SetBombs', _0: a};
+};
+var _user$project$Main$SetBomb = F2(
+	function (a, b) {
+		return {ctor: 'SetBomb', _0: a, _1: b};
+	});
+var _user$project$Main$setRndBombs = F2(
+	function (_p13, n) {
+		var _p14 = _p13;
+		return (_elm_lang$core$Native_Utils.cmp(n, 0) > 0) ? A2(
+			_elm_lang$core$Random$generate,
+			_user$project$Main$SetBomb(n - 1),
+			A2(
+				_elm_lang$core$Random$pair,
+				A2(_elm_lang$core$Random$int, 0, _p14.w - 1),
+				A2(_elm_lang$core$Random$int, 0, _p14.h - 1))) : _elm_lang$core$Platform_Cmd$none;
+	});
+var _user$project$Main$update = F2(
+	function (msg, model) {
+		var _p15 = msg;
+		switch (_p15.ctor) {
+			case 'InitField':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							field: A2(_user$project$Main$newField, model.w, model.h)
+						}),
+					_1: A2(_user$project$Main$setRndBombs, model.field, model.b)
+				};
+			case 'SetField':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{field: _p15._0}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'SetW':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{w: _p15._0, err: ''}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'SetH':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{h: _p15._0, err: ''}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'SetB':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{b: _p15._0, err: ''}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'SetErr':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{err: _p15._0}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'SetBombs':
+				return {
+					ctor: '_Tuple2',
+					_0: model,
+					_1: A2(_user$project$Main$setRndBombs, model.field, _p15._0)
+				};
+			case 'SetBomb':
+				var _p19 = _p15._1._1;
+				var _p18 = _p15._1._0;
+				var _p17 = _p15._0;
+				var _p16 = A3(_user$project$Main$getCell, _p18, _p19, model.field);
+				if (_p16.ctor === 'Just') {
+					return _p16._0.bomb ? {
+						ctor: '_Tuple2',
+						_0: model,
+						_1: A2(_user$project$Main$setRndBombs, model.field, _p17)
+					} : {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{
+								field: A3(_user$project$Main$putBomb, _p18, _p19, model.field)
+							}),
+						_1: A2(_user$project$Main$setRndBombs, model.field, _p17 - 1)
+					};
+				} else {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				}
+			default:
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							field: A4(
+								_user$project$Main$changeCell,
+								_p15._0,
+								_p15._1,
+								function (c) {
+									return _elm_lang$core$Native_Utils.update(
+										c,
+										{open: true});
+								},
+								model.field)
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+		}
+	});
+var _user$project$Main$SetErr = function (a) {
+	return {ctor: 'SetErr', _0: a};
+};
+var _user$project$Main$SetB = function (a) {
+	return {ctor: 'SetB', _0: a};
+};
+var _user$project$Main$SetW = function (a) {
+	return {ctor: 'SetW', _0: a};
+};
+var _user$project$Main$SetH = function (a) {
+	return {ctor: 'SetH', _0: a};
+};
+var _user$project$Main$SetField = function (a) {
+	return {ctor: 'SetField', _0: a};
+};
+var _user$project$Main$InitField = {ctor: 'InitField'};
+var _user$project$Main$view = function (model) {
+	var intField = F3(
+		function (na, getter, setter) {
+			return A2(
+				_elm_lang$html$Html$div,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text(
+						A2(_elm_lang$core$Basics_ops['++'], na, '=')),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$input,
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html_Attributes$type_('text'),
+								_1: {
+									ctor: '::',
+									_0: _elm_lang$html$Html_Attributes$name(na),
+									_1: {
+										ctor: '::',
+										_0: _elm_lang$html$Html_Attributes$class('int'),
+										_1: {
+											ctor: '::',
+											_0: _elm_lang$html$Html_Events$onInput(
+												A2(_user$project$Main$setIntFromString, _user$project$Main$SetErr, setter)),
+											_1: {
+												ctor: '::',
+												_0: _elm_lang$html$Html_Attributes$value(
+													_elm_lang$core$Basics$toString(
+														getter(model))),
+												_1: {ctor: '[]'}
+											}
+										}
+									}
+								}
+							},
+							{ctor: '[]'}),
+						_1: {ctor: '[]'}
+					}
+				});
+		});
+	var br = A3(
+		_elm_lang$html$Html$node,
+		'br',
+		{ctor: '[]'},
+		{ctor: '[]'});
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: _user$project$Main$stylesheet,
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$div,
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$class('main'),
+						_1: {ctor: '[]'}
+					},
+					{
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$h1,
+							{ctor: '[]'},
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html$text('MS'),
+								_1: {ctor: '[]'}
+							}),
+						_1: {
+							ctor: '::',
+							_0: A3(
+								intField,
+								'w',
+								function (_) {
+									return _.w;
+								},
+								_user$project$Main$SetW),
+							_1: {
+								ctor: '::',
+								_0: A3(
+									intField,
+									'h',
+									function (_) {
+										return _.h;
+									},
+									_user$project$Main$SetH),
+								_1: {
+									ctor: '::',
+									_0: A3(
+										intField,
+										'b',
+										function (_) {
+											return _.b;
+										},
+										_user$project$Main$SetB),
+									_1: {
+										ctor: '::',
+										_0: A2(
+											_elm_lang$html$Html$button,
+											{
+												ctor: '::',
+												_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$InitField),
+												_1: {ctor: '[]'}
+											},
+											{
+												ctor: '::',
+												_0: _elm_lang$html$Html$text('init'),
+												_1: {ctor: '[]'}
+											}),
+										_1: {
+											ctor: '::',
+											_0: _user$project$Main$showField(model.field),
+											_1: {
+												ctor: '::',
+												_0: A2(
+													_elm_lang$html$Html$div,
+													{
+														ctor: '::',
+														_0: _elm_lang$html$Html_Attributes$class('error'),
+														_1: {ctor: '[]'}
+													},
+													{
+														ctor: '::',
+														_0: _elm_lang$html$Html$text(model.err),
+														_1: {ctor: '[]'}
+													}),
+												_1: {ctor: '[]'}
+											}
+										}
+									}
+								}
+							}
+						}
+					}),
+				_1: {ctor: '[]'}
+			}
+		});
+};
+var _user$project$Main$main = _elm_lang$html$Html$program(
+	{init: _user$project$Main$init, view: _user$project$Main$view, update: _user$project$Main$update, subscriptions: _user$project$Main$subscriptions})();

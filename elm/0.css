@@ -1,0 +1,55 @@
+div.field {
+  border: 1px solid white;
+}
+div.field span {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  border: 1px solid gray;
+}
+
+span.closed {
+  background: gray;
+  color: gray;
+}
+
+span.closed.flag {
+  background: red;
+}
+
+span.open {
+  background: white;
+}
+span.open.bomb {
+  background: red;
+  color: black;
+}
+
+.count-0 {
+  color: white;
+}
+.count-1 {
+  color: #00F;
+}
+.count-2 {
+  color: #088;
+}
+.count-3 {
+  color: #0F0;
+}
+.count-4 {
+  color: #880;
+}
+.count-5 {
+  color: #F00;
+}
+.count-6 {
+  color: #808;
+}
+.count-7 {
+  color: #444;
+}
+.count-8 {
+  color: #000;
+}

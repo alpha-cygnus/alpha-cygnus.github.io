@@ -1,0 +1,10 @@
+I = x => x
+K = (x,y) => x
+S = (x, y, z) => x(z, y(z))
+B = (x, y, z) => x(y(z))
+C = (x, y, z) => x(z, y)
+W = (x, y) => x(y, y)
+U = (x, y) => y(x(x, y))
+O = x => x(x)
+O' = O(O)
+Y = g => (x => g(x(x)))(x => g(x(x)))
