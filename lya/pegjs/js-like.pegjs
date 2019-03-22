@@ -12,7 +12,7 @@ term = p:prim as:app* { return as.reduce((as, a) => [...as, ...a], []).reduce((r
 ref = _ id:Id _ { return id }
 
 id = $([a-z][a-zA-Z0-9_']*)
-Id = $([A-Z][a-zA-Z0-9_']*)
+Id = $([A-Z_][a-zA-Z0-9_']*)
 __ = ' '
 eol = [\r\n]+
 _ = __*
