@@ -134,6 +134,8 @@ function reducer(state, action) {
           def = nd;
         }
         if (tn !== '_') state = reducer(state, {ADD_DEF: {tn, def}});
+        const frf = def.toRefs(state.invDefs);
+        if (frf !== def) steps.push(frf);
         state = {...state, steps};
       }
     } catch(e) {
@@ -161,6 +163,7 @@ const viewDefs = state => div('.divDefs', [
       span(tn),
       ' = ',
       (cf.toStr(state.mode, state.uncurry)),
+      //' <=> ' + cf.asDb()
     ]);
   })
 ]);
@@ -169,7 +172,9 @@ const viewCmd = state => div('.divCmd', [
   input('.cmd', {attrs: {type: 'text', value: state.cmd}}),
   button('.cmdApply', 'do'),
   ...state.steps.map((step, i) => 
-    pre(i + ': ' + step.toStr(state.mode, state.uncurry))
+    pre((i + 1) + ': ' + step.toStr(state.mode, state.uncurry)
+      // + ' <=> ' + step.asDb()
+    )
   ),
 ]);
 
@@ -183,19 +188,20 @@ const mainCycle = INIT => ({DOM}) => {
   const uncurry$ = DOM
     .select('.cbUncurry')
     .events('change')
-    .debug('uncurry')
     .map(ev => {
       return {SET_UNCURRY: {value: ev.target.checked}};
     });
   const cmd$ = DOM
     .select('.cmd')
     .events('input')
-    .debug('cmd')
     .map(ev => {
       return {SET_CMD: ev.target.value};
     });
-  const cmdApply$ = DOM.select('.cmdApply').events('click')
-    .debug('apply')
+  const cmdApply$ = 
+    xs.merge(
+      DOM.select('.cmdApply').events('click'),
+      DOM.select('.cmd').events('keydown').filter(ev => ev.key === 'Enter'),
+    )
     .mapTo({CMD_APPLY: 1});
   const action$ = xs.merge(modeCheck$, uncurry$, cmd$, cmdApply$);
   const state$ = action$.fold(reducer, INIT).debug('state');

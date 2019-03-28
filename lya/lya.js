@@ -18,13 +18,15 @@ class LTerm {
     return '?';
   }
   asDb(nestMap = new Map()) {
-    throw new Error('Wrong way!');
+    //throw new Error('Wrong way!');
+    return '???';
   }
   getDbx(nestMap = new Map()) {
     if (!this.dbx) this.dbx = this.asDb(nestMap);
     return this.dbx;
   }
   toRefs(invDefs) {
+    if (!this.dbx) this.getDbx();
     const ref = invDefs[this.dbx];
     if (ref) return new LRef(ref);
   }
@@ -78,7 +80,11 @@ class LAbs extends LTerm {
     return 'λ' + this.term.getDbx(nestMap);
   }
   toRefs(invDefs) {
-    return super.toRefs(invDefs) || new LAbs(this.arg, this.term.toRefs(invDefs));
+    return super.toRefs(invDefs) || this.change(this.arg, this.term.toRefs(invDefs));
+  }
+  change(na, nt) {
+    if (na === this.arg && nt === this.term) return this;
+    return new LAbs(na, nt);
   }
 }
 
@@ -172,7 +178,11 @@ class LApp extends LTerm {
     return '(' + this.f.getDbx(nestMap) + ',' + this.x.getDbx(nestMap) + ')';
   }
   toRefs(invDefs) {
-    return super.toRefs(invDefs) || new LApp(this.f.toRefs(invDefs), this.x.toRefs(invDefs));
+    return super.toRefs(invDefs) || this.change(this.f.toRefs(invDefs), this.x.toRefs(invDefs));
+  }
+  change(nf, nx) {
+    if (nf === this.f && nx === this.x) return this;
+    return new LApp(nf, nx);
   }
 }
 
@@ -187,6 +197,9 @@ class LRef extends LTerm {
   bind(bindings) {
     if (bindings[this.name]) return bindings[this.name];
     throw new Error('Undefined ref: ' + this.name);
+  }
+  asDb() {
+    return this.name;
   }
 }
 
