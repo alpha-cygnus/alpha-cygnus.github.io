@@ -1,0 +1,19 @@
+.tab {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #999;
+  cursor: pointer;
+  border-radius: 8px;
+  margin: 0px 4px;
+}
+
+.tab.checked {
+  background: red;
+  color: white;
+}
+
+pre {
+  font-family: 'Hasklig', 'Courier New', Courier, monospace;
+  font-size: 14px;
+  margin: 0;
+}

@@ -14,7 +14,7 @@ class LTerm {
   betaStep(ctx) {
     return this;
   }
-  toStr(mode) {
+  toStr(mode, uncurry) {
     return '?';
   }
   asDb(nestMap = new Map()) {
@@ -45,13 +45,19 @@ class LAbs extends LTerm {
     this.term = this.term.bind(bindings);
     return this;
   }
-  toStr(mode) {
+  toStr(mode, uncurry) {
     const pref = {
-      'js': this.arg.name + ' => ',
-      'hs': '\\' + this.arg.name + ' -> ',
-      'lc': 'λ' + this.arg.name + '. ',
+      'js': args => (args.length > 1 ? '(' + args.join(', ') + ')' : args[0]) + ' => ',
+      'hs': args => '\\' + args.join(' ') + ' -> ',
+      'lc': args => 'λ' + args.join(' ') + '. ',
     }[mode];
-    return pref + this.term.toStr(mode);
+    let args = [this.arg.name];
+    let term = this.term;
+    while (uncurry && term instanceof LAbs) {
+      args.push(term.arg.name);
+      term = term.term;
+    }
+    return pref(args) + term.toStr(mode, uncurry);
   }
   betaStep(ctx) {
     const nt = this.term.betaStep(ctx);
@@ -87,7 +93,7 @@ class LVar extends LTerm {
     this.bound = bindings[this.name];
     return this;
   }
-  toStr(mode) {
+  toStr(mode, uncurry) {
     return this.name;
   }
   betaStep(ctx) {
@@ -116,12 +122,23 @@ class LApp extends LTerm {
   bind(bindings) {
     return new LApp(this.f.bind(bindings), this.x.bind(bindings));
   }
-  toStr(mode) {
-    let fs = this.f.toStr(mode);
-    let xs = this.x.toStr(mode);
-    if (this.f instanceof LAbs) fs = `(${fs})`;
-    if (mode === 'js' || this.x instanceof LAbs || this.x instanceof LApp) xs = `(${xs})`;
-    return [fs, xs].join(mode === 'js' ? '' : ' ');
+  toStr(mode, uncurry) {
+    let ff = this.f;
+    const xx = [this.x];
+    while (uncurry && ff instanceof LApp) {
+      xx.unshift(ff.x);
+      ff = ff.f;
+    }
+    let ffs = ff.toStr(mode, uncurry);
+    if (ff instanceof LAbs) ffs = `(${ffs})`;
+    return mode === 'js'
+      ? ffs + '(' + xx.map(x => x.toStr(mode, uncurry)).join(', ') + ')'
+      : ffs + ' ' + xx.map(x => (x instanceof LAbs || x instanceof LApp) ? '(' + x.toStr(mode, uncurry) + ')' : x.toStr(mode, uncurry)).join(' ');
+    // let fs = this.f.toStr(mode);
+    // if (this.f instanceof LAbs) fs = `(${fs})`;
+    // let xs = this.x.toStr(mode);
+    // if (mode === 'js' || this.x instanceof LAbs || this.x instanceof LApp) xs = `(${xs})`;
+    // return [fs, xs].join(mode === 'js' ? '' : ' ');
   }
   betaStep(ctx) {
     const from = this.toStr('hs');
@@ -164,7 +181,7 @@ class LRef extends LTerm {
     super();
     this.name = term;
   }
-  toStr(mode) {
+  toStr(mode, uncurry) {
     return this.name;
   }
   bind(bindings) {
