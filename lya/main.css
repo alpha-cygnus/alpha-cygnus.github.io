@@ -17,3 +17,55 @@ pre {
   font-size: 14px;
   margin: 0;
 }
+
+.main {
+  display: flex;
+}
+
+
+.col {
+  border-radius: 16px;
+  margin: 8px;
+  padding: 8px;
+}
+.left {
+  flex: 3;
+  background: #EEE;
+}
+
+.right {
+  flex: 5;
+  background: #DDD;
+}
+
+h2 {
+  background: #CCC;
+  margin: 4px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.disp {
+  background: #FFF;
+  margin: 4px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.disp pre:hover {
+  background: #EEE;
+}
+
+.ref {
+  font-weight: bold;
+}
+
+.var {
+  font-style: italic;
+}
+
+.cmd {
+  width: 100%;
+  border-radius: 4px;
+  padding: 4px;
+}

@@ -152,31 +152,56 @@ function tab(cls, id, value, lbl, checked) {
   return span([input(cls, {attrs: ia}), label({attrs: {'for': id}}, lbl)]);
 }
 
-const viewDefs = state => div('.divDefs', [
-  h2('Defs'),
+const viewExp = exp => {
+  const cs = ['ref', 'var'];
+  return exp
+    .replace(/([a-zA-Z_][a-z0-9_']*)/g, '#$1#')
+    .split('#')
+    .map(part => {
+      let m;
+      if (part.match(/^[a-z]/)) return span('.var', part);
+      if (part.match(/^[A-Z_]/)) return span('.ref', part);
+      return part;
+    });
+}
+
+const viewCtl = state => [
+  h2('Mode'),
   ...Object.entries({lc: 'λ', hs: 'Hs', js: 'Js'})
     .map(([mode, lbl]) => tab('.modeRadio', 'mode_' + mode, mode, lbl, state.mode === mode)),
   input('.cbUncurry', {attrs: {type: 'checkbox', checked: state.uncurry}}),
   span('uncurry'),
-  ...Object.entries(state.defs).map(([tn, cf]) => {
-    return pre([
-      span(tn),
-      ' = ',
-      (cf.toStr(state.mode, state.uncurry)),
-      //' <=> ' + cf.asDb()
-    ]);
-  })
-]);
-const viewCmd = state => div('.divCmd', [
+];
+
+const viewDefs = state => [
+  h2('Defs'),
+  div('.defs.disp', [
+    ...Object.entries(state.defs).map(([tn, cf]) => {
+      return pre([
+        span('.ref', tn),
+        ' = ',
+        ...viewExp(cf.toStr(state.mode, state.uncurry)),
+        //' <=> ' + cf.asDb()
+      ]);
+    })
+  ]),
+];
+
+const viewCmd = state => [
   h2('Cmd'),
   input('.cmd', {attrs: {type: 'text', value: state.cmd}}),
   button('.cmdApply', 'do'),
-  ...state.steps.map((step, i) => 
-    pre((i + 1) + ': ' + step.toStr(state.mode, state.uncurry)
-      // + ' <=> ' + step.asDb()
-    )
-  ),
-]);
+  div('.results.disp', [
+    ...state.steps.map((step, i) => 
+      pre([
+        i + 1,
+        ': ',
+        ...viewExp(step.toStr(state.mode, state.uncurry)),
+        // + ' <=> ' + step.asDb()
+      ]),
+    ),
+  ]),
+];
 
 const mainCycle = INIT => ({DOM}) => {
   const modeCheck$ = DOM
@@ -205,7 +230,17 @@ const mainCycle = INIT => ({DOM}) => {
     .mapTo({CMD_APPLY: 1});
   const action$ = xs.merge(modeCheck$, uncurry$, cmd$, cmdApply$);
   const state$ = action$.fold(reducer, INIT).debug('state');
-  const dom$ = state$.map(state => div([viewDefs(state), viewCmd(state)]));
+  const dom$ = state$.map(state =>
+    div('.main', [
+      div('.left.col', [
+        ...viewCtl(state),
+        ...viewDefs(state),
+      ]),
+      div('.right.col', [
+        ...viewCmd(state),
+      ]),
+    ]),
+  );
 
   return { DOM: dom$ };
 }
