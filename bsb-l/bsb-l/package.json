@@ -1,0 +1,21 @@
+{
+  "name": "bsb-l",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "bsb -make-world",
+    "start": "bsb -make-world -w",
+    "clean": "bsb -clean-world"
+  },
+  "keywords": [
+    "BuckleScript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "bs-platform": "^5.0.4",
+    "ppx-tea-jsx": "^0.2.1"
+  },
+  "dependencies": {
+    "bucklescript-tea": "^0.11.2"
+  }
+}
