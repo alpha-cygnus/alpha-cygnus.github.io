@@ -11,7 +11,7 @@ class LTerm {
   subst(arg, term) {
     return this;
   }
-  betaStep(ctx) {
+  betaStep() {
     return this;
   }
   toStr(mode, uncurry) {
@@ -29,6 +29,9 @@ class LTerm {
     if (!this.dbx) this.getDbx();
     const ref = invDefs[this.dbx];
     if (ref) return new LRef(ref);
+  }
+  revar(vars) {
+    return this;
   }
 }
 
@@ -61,8 +64,8 @@ class LAbs extends LTerm {
     }
     return pref(args) + term.toStr(mode, uncurry);
   }
-  betaStep(ctx) {
-    const nt = this.term.betaStep(ctx);
+  betaStep() {
+    const nt = this.term.betaStep();
     if (nt === this.term) return this;
     return new LAbs(this.arg, nt);
   }
@@ -86,17 +89,25 @@ class LAbs extends LTerm {
     if (na === this.arg && nt === this.term) return this;
     return new LAbs(na, nt);
   }
+  revar(vars) {
+    // let nn = this.arg.name;
+    // while (vars[nn]) nn += "'";
+    // this.arg.name = nn;
+    return this.change(this.arg, this.term.revar({...vars, [this.arg.name]: this.arg}));
+  }
 }
 
 let varIdx = 0;
 
 class LVar extends LTerm {
-  constructor(term) {
-    super(term);
-    this.name = term;
+  constructor(name) {
+    super();
+    this.name = name;
   }
   bind(bindings) {
-    this.bound = bindings[this.name];
+    const bound = bindings[this.name];
+    if (bound) return bound;
+    // this.bound = ;
     return this;
   }
   toStr(mode, uncurry) {
@@ -106,18 +117,31 @@ class LVar extends LTerm {
     return this;
   }
   subst(arg, term) {
-    if (this.bound === arg) return term;
+    if (this === arg) return term;
+    //if (this.bound === arg) return term;
     return this;
   }
   asDb(nestMap = new Map()) {
     const l1 = nestMap.get('level');
-    const l0 = nestMap.get(this.bound);
+    const l0 = nestMap.get(this); //.bound);
     return l1 - l0 + 1;
   }
   toRefs(invDefs) {
     return this;
   }
+  revar(vars) {
+    if (vars[this.name] && vars[this.name] !== this) {
+      let nn = this.name;
+      while (vars[nn]) nn += "'";
+      this.name = nn;
+    } else {
+      vars[this.name] = this;
+    }
+    return this;
+  }
 }
+
+class LArg extends LVar {}
 
 class LApp extends LTerm {
   constructor(f, x) {
@@ -146,20 +170,20 @@ class LApp extends LTerm {
     // if (mode === 'js' || this.x instanceof LAbs || this.x instanceof LApp) xs = `(${xs})`;
     // return [fs, xs].join(mode === 'js' ? '' : ' ');
   }
-  betaStep(ctx) {
+  betaStep() {
     const from = this.toStr('hs');
     if (this.f instanceof LAbs) {
       const res = this.f.apply(this.x);
       // console.log(from, '=>', res.toStr('hs'));
       return res;
     }
-    const nf = this.f.betaStep(ctx);
+    const nf = this.f.betaStep();
     if (nf !== this.f) {
       const res = new LApp(nf, this.x);
       // console.log(from, '=>', res.toStr('hs'));
       return res;
     }
-    const nx = this.x.betaStep(ctx);
+    const nx = this.x.betaStep();
     if (nx !== this.x) {
       const res = new LApp(nf, nx);
       // console.log(from, '=>', res.toStr('hs'));
@@ -183,6 +207,9 @@ class LApp extends LTerm {
   change(nf, nx) {
     if (nf === this.f && nx === this.x) return this;
     return new LApp(nf, nx);
+  }
+  revar(vars) {
+    return this.change(this.f.revar(vars), this.x.revar(vars));
   }
 }
 
@@ -212,7 +239,7 @@ export function classify(term) {
   switch(termKind(term)) {
     case 'abs': {
       for (const arg in term) {
-        return new LAbs(new LVar(arg), classify(term[arg]));
+        return new LAbs(new LArg(arg), classify(term[arg]));
       }
     }
     case 'var': return new LVar(term);

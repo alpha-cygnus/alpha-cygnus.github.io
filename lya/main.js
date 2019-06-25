@@ -1,11 +1,25 @@
 import {stringifyJsLike, stringifyHsLike, classify} from './lya.js';
-import D from 'https://dev.jspm.io/npm:@cycle/dom@22.3.0';
-import C from 'https://dev.jspm.io/npm:@cycle/run@5.2.0';
-import X from 'https://dev.jspm.io/npm:xstream@11.10.0';
+// import D from 'https://dev.jspm.io/npm:@cycle/dom@22.3.0';
+// import C from 'https://dev.jspm.io/npm:@cycle/run@5.2.0';
+// import X from 'https://dev.jspm.io/npm:xstream@11.10.0';
 
-const {default: xs} = X;
+const {
+  dom: {
+    div, pre, span, h2, input, label, button,
+    makeDOMDriver,
+  },
+  dom: D,
+  xstream: {
+    default: xs
+  },
+  run: {
+    default: cycleRun,
+  },
+} = window.$cycle;
+
+// const {default: xs} = X;
 //console.log({D, C, xs});
-const {div, pre, span, h2, input, label, button} = D;
+// const {div, pre, span, h2, input, label, button} = D;
 
 
 async function loadText(url) {
@@ -84,14 +98,14 @@ async function main() {
     }
     c = nc;
   }
-  C.run(mainCycle({
+  cycleRun(mainCycle({
     mode: 'lc',
     uncurry: false,
     defs,
     invDefs,
     steps,
     cmd: 'Succ (Succ F)',
-  }), { DOM: D.makeDOMDriver('#app')})
+  }), { DOM: makeDOMDriver('#app')})
 }
 
 main();
@@ -122,12 +136,14 @@ function reducer(state, action) {
     try {
       const gdefs = gram.parse(state.cmd);
       for (const tn in gdefs) {
-        let def = classify(gdefs[tn]).bind(state.defs);
         const steps = [];
+        let def = classify(gdefs[tn]);
+        steps.push(def);
+        def = def.bind(state.defs);
         for (let i = 0; i < 100; i++) {
           const rf = def; //.toRefs(state.invDefs);
           steps.push(rf);
-          const nd = def.betaStep();
+          const nd = def.betaStep().revar({});
           if (nd === def) {
             break;
           }
@@ -194,7 +210,7 @@ const viewCmd = state => [
   div('.results.disp', [
     ...state.steps.map((step, i) => 
       pre([
-        i + 1,
+        i,
         ': ',
         ...viewExp(step.toStr(state.mode, state.uncurry)),
         // + ' <=> ' + step.asDb()
