@@ -13,10 +13,28 @@ import {
   useReducer, 
   useContext,
 } from 'https://unpkg.com/preact@latest/hooks/dist/hooks.module.js?module';
-import htm from "https://unpkg.com/htm@latest/dist/htm.module.js?module";
+//import htm from "https://unpkg.com/htm@latest/dist/htm.module.js?module";
 
+import htm from './lib/htm.js';
+const R = window.R;
+const {produce} = window.IMMER;
 
 const html = htm.bind(h);
+
+export function useImmerReducer(reducer, initialState, initialAction) {
+  const cachedReducer = useCallback(produce(reducer), [reducer]);
+  return useReducer(cachedReducer, initialState, initialAction);
+}
+
+export function useImmer(initialValue) {
+  const [val, updateValue] = useState(initialValue);
+  return [
+    val,
+    useCallback(updater => {
+      updateValue(produce(updater));
+    }, [])
+  ];
+}
 
 export {
   html,
@@ -31,4 +49,6 @@ export {
   useContext,
   Fragment,
   createContext,
+  R,
+  produce,
 };

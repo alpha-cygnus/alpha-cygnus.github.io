@@ -8,7 +8,9 @@ import {
   createContext,
   useCallback,
   useReducer,
+  useImmerReducer,
   Fragment,
+  R,
 } from './common.js';
 
 
@@ -27,6 +29,8 @@ export function usePatchContext() {
   if (!ctx) return EMPTY_PATCH_CONTEXT;
   return ctx;
 }
+
+const DEFAULT_OUT = 'outAudio';
 
 const PORTS = {
   Synth: {
@@ -182,7 +186,7 @@ export function Connection({from, to, weight = 1.0}) {
     if (fromPort) {
       fromRef = fromRef[fromPort];
     } else {
-      if (!(fromRef instanceof window.AudioNode)) fromRef = fromRef.outAudio;
+      if (!(fromRef instanceof window.AudioNode)) fromRef = fromRef[DEFAULT_OUT];
     }
     if (toPort) {
       toRef = toRef[toPort];
@@ -276,6 +280,41 @@ export function Node({type, params, onRef}) {
   return h(NODES[type], {...params, onRef});
 }
 
+const EMPTY_VOICE_CONTEXT = {on: false, note: 0, time: 0};
+
+const VoiceContext = createContext(EMPTY_VOICE_CONTEXT);
+
+export function useVoiceContext() {
+  return useContext(VoiceContext);
+}
+
+export function Voice({on, time, note, name, children}) {
+  return h(VoiceContext.Provider,
+    {value: {on, time, note}},
+    h(PatchBay, {name}, children),
+  );
+}
+
+export function NoteToDetune({name}) {
+  const constant = useConstant(1);
+  const {time, note} = useVoiceContext();
+  useEffect(() => {
+    if (!constant) return;
+    constant.offset.setValueAtTime((note - 69) * 100, time);
+  }, [constant, time]);
+  usePatch(constant, name);
+}
+
+export function Gate({name}) {
+  const constant = useConstant(0);
+  const {time, on} = useVoiceContext();
+  useEffect(() => {
+    if (!constant) return;
+    constant.offset.setValueAtTime(on ? 1 : 0, time);
+  }, [constant, time]);
+  usePatch(constant, name);
+}
+
 export function TestCtx() {
   const ctx = useAudioContext();
   return ctx.toString();
@@ -288,7 +327,7 @@ function getContext() {
   return THE_CONTEXT;
 }
 
-const key2Key = {
+const key2Note = {
   q: 60,
   2: 61,
   w: 62,
@@ -324,30 +363,153 @@ const KEY_PRIORITY = {
   low: 'low',
   high: 'high',
   last: 'last',
+  first: 'first',
 };
 
+function voiceNoteOn(time, note, vel = 1) {
+  return {type: 'on', time, note, vel};
+}
+
+function voiceNoteOff(time, note, vel = 1) {
+  return {type: 'off', time, note, vel};
+}
+
+export function PolySynth({
+  name,
+  prio = KEY_PRIORITY.low,
+  voiceCount = 1,
+  dispatchVoiceRef,
+  children,
+}) {
+  const ctx = useAudioContext();
+
+  const [voiceState, dispatchVoice] = useImmerReducer(
+    (state, action) => {
+      if (action.type === 'setVoiceCount') {
+        state.notes = [];
+        state.notesPlaying = {};
+        state.voices = [];
+        for (let idx = 0; idx < action.voiceCount; idx++) {
+          state.voices.push({idx, note: 0, on: false, time: 0})
+        }
+        updateVoices(state, action.time);
+        return;
+      }
+
+      const {type, note, time} = action;
+
+      function updateVoices(state, time) {
+        const {notesPlaying, voices} = state;
+        const toPlay = state.notesPressed.slice(0, voices.length);
+        const toOff = new Set(Object.keys(notesPlaying).map(n => parseInt(n)));
+        const toOn = new Set();
+        console.log('toOff', toOff, toPlay);
+        for (const note of toPlay) {
+          if (note in notesPlaying) {
+            toOff.delete(note);
+            continue;
+          }
+          toOn.add(note);
+        }
+        console.log('toOff', toOff);
+        console.log(JSON.stringify({toPlay, toOn: [...toOn], toOff: [...toOff]}));
+        for (const note of toOff) {
+          const idx = notesPlaying[note];
+          voices[idx].on = false;
+          voices[idx].time = time;
+          delete notesPlaying[note];
+        }
+        for (const note of toOn) {
+          const v = voices.filter(({on}) => !on).sort(({time: a}, {time: b}) => a - b)[0];
+          v.on = true;
+          v.note = note;
+          notesPlaying[note] = v.idx;
+        }
+      }
+
+      if (type === 'off') {
+        const idx = state.notesPressed.indexOf(note);
+        if (idx < 0) return;
+        state.notesPressed.splice(idx, 1);
+        updateVoices(state, time);
+      }
+      if (type === 'on') {
+        if (state.notesPressed.includes(note)) return;
+        if (prio === KEY_PRIORITY.last) {
+          state.notesPressed.unshift(note);
+        }
+        if (prio === KEY_PRIORITY.first) {
+          state.notesPressed.push(note);
+        }
+        if (prio === KEY_PRIORITY.low) {
+          state.notesPressed = [...state.notesPressed, note].sort((a, b) => a - b);
+        }
+        if (prio === KEY_PRIORITY.high) {
+          state.notesPressed = [...state.notesPressed, note].sort((a, b) => b - a);
+        }
+        updateVoices(state, time);
+      }
+    },
+    {
+      notesPressed: [],
+      notesPlaying: {},
+      voices: [
+        {idx: 0, note: 0, on: false, time: 0},
+      ],
+    }
+  );
+
+  useEffect(() => {
+    dispatchVoice({type: 'setVoiceCount', voiceCount, time: ctx.currentTime});
+  }, [ctx, voiceCount])
+  
+  useEffect(() => {
+    if (typeof dispatchVoiceRef === 'function') dispatchVoiceRef(dispatchVoice);
+  }, [dispatchVoiceRef, dispatchVoice])
+
+  useEffect(() => {
+    console.log('voices', JSON.stringify(voices));
+  }, [voices]);
+
+  return h(PatchBay, {name}, [
+    h(Gain, DEFAULT_OUT),
+    ...voiceState.voices.map(voice =>
+      h(Voice, {...voice, name: `voice${voice.idx}`, children})
+    ),
+    ...voiceState.voices.map(voice => h(Connection, {from: `voice${voice.idx}`, to: DEFAULT_OUT})),
+  ]);
+}
+
+export function TestSynth({name}) {
+  h(PatchBay, {name}, [
+    h(Gain, {name: DEFAULT_OUT}),
+    h(Osc, {name: 'o1', type: 'sine', freq: 220}),
+    h(Gain, {name: 'g1', gain: 0}),
+    h(Connection, {from: 'o1', to: 'g1'}),
+    h(Connection, {from: 'g1', to: DEFAULT_OUT, weight: 0.1}),
+    h(NoteToDetune, {name: 'detune'}),
+    h(Gate, {name: 'gate'}),
+    h(Connection, {from: 'gate', to: 'g1.gain'}),
+    h(Connection, {from: 'detune', to: 'o1.detune'}),
+  ])
+}
+
 export function Test0() {
-  const [keys, dispatchKey] = useReducer((state, action) => {
-    if (action.down) {
-      if (state.includes(action.down)) return state;
-      return [...state, action.down];
-    }
-    if (action.up) {
-      return state.filter((key) => key !== action.up);
-    }
-    return state;
-  }, []);
+  const ctx = getContext();
+
+  const [dispatchVoice, setDispatchVoice] = useState(() => {});
+
   useEffect(() => {
     const onKeyDown = (e) => {
-      const key = key2Key[e.key];
-      if (key) {
-        dispatchKey({down: key});
+      const note = key2Note[e.key];
+      if (note) {
+        dispatchVoice(voiceNoteOn(ctx.currentTime, note));
       }
     };
     const onKeyUp = (e) => {
-      const key = key2Key[e.key];
-      if (key) {
-        dispatchKey({up: key});
+      const note = key2Note[e.key];
+      if (note) {
+        dispatchVoice(voiceNoteOff(ctx.currentTime, note));
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -356,17 +518,17 @@ export function Test0() {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
     }
-  }, [])
-  useEffect(() => {
-    console.log(keys);
-  }, [keys]);
-  return h(Context.Provider, {value: getContext()}, [
-    h(PatchBay, {name: 'test0'}, [
-      h(Dest, {name: 'dest'}),
-      h(Osc, {name: 'o1', type: 'sine', freq: 220}),
-      h(Gain, {name: 'g1', gain: 0}),
-      h(Connection, {from: 'o1', to: 'g1'}),
-      h(Connection, {from: 'g1', to: 'dest', weight: 0.1}),
-    ])
+  }, [dispatchVoice])
+
+  return h(Context.Provider, {value: ctx}, [
+    h(PolySynth,
+      {
+        name: 'poly1',
+        prio: KEY_PRIORITY.low,
+        voiceCount: 1,
+        dispatchVoiceRef: setDispatchVoice,
+      },
+      TestSynth,
+    ),
   ]);
 }
