@@ -22,7 +22,7 @@ export function useAudioContext() {
   return useContext(Context);
 }
 
-const EMPTY_PATCH_CONTEXT = [{}, () => {}];
+const EMPTY_PATCH_CONTEXT = [{}, () => {}, '$'];
 
 export function usePatchContext() {
   const ctx = useContext(PatchContext);
@@ -30,7 +30,8 @@ export function usePatchContext() {
   return ctx;
 }
 
-const DEFAULT_OUT = 'outAudio';
+const DEFAULT_OUT = '$out';
+const DEFAULT_IN = '$in';
 
 const PORTS = {
   Synth: {
@@ -56,10 +57,11 @@ const portsToNodes = (ports) =>
 
 export function useNewNode(create, destroy) {
   const ctx = useAudioContext();
-  const [result, setNode] = useState(ctx && create(ctx));
+  const [result, setNode] = useState(null); //useState(ctx && create(ctx));
   useEffect(() => {
     if (!ctx) return;
-    const node = result || create(ctx);
+    const node = create(ctx);
+    // console.log('new node', result, node);
     setNode(node);
     return () => {
       if (destroy) destroy(node, ctx);
@@ -102,8 +104,9 @@ export function useGain(gain = 1.0) {
 export function useConstant(value = 1.0) {
   return useNewNode(
     (ctx) => {
-      const node = result || ctx.createConstantSource();
+      const node = ctx.createConstantSource();
       node.offset.value = value;
+      node.start();
       return node;
     }
   );
@@ -121,55 +124,66 @@ export function useOnRef(node, onRef) {
   }, [node, onRef]);
 }
 
-export function usePatch(ref, name) {
+export function usePatch(ref, id) {
+  if (!id) throw new Error('no id!');
   const [_, dispatch] = usePatchContext();
   useEffect(() => {
-    console.log('dispatching', name, ref);
-    dispatch({name, ref});
-  }, [dispatch, name, ref]);
+    dispatch({id, ref});
+  }, [dispatch, id, ref]);
 }
 
-export function useParam(node, name, value) {
+export function usePatchPath() {
+  const [_, __, path] = usePatchContext();
+  return path || '$$';
+}
+
+export function useParam(node, id, value) {
   useEffect(() => {
     if (!node) return;
     if (value == null) return;
-    node[name].value = value;
-  }, [node, name, value]);
+    node[id].value = value;
+  }, [node, id, value]);
 }
 
-export function useAttr(node, name, value) {
+export function useAttr(node, id, value) {
   useEffect(() => {
     if (!node) return;
     if (value == null) return;
-    node[name] = value;
-  }, [node, name, value]);
+    node[id] = value;
+  }, [node, id, value]);
 }
 
-function Osc({type, freq, name}) {
+function Osc({type, freq, id}) {
+  useEffect(() => {
+    console.log('Osc mount', {type, freq, id});
+    return () => {
+      console.log('Osc unmount', {id});
+    }
+  }, []);
   const osc = useOscillator(type, freq);
-  usePatch(osc, name);
+  usePatch(osc, id);
   useParam(osc, 'frequency', freq);
   useAttr(osc, 'type', type);
   return null;
 }
 
-function Gain({gain = 0, name}) {
+function Gain({gain = 0, id}) {
   const node = useGain(gain);
-  usePatch(node, name);
+  usePatch(node, id);
   useParam(node, 'gain', gain);
   return null;
 }
 
-function Const({value, name}) {
+function Const({value, id}) {
   const node = useConstant(value);
-  usePatch(node, name);
+  usePatch(node, id);
   useParam(node, 'offset', value);
   return null;
 }
 
-function Dest({name}) {
+function Dest({id}) {
   const node = useDestination();
-  usePatch(node, name);
+  usePatch(node, id);
   return null;
 }
 
@@ -177,27 +191,29 @@ export function Connection({from, to, weight = 1.0}) {
   const [nodeRefs] = usePatchContext();
   
   const [fromRef, toRef] = useMemo(() => {
-    const [fromName, fromPort] = from.split('.');
-    const [toName, toPort] = to.split('.');
-    let fromRef = nodeRefs[fromName];
-    let toRef = nodeRefs[toName];
-    console.log({from, to, fromRef, toRef, nodeRefs});
+    const [fromId, fromPort] = from.split('.');
+    const [toId, toPort] = to.split('.');
+    let fromRef = nodeRefs[fromId];
+    let toRef = nodeRefs[toId];
     if (!fromRef || !toRef) return [];
     if (fromPort) {
       fromRef = fromRef[fromPort];
-    } else {
-      if (!(fromRef instanceof window.AudioNode)) fromRef = fromRef[DEFAULT_OUT];
+    // } else {
+    //   if (!(fromRef instanceof window.AudioNode)) {
+    //   }
     }
+    while (isPatch(fromRef)) fromRef = fromRef[DEFAULT_OUT];
     if (toPort) {
       toRef = toRef[toPort];
-    } else {
-      if (
-        !(toRef instanceof window.AudioNode)
-        && !(toRef instanceof window.AudioParam)
-      ) {
-        toRef = toRef.outAudio;
-      }
+    // } else {
+      // if (
+      //   !(toRef instanceof window.AudioNode)
+      //   && !(toRef instanceof window.AudioParam)
+      // ) {
+      // }
     }
+    while (isPatch(toRef)) toRef = toRef[DEFAULT_IN];
+    console.log('CONNECT', {from, to, fromRef, toRef});
     return [fromRef, toRef];
   }, [nodeRefs, from, to]);
 
@@ -205,7 +221,7 @@ export function Connection({from, to, weight = 1.0}) {
 
   useEffect(() => {
     if (!fromRef || !toRef || !gain) return;
-    console.log('really connecting', fromRef, toRef, gain);
+    console.log('really connecting', from, to, fromRef, toRef, gain);
     fromRef.connect(gain);
     gain.connect(toRef);
     return () => {
@@ -218,68 +234,82 @@ export function Connection({from, to, weight = 1.0}) {
   useParam(gain, 'gain', weight);
 };
 
-export function PatchBay({children, name}) {
-  const store = useReducer((state, action) => {
+const isPatch = (ref) => ref && ref.$isPatch;
+
+export function PatchBay({children, id}) {
+  const ppath = usePatchPath();
+
+  const [nodeRefs, dispatch] = useReducer((state, action) => {
+    console.log([ppath, '.', id, '.', action.id].join(''), '=', action.ref);
     return {
       ...state,
-      [action.name]: action.ref,
+      [action.id]: action.ref,
     };
-  }, {});
-  const [nodeRefs] = store;
+  }, {
+    $isPatch: true,
+  });
 
-  usePatch(nodeRefs, name);
+  const value = useMemo(() => [
+    nodeRefs, dispatch, ppath + '.' + id
+  ], [nodeRefs, dispatch, ppath, id]);
 
-  return h(PatchContext.Provider, {value: store}, children);
+  usePatch(nodeRefs, id);
+
+  useEffect(() => {
+    console.log('PatchBay', id, children);
+  }, []);
+
+  return h(PatchContext.Provider, {value}, children);
 }
 
-export function Patch({nodes, matrix, name}) {
-  const aNodes = Object.entries(nodes).map(([name, node]) => h(
-    Node,
-    {key: name, name, ...node, onRef: (ref) => setRef(name, ref)}
-  ));
-  const aConns = matrix.map(([from, to, weight = 1]) => h(
-    Connection,
-    {from, to, weight}
-  ));
-
-  return h(PatchBay, {name}, [
-    ...aNodes,
-    ...aConns,
-  ]);
-}
-
-export function Synth({nodes, matrix}){
-  return h(Patch,
-    {
-      nodes: {...portsToNodes(...PORTS.Synth), ...nodes},
-      matrix,
-    }
-  );
-}
-
-export function FX({nodes, matrix}) {
-  return h(Patch,
-    {
-      nodes: {...portsToNodes(...PORTS.FX), ...nodes},
-      matrix,
-    }
-  );
-}
-
-const NODES = {
-  Osc,
-  Gain,
-  Const,
-  Dest,
-  Patch,
-  Synth,
-  FX,
-};
-
-export function Node({type, params, onRef}) {
-  return h(NODES[type], {...params, onRef});
-}
-
+// export function Patch({nodes, matrix, id}) {
+//   const aNodes = Object.entries(nodes).map(([id, node]) => h(
+//     Node,
+//     {key: id, id, ...node, onRef: (ref) => setRef(id, ref)}
+//   ));
+//   const aConns = matrix.map(([from, to, weight = 1]) => h(
+//     Connection,
+//     {from, to, weight}
+//   ));
+//
+//   return h(PatchBay, {id}, [
+//     ...aNodes,
+//     ...aConns,
+//   ]);
+// }
+//
+// export function Synth({nodes, matrix}) {
+//   return h(Patch,
+//     {
+//       nodes: {...portsToNodes(...PORTS.Synth), ...nodes},
+//       matrix,
+//     }
+//   );
+// }
+//
+// export function FX({nodes, matrix}) {
+//   return h(Patch,
+//     {
+//       nodes: {...portsToNodes(...PORTS.FX), ...nodes},
+//       matrix,
+//     }
+//   );
+// }
+//
+// const NODES = {
+//   Osc,
+//   Gain,
+//   Const,
+//   Dest,
+//   Patch,
+//   Synth,
+//   FX,
+// };
+//
+// export function Node({type, params, onRef}) {
+//   return h(NODES[type], {...params, onRef});
+// }
+//
 const EMPTY_VOICE_CONTEXT = {on: false, note: 0, time: 0};
 
 const VoiceContext = createContext(EMPTY_VOICE_CONTEXT);
@@ -288,31 +318,38 @@ export function useVoiceContext() {
   return useContext(VoiceContext);
 }
 
-export function Voice({on, time, note, name, children}) {
+export function Voice({on, time, note, id, children}) {
+  const pc = usePatchContext();
+  useEffect(() => {
+    console.log('VOICE', pc, on, time, note, id);
+  }, [on, time, note, id, pc]);
   return h(VoiceContext.Provider,
     {value: {on, time, note}},
-    h(PatchBay, {name}, children),
+    h(PatchBay, {id}, children),
   );
 }
 
-export function NoteToDetune({name}) {
-  const constant = useConstant(1);
+export function NoteToDetune({id}) {
+  const constant = useConstant(0);
   const {time, note} = useVoiceContext();
   useEffect(() => {
     if (!constant) return;
-    constant.offset.setValueAtTime((note - 69) * 100, time);
+    const value = (note - 69) * 100;
+    console.log('setting value for', id, 'to', value, 'at', time);
+    constant.offset.setValueAtTime(value, time);
   }, [constant, time]);
-  usePatch(constant, name);
+  usePatch(constant, id);
 }
 
-export function Gate({name}) {
-  const constant = useConstant(0);
+export function Gate({id}) {
+  const gain = useGain(0);
   const {time, on} = useVoiceContext();
   useEffect(() => {
-    if (!constant) return;
-    constant.offset.setValueAtTime(on ? 1 : 0, time);
-  }, [constant, time]);
-  usePatch(constant, name);
+    if (!gain) return;
+    console.log('setting value for', id, 'to', on, 'at', time);
+    gain.gain.setValueAtTime(on ? 1 : 0, time);
+  }, [gain, time]);
+  usePatch(gain, id);
 }
 
 export function TestCtx() {
@@ -375,16 +412,20 @@ function voiceNoteOff(time, note, vel = 1) {
 }
 
 export function PolySynth({
-  name,
+  id,
   prio = KEY_PRIORITY.low,
   voiceCount = 1,
-  dispatchVoiceRef,
+  voiceControlRef,
   children,
 }) {
   const ctx = useAudioContext();
 
-  const [voiceState, dispatchVoice] = useImmerReducer(
+  const [voiceState, voiceDispatch] = useImmerReducer(
     (state, action) => {
+      if (!action) {
+        console.error(new Error('no action'));
+        return;
+      }
       if (action.type === 'setVoiceCount') {
         state.notes = [];
         state.notesPlaying = {};
@@ -403,7 +444,6 @@ export function PolySynth({
         const toPlay = state.notesPressed.slice(0, voices.length);
         const toOff = new Set(Object.keys(notesPlaying).map(n => parseInt(n)));
         const toOn = new Set();
-        console.log('toOff', toOff, toPlay);
         for (const note of toPlay) {
           if (note in notesPlaying) {
             toOff.delete(note);
@@ -411,8 +451,6 @@ export function PolySynth({
           }
           toOn.add(note);
         }
-        console.log('toOff', toOff);
-        console.log(JSON.stringify({toPlay, toOn: [...toOn], toOff: [...toOff]}));
         for (const note of toOff) {
           const idx = notesPlaying[note];
           voices[idx].on = false;
@@ -460,56 +498,61 @@ export function PolySynth({
   );
 
   useEffect(() => {
-    dispatchVoice({type: 'setVoiceCount', voiceCount, time: ctx.currentTime});
+    voiceDispatch({type: 'setVoiceCount', voiceCount, time: ctx.currentTime});
   }, [ctx, voiceCount])
+
+  const voiceControl = useMemo(() => {
+    return {
+      dispatch: voiceDispatch,
+    }
+  }, [voiceDispatch]);
   
   useEffect(() => {
-    if (typeof dispatchVoiceRef === 'function') dispatchVoiceRef(dispatchVoice);
-  }, [dispatchVoiceRef, dispatchVoice])
+    if (typeof voiceControlRef === 'function') {
+      voiceControlRef(voiceControl);
+    }
+  }, [voiceControlRef, voiceControl]);
 
   useEffect(() => {
-    console.log('voices', JSON.stringify(voices));
-  }, [voices]);
+    console.log('voices', JSON.stringify(voiceState.voices));
+  }, [voiceState]);
 
-  return h(PatchBay, {name}, [
-    h(Gain, DEFAULT_OUT),
+  return h(PatchBay, {id}, [
+    h(Gain, {id: DEFAULT_OUT}),
     ...voiceState.voices.map(voice =>
-      h(Voice, {...voice, name: `voice${voice.idx}`, children})
+      h(Voice, {...voice, id: `voice${voice.idx}`, children})
     ),
     ...voiceState.voices.map(voice => h(Connection, {from: `voice${voice.idx}`, to: DEFAULT_OUT})),
   ]);
 }
 
-export function TestSynth({name}) {
-  h(PatchBay, {name}, [
-    h(Gain, {name: DEFAULT_OUT}),
-    h(Osc, {name: 'o1', type: 'sine', freq: 220}),
-    h(Gain, {name: 'g1', gain: 0}),
-    h(Connection, {from: 'o1', to: 'g1'}),
-    h(Connection, {from: 'g1', to: DEFAULT_OUT, weight: 0.1}),
-    h(NoteToDetune, {name: 'detune'}),
-    h(Gate, {name: 'gate'}),
-    h(Connection, {from: 'gate', to: 'g1.gain'}),
-    h(Connection, {from: 'detune', to: 'o1.detune'}),
-  ])
+export function TestSynth({id}) {
+  return h(PatchBay, {id}, [
+    h(Gate, {id: DEFAULT_OUT}),
+    h(Osc, {id: 'o', type: 'sine', freq: 220}),
+    h(Connection, {from: 'o', to: DEFAULT_OUT}),
+    h(NoteToDetune, {id: 'detune'}),
+    h(Connection, {from: 'detune', to: 'o.detune'}),
+  ]);
 }
 
-export function Test0() {
+export function Test1() {
   const ctx = getContext();
 
-  const [dispatchVoice, setDispatchVoice] = useState(() => {});
+  const [voice, setVoice] = useState({dispatch: () => {}});
 
   useEffect(() => {
+    const voiceDispatch = voice.dispatch;
     const onKeyDown = (e) => {
       const note = key2Note[e.key];
       if (note) {
-        dispatchVoice(voiceNoteOn(ctx.currentTime, note));
+        voiceDispatch(voiceNoteOn(ctx.currentTime, note));
       }
     };
     const onKeyUp = (e) => {
       const note = key2Note[e.key];
       if (note) {
-        dispatchVoice(voiceNoteOff(ctx.currentTime, note));
+        voiceDispatch(voiceNoteOff(ctx.currentTime, note));
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -518,17 +561,47 @@ export function Test0() {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
     }
-  }, [dispatchVoice])
+  }, [voice])
 
   return h(Context.Provider, {value: ctx}, [
-    h(PolySynth,
-      {
-        name: 'poly1',
-        prio: KEY_PRIORITY.low,
-        voiceCount: 1,
-        dispatchVoiceRef: setDispatchVoice,
-      },
-      TestSynth,
-    ),
+    h(PatchBay, {id: 'TEST'}, [
+      h(PolySynth,
+        {
+          id: 'poly1',
+          prio: KEY_PRIORITY.low,
+          voiceCount: 1,
+          voiceControlRef: setVoice,
+        },
+        [
+          h(TestSynth, {id: 'syn'}),
+          h(Gain, {id: DEFAULT_OUT}),
+          h(Connection, {from: 'syn', to: DEFAULT_OUT}),
+        ]
+      ),
+      h(Dest, {id: 'dest'}),
+      h(Connection, {from: 'poly1', to: 'dest'}),
+    ])
+  ]);
+}
+
+export function Test0() {
+  const ctx = getContext();
+
+  const [voice, setVoice] = useState({on: true, note: 48, time: ctx.currentTime + 0.1});
+  useEffect(() => {
+    setTimeout(() => {
+      setVoice({on: false, note: 60, time: ctx.currentTime + 1.1});
+    }, 50);
+  }, []);
+
+  return h(Context.Provider, {value: ctx}, [
+    h(PatchBay, {id: 'test0'}, [
+      h(Dest, {id: 'dest'}),
+      h(Voice, {id: 'v0', ...voice}, [
+        h(TestSynth, {id: DEFAULT_OUT}),
+        // h(Osc, {id: DEFAULT_OUT}),
+      ]),
+      h(Connection, {from: 'v0', to: 'dest', weight: 0.1}),
+    ])
   ]);
 }
