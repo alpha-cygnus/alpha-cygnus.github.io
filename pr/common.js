@@ -1,11 +1,12 @@
-import {
+// import {
+const {
   h,
   render,
   Fragment,
   createContext,
-} from 'https://unpkg.com/preact@latest?module';
+// } from 'https://unpkg.com/preact@latest?module';
 // } from './lib/preact.js';
-import {
+// import {
   useState,
   useRef,
   useEffect,
@@ -13,8 +14,8 @@ import {
   useCallback,
   useReducer, 
   useContext,
-} from 'https://unpkg.com/preact@latest/hooks/dist/hooks.module.js?module';
-// } from './lib/preact-hooks.js';
+// } from 'https://unpkg.com/preact@latest/hooks/dist/hooks.module.js?module';
+} = window.PREACT;
 //import htm from "https://unpkg.com/htm@latest/dist/htm.module.js?module";
 
 import htm from './lib/htm.js';
