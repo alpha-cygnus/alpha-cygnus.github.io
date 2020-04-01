@@ -22,7 +22,9 @@ export function useAudioContext() {
   return useContext(Context);
 }
 
-const EMPTY_PATCH_CONTEXT = [{}, () => {}, '$'];
+const DUMMY_FUNC = () => {};
+
+const EMPTY_PATCH_CONTEXT = [{}, DUMMY_FUNC, '$'];
 
 export function usePatchContext() {
   const ctx = useContext(PatchContext);
@@ -356,16 +358,90 @@ export function Gate({id}) {
   usePatch(gain, id);
 }
 
-export function TestCtx() {
+const ADSR_TYPE = {
+  linear: 'linear',
+  exponential: 'exponential',
+};
+
+export function ADSR(
+  {
+    id,
+    attack = 0.01, decay = 0.1, sustain = 0.5, release = 0.5,
+    type = ADSR_TYPE.linear,
+  }
+) {
+  const gain = useGain(0);
+  const {time, on} = useVoiceContext();
   const ctx = useAudioContext();
-  return ctx.toString();
+  useEffect(() => {
+    if (!gain) return;
+    const t = Math.max(time, ctx.currentTime);
+    const p = gain.gain;
+    if (p.cancelAndHoldAtTime) {
+      p.cancelAndHoldAtTime(t);
+    } else {
+      p.cancelScheduledValues(t);
+    }
+    if (type === ADSR_TYPE.linear) {
+      if (on) {
+        p.linearRampToValueAtTime(1, t + attack);
+        p.linearRampToValueAtTime(sustain, t + attack + decay);
+      } else {
+        p.linearRampToValueAtTime(0, t + release);
+      }
+    } else {
+      if (on) {
+        p.exponentialRampToValueAtTime(1, t + attack);
+        p.exponentialRampToValueAtTime(sustain, t + attack + decay);
+      } else {
+        p.setTargetAtTime(0, t + release, release/4);
+      }
+    }
+    console.log('trig ADSR for', id, 'to', on, 'at', time);
+  }, [gain, time]);
+  usePatch(gain, id);
 }
 
-let THE_CONTEXT = null;
+const MidiContext = createContext(null);
 
-function getContext() {
-  if (!THE_CONTEXT) THE_CONTEXT = new AudioContext();
-  return THE_CONTEXT;
+function useMidiDispatch() {
+  const mctx = useContext(MidiContext);
+  if (!mctx) return DUMMY_FUNC;
+  return mctx[1];
+}
+
+const midiSubscibe = (handler) => ({type: 'sub', handler});
+const midiUnsubscibe = (handler) => ({type: 'unsub', handler});
+
+function midiNoteOn(time, note, vel = 1) {
+  return {type: 'on', time, note, vel};
+}
+
+function midiNoteOff(time, note, vel = 1) {
+  return {type: 'off', time, note, vel};
+}
+
+function MidiHub({children}) {
+  const store = useImmerReducer((state, action) => {
+    console.log('midi', action);
+    const {handlers} = state;
+    if (action.type === 'sub') {
+      if (typeof action.handler !== 'function');
+      handlers.push(action.handler);
+      return;
+    }
+    if (action.type === 'unsub') {
+      const idx = handlers.indexOf(action.handler);
+      if (idx >= 0) handlers.splice(idx, 1);
+      return;
+    }
+    for (const handler of handlers) {
+      handler(action);
+    }
+  }, {
+    handlers: [],
+  });
+  return h(MidiContext.Provider, {value: store}, children);
 }
 
 const key2Note = {
@@ -400,20 +476,82 @@ const key2Note = {
   m: 59,
 };
 
+export function KeyboardToMidi() {
+  const midiDispatch = useMidiDispatch();
+  const ctx = useAudioContext();
+  const [oct, setOct] = useState(0);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const note = key2Note[e.key];
+      if (note) {
+        midiDispatch(midiNoteOn(ctx.currentTime, note));
+      }
+    };
+    const onKeyUp = (e) => {
+      const note = key2Note[e.key];
+      if (note) {
+        midiDispatch(midiNoteOff(ctx.currentTime, note));
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+    }
+  }, [midiDispatch]);
+
+  return null;
+}
+
+export function MidiInput() {
+  const midiDispatch = useMidiDispatch();
+  const ctx = useAudioContext();
+
+  useEffect(() => {
+    if (!navigator.requestMIDIAccess) {
+      console.log('NO MIDI HERE');
+    }
+    const handler = (m) => {
+      // (d) => parseInt('' + d).toString(16).padStart(2, '0')
+      console.log([...m.data].map(d => d.toString(16).padStart(2, '0')).join(' '));
+      if (m.data[0] >> 4 === 9) {
+        const note = m.data[1];
+        const vel = m.data[2] / 127;
+        if (vel === 0) {
+          midiDispatch(midiNoteOff(ctx.currentTime, note, vel));
+        } else {
+          midiDispatch(midiNoteOn(ctx.currentTime, note, vel));
+        }
+      }
+      if (m.data[0] >> 4 === 8) {
+        const note = m.data[1];
+        const vel = m.data[2] / 127;
+        midiDispatch(midiNoteOff(ctx.currentTime, note, vel));
+      }
+    }
+    navigator.requestMIDIAccess().then((midi) => {
+      const inputs = [...midi.inputs.values()];
+      for (const input of inputs) {
+        input.onmidimessage = handler;
+      }
+    });
+    return () => {
+
+    }
+  }, [midiDispatch]);
+
+  return null;
+
+}
+
 const KEY_PRIORITY = {
   low: 'low',
   high: 'high',
   last: 'last',
   first: 'first',
 };
-
-function voiceNoteOn(time, note, vel = 1) {
-  return {type: 'on', time, note, vel};
-}
-
-function voiceNoteOff(time, note, vel = 1) {
-  return {type: 'off', time, note, vel};
-}
 
 export function PolySynth({
   id,
@@ -506,21 +644,17 @@ export function PolySynth({
     voiceDispatch({type: 'setVoiceCount', voiceCount, time: ctx.currentTime});
   }, [ctx, voiceCount])
 
-  const voiceControl = useMemo(() => {
-    return {
-      dispatch: voiceDispatch,
-    }
-  }, [voiceDispatch]);
-  
-  useEffect(() => {
-    if (typeof voiceControlRef === 'function') {
-      voiceControlRef(voiceControl);
-    }
-  }, [voiceControlRef, voiceControl]);
-
   useEffect(() => {
     console.log('voices', JSON.stringify(voiceState.voices));
   }, [voiceState]);
+
+  const midiDispatch = useMidiDispatch();
+
+  useEffect(() => {
+    const handler = voiceDispatch;
+    midiDispatch(midiSubscibe(handler));
+    return () => midiDispatch(midiUnsubscibe(handler));
+  }, [midiDispatch, voiceDispatch]);
 
   return h(PatchBay, {id}, [
     h(Gain, {id: DEFAULT_OUT}),
@@ -531,10 +665,19 @@ export function PolySynth({
   ]);
 }
 
+
+let THE_CONTEXT = null;
+
+function getContext() {
+  if (!THE_CONTEXT) THE_CONTEXT = new AudioContext();
+  return THE_CONTEXT;
+}
+
 export function TestSynth({id}) {
   return h(PatchBay, {id}, [
-    h(Gate, {id: DEFAULT_OUT}),
-    h(Osc, {id: 'o', type: 'triangle', freq: 440}),
+    // h(Gate, {id: DEFAULT_OUT}),
+    h(ADSR, {id: DEFAULT_OUT, release: 1}),
+    h(Osc, {id: 'o', type: 'sine', freq: 440}),
     h(Connection, {from: 'o', to: DEFAULT_OUT}),
     h(NoteToDetune, {id: 'detune'}),
     h(Connection, {from: 'detune', to: 'o.detune'}),
@@ -544,45 +687,48 @@ export function TestSynth({id}) {
 export function Test0() {
   const ctx = getContext();
 
-  const [voice, setVoice] = useState({dispatch: () => {}});
-
-  useEffect(() => {
-    const voiceDispatch = voice.dispatch;
-    const onKeyDown = (e) => {
-      const note = key2Note[e.key];
-      if (note) {
-        voiceDispatch(voiceNoteOn(ctx.currentTime, note));
-      }
-    };
-    const onKeyUp = (e) => {
-      const note = key2Note[e.key];
-      if (note) {
-        voiceDispatch(voiceNoteOff(ctx.currentTime, note));
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('keyup', onKeyUp);
-    }
-  }, [voice])
-
+  // const [voice, setVoice] = useState({dispatch: () => {}});
+  //
+  // useEffect(() => {
+  //   const voiceDispatch = voice.dispatch;
+  //   const onKeyDown = (e) => {
+  //     const note = key2Note[e.key];
+  //     if (note) {
+  //       voiceDispatch(midiNoteOn(ctx.currentTime, note));
+  //     }
+  //   };
+  //   const onKeyUp = (e) => {
+  //     const note = key2Note[e.key];
+  //     if (note) {
+  //       voiceDispatch(midiNoteOff(ctx.currentTime, note));
+  //     }
+  //   };
+  //   document.addEventListener('keydown', onKeyDown);
+  //   document.addEventListener('keyup', onKeyUp);
+  //   return () => {
+  //     document.removeEventListener('keydown', onKeyDown);
+  //     document.removeEventListener('keyup', onKeyUp);
+  //   }
+  // }, [voice])
+  //
   return h(Context.Provider, {value: ctx}, [
-    h(PatchBay, {id: 'TEST'}, [
-      h(PolySynth,
-        {
-          id: 'poly1',
-          prio: KEY_PRIORITY.low,
-          voiceCount: 4,
-          voiceControlRef: setVoice,
-        },
-        [
-          h(TestSynth, {id: DEFAULT_OUT}),
-        ]
-      ),
-      h(Dest, {id: 'dest'}),
-      h(Connection, {from: 'poly1', to: 'dest', weight: 0.1}),
+    h(MidiHub, {}, [
+      h(KeyboardToMidi, {}),
+      h(MidiInput),
+      h(PatchBay, {id: 'TEST'}, [
+        h(PolySynth,
+          {
+            id: 'poly1',
+            prio: KEY_PRIORITY.low,
+            voiceCount: 4,
+          },
+          [
+            h(TestSynth, {id: DEFAULT_OUT}),
+          ]
+        ),
+        h(Dest, {id: 'dest'}),
+        h(Connection, {from: 'poly1', to: 'dest', weight: 0.1}),
+      ])
     ])
   ]);
 }
