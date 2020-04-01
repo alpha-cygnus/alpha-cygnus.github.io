@@ -103,6 +103,26 @@ export function useGain(gain = 1.0) {
   );
 }
 
+const FILTER_TYPE = {
+  LP: 'lowpass',
+  HP: 'highpass',
+  BP: 'bandpass',
+};
+
+export function useFilter(type = FILTER_TYPE.LP, freq, q, gain) {
+  return useNewNode(
+    (ctx) => {
+      const node = ctx.createBiquadFilter();
+      node.type = type;
+      node.frequency.value = freq;
+      node.Q.value = q;
+      node.gain.value = gain;
+      console.log('new f', node);
+      return node;
+    },
+  );
+}
+
 export function useConstant(value = 1.0) {
   return useNewNode(
     (ctx) => {
@@ -167,6 +187,15 @@ function Osc({type, freq, id}) {
   useParam(osc, 'frequency', freq);
   useAttr(osc, 'type', type);
   return null;
+}
+
+function Filter({type = FILTER_TYPE.LP, freq = 22050, q = 0, gain = 1.0, id}) {
+  const node = useFilter(type, freq, q, gain);
+  usePatch(node, id);
+  useParam(node, 'frequency', freq);
+  useParam(node, 'Q', q);
+  useParam(node, 'gain', gain);
+  useAttr(node, 'type', type);
 }
 
 function Gain({gain = 1, id}) {
@@ -320,13 +349,13 @@ export function useVoiceContext() {
   return useContext(VoiceContext);
 }
 
-export function Voice({on, time, note, id, children}) {
+export function Voice({on, time, note, id, vel, children}) {
   const pc = usePatchContext();
   useEffect(() => {
-    console.log('VOICE', pc, on, time, note, id);
+    console.log('VOICE', pc, on, time, note, id, vel);
   }, [on, time, note, id, pc]);
   return h(VoiceContext.Provider,
-    {value: {on, time, note}},
+    {value: {on, time, note, vel}},
     h(PatchBay, {id}, children),
   );
 }
@@ -338,6 +367,20 @@ export function NoteToDetune({id}) {
   useEffect(() => {
     if (!constant) return;
     const value = (note - 69) * 100;
+    console.log('setting value for', id, 'to', value, 'at', time);
+    const t = Math.max(time, ctx.currentTime);
+    constant.offset.setValueAtTime(value, t);
+  }, [constant, time]);
+  usePatch(constant, id);
+}
+
+export function Velocity({id}) {
+  const constant = useConstant(0);
+  const {time, vel} = useVoiceContext();
+  const ctx = useAudioContext();
+  useEffect(() => {
+    if (!constant) return;
+    const value = vel;
     console.log('setting value for', id, 'to', value, 'at', time);
     const t = Math.max(time, ctx.currentTime);
     constant.offset.setValueAtTime(value, t);
@@ -479,19 +522,25 @@ const key2Note = {
 export function KeyboardToMidi() {
   const midiDispatch = useMidiDispatch();
   const ctx = useAudioContext();
-  const [oct, setOct] = useState(0);
+  const oct = useRef(0);
 
   useEffect(() => {
     const onKeyDown = (e) => {
       const note = key2Note[e.key];
       if (note) {
-        midiDispatch(midiNoteOn(ctx.currentTime, note));
+        midiDispatch(midiNoteOn(ctx.currentTime, note + oct.current*12));
+      }
+      if (e.key === '[') {
+        if (oct.current > -2) oct.current--;
+      }
+      if (e.key === ']') {
+        if (oct.current < 2) oct.current++;
       }
     };
     const onKeyUp = (e) => {
       const note = key2Note[e.key];
       if (note) {
-        midiDispatch(midiNoteOff(ctx.currentTime, note));
+        midiDispatch(midiNoteOff(ctx.currentTime, note + oct.current*12));
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -543,7 +592,6 @@ export function MidiInput() {
   }, [midiDispatch]);
 
   return null;
-
 }
 
 const KEY_PRIORITY = {
@@ -552,6 +600,8 @@ const KEY_PRIORITY = {
   last: 'last',
   first: 'first',
 };
+
+const defVoiceState = (idx) => ({idx, note: 0, on: false, time: 0, vel: 1});
 
 export function PolySynth({
   id,
@@ -573,7 +623,7 @@ export function PolySynth({
         state.notesPlaying = {};
         state.voices = [];
         for (let idx = 0; idx < action.voiceCount; idx++) {
-          state.voices.push({idx, note: 0, on: false, time: 0})
+          state.voices.push(defVoiceState(idx));
         }
         updateVoices(state, action.time);
         return;
@@ -582,7 +632,7 @@ export function PolySynth({
       const {type, note, time} = action;
 
       function updateVoices(state, time) {
-        const {notesPlaying, voices} = state;
+        const {notesPlaying, noteVels, voices} = state;
         const toPlay = state.notesPressed.slice(0, voices.length);
         const toOff = new Set(Object.keys(notesPlaying).map(n => parseInt(n)));
         const toOn = new Set();
@@ -604,6 +654,7 @@ export function PolySynth({
           v.on = true;
           v.note = note;
           v.time = time;
+          v.vel = noteVels[note] || 1;
           notesPlaying[note] = v.idx;
         }
       }
@@ -616,6 +667,7 @@ export function PolySynth({
       }
       if (type === 'on') {
         if (state.notesPressed.includes(note)) return;
+        state.noteVels[note] = action.vel || 1;
         if (prio === KEY_PRIORITY.last) {
           state.notesPressed.unshift(note);
         }
@@ -633,6 +685,7 @@ export function PolySynth({
     },
     {
       notesPressed: [],
+      noteVels: {},
       notesPlaying: {},
       voices: [
         {idx: 0, note: 0, on: false, time: 0},
@@ -676,11 +729,28 @@ function getContext() {
 export function TestSynth({id}) {
   return h(PatchBay, {id}, [
     // h(Gate, {id: DEFAULT_OUT}),
+    h(Velocity, {id: 'vel'}),
+    h(Gain, {id: 'mix', gain: 0}),
+    h(Connection, {from: 'vel', to: 'mix.gain'}),
+    h(Filter, {id: 'f', freq: 1500, q: 3}),
+    h(Const, {id: 'c', value: 7000}),
+    h(ADSR, {id: 'fADSR', attack: 0.5, decay: 0.5, sustain: 0.1, release: 1}),
+    h(Connection, {from: 'c', to: 'fADSR'}),
+    h(Connection, {from: 'fADSR', to: 'f.frequency'}),
+    h(Connection, {from: 'detune', to: 'f.detune'}),
+    h(Connection, {from: 'mix', to: 'f'}),
+    h(Connection, {from: 'f', to: DEFAULT_OUT}),
     h(ADSR, {id: DEFAULT_OUT, release: 1}),
-    h(Osc, {id: 'o', type: 'sine', freq: 440}),
-    h(Connection, {from: 'o', to: DEFAULT_OUT}),
+    h(Osc, {id: 'o1', type: 'sawtooth', freq: 438}),
+    h(Osc, {id: 'o2', type: 'sawtooth', freq: 442}),
+    h(Osc, {id: 'o3', type: 'sawtooth', freq: 440}),
+    h(Connection, {from: 'o1', to: 'mix'}),
+    h(Connection, {from: 'o2', to: 'mix'}),
+    h(Connection, {from: 'o3', to: 'mix'}),
     h(NoteToDetune, {id: 'detune'}),
-    h(Connection, {from: 'detune', to: 'o.detune'}),
+    h(Connection, {from: 'detune', to: 'o1.detune'}),
+    h(Connection, {from: 'detune', to: 'o2.detune'}),
+    h(Connection, {from: 'detune', to: 'o3.detune'}),
   ]);
 }
 
