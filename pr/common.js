@@ -1,5 +1,5 @@
-// import {
-const {
+import {
+// const {
   h,
   render,
   Fragment,
@@ -15,12 +15,15 @@ const {
   useReducer, 
   useContext,
 // } from 'https://unpkg.com/preact@latest/hooks/dist/hooks.module.js?module';
-} = window.PREACT;
+} from './lib/preact-mod.js';
+// } = window.PREACT;
 //import htm from "https://unpkg.com/htm@latest/dist/htm.module.js?module";
 
 import htm from './lib/htm.js';
-const R = window.R;
+// const R = window.R;
 const {produce} = window.IMMER;
+// import {produce} from './lib/immer-mod.js';
+// window.PRO = produce;
 
 const html = htm.bind(h);
 
@@ -52,6 +55,5 @@ export {
   useContext,
   Fragment,
   createContext,
-  R,
   produce,
 };

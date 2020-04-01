@@ -10,7 +10,7 @@ import {
   useReducer,
   useImmerReducer,
   Fragment,
-  R,
+  // R,
 } from './common.js';
 
 
@@ -167,7 +167,7 @@ function Osc({type, freq, id}) {
   return null;
 }
 
-function Gain({gain = 0, id}) {
+function Gain({gain = 1, id}) {
   const node = useGain(gain);
   usePatch(node, id);
   useParam(node, 'gain', gain);
@@ -332,11 +332,13 @@ export function Voice({on, time, note, id, children}) {
 export function NoteToDetune({id}) {
   const constant = useConstant(0);
   const {time, note} = useVoiceContext();
+  const ctx = useAudioContext();
   useEffect(() => {
     if (!constant) return;
     const value = (note - 69) * 100;
     console.log('setting value for', id, 'to', value, 'at', time);
-    constant.offset.setValueAtTime(value, time);
+    const t = Math.max(time, ctx.currentTime);
+    constant.offset.setValueAtTime(value, t);
   }, [constant, time]);
   usePatch(constant, id);
 }
@@ -344,10 +346,12 @@ export function NoteToDetune({id}) {
 export function Gate({id}) {
   const gain = useGain(0);
   const {time, on} = useVoiceContext();
+  const ctx = useAudioContext();
   useEffect(() => {
     if (!gain) return;
     console.log('setting value for', id, 'to', on, 'at', time);
-    gain.gain.setValueAtTime(on ? 1 : 0, time);
+    const t = Math.max(time, ctx.currentTime);
+    gain.gain.setValueAtTime(on ? 1 : 0, t);
   }, [gain, time]);
   usePatch(gain, id);
 }
@@ -375,13 +379,13 @@ const key2Note = {
   t: 67,
   6: 68,
   y: 69,
-  7: 71,
-  u: 72,
-  i: 73,
-  9: 74,
-  o: 75,
-  0: 76,
-  p: 77,
+  7: 70,
+  u: 71,
+  i: 72,
+  9: 73,
+  o: 74,
+  0: 75,
+  p: 76,
   z: 48,
   s: 49,
   x: 50,
@@ -461,6 +465,7 @@ export function PolySynth({
           const v = voices.filter(({on}) => !on).sort(({time: a}, {time: b}) => a - b)[0];
           v.on = true;
           v.note = note;
+          v.time = time;
           notesPlaying[note] = v.idx;
         }
       }
@@ -529,14 +534,14 @@ export function PolySynth({
 export function TestSynth({id}) {
   return h(PatchBay, {id}, [
     h(Gate, {id: DEFAULT_OUT}),
-    h(Osc, {id: 'o', type: 'sine', freq: 220}),
+    h(Osc, {id: 'o', type: 'triangle', freq: 440}),
     h(Connection, {from: 'o', to: DEFAULT_OUT}),
     h(NoteToDetune, {id: 'detune'}),
     h(Connection, {from: 'detune', to: 'o.detune'}),
   ]);
 }
 
-export function Test1() {
+export function Test0() {
   const ctx = getContext();
 
   const [voice, setVoice] = useState({dispatch: () => {}});
@@ -569,22 +574,20 @@ export function Test1() {
         {
           id: 'poly1',
           prio: KEY_PRIORITY.low,
-          voiceCount: 1,
+          voiceCount: 4,
           voiceControlRef: setVoice,
         },
         [
-          h(TestSynth, {id: 'syn'}),
-          h(Gain, {id: DEFAULT_OUT}),
-          h(Connection, {from: 'syn', to: DEFAULT_OUT}),
+          h(TestSynth, {id: DEFAULT_OUT}),
         ]
       ),
       h(Dest, {id: 'dest'}),
-      h(Connection, {from: 'poly1', to: 'dest'}),
+      h(Connection, {from: 'poly1', to: 'dest', weight: 0.1}),
     ])
   ]);
 }
 
-export function Test0() {
+export function Test1() {
   const ctx = getContext();
 
   const [voice, setVoice] = useState({on: true, note: 48, time: ctx.currentTime + 0.1});
