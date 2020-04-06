@@ -1,0 +1,6 @@
+o1=Osc(type=sawtooth,freq=439);
+o2=Osc(type=sawtooth,freq=440);
+o3=Osc(type=sawtooth,freq=441);
+NoteToDetune->o[1-3].detune;
+o[1-3]->mix=Gain(0.3)->ADSR(a=0.1,d=0.5,s=0.2,r=0.2)->flt=Filter(type=lowpass)->$out;
+c=Const[5000]->fADSR=ADSR(a=0.5,d=0.5,s=0.5,r=1)->flt.freq;
