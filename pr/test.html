@@ -19,21 +19,25 @@
       console.log(ctx);
       const btn = document.getElementById('btn');
       let sine = null;
-      btn.onmousedown = () => {
+      const down = () => {
         console.log('down');
         ctx.resume();
         console.log(ctx);
         sine = ctx.createOscillator();
         sine.connect(ctx.destination);
         sine.start();
-      }
-      btn.onmouseup = () => {
+      };
+      const up = () => {
         console.log('up');
         console.log(sine);
         sine.stop();
         sine.disconnect();
         sine = null;
-      }
+      };
+      btn.onmousedown = down;
+      btn.onmouseup = up;
+      btn.addEventListener('touchstart', down);
+      btn.addEventListener('touchend', up);
     });
   </script>
 </head>
