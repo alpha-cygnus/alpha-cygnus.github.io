@@ -15,14 +15,13 @@
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      let ctx = null;
+      let ctx = new (window.AudioContext || window.webkitAudioContext)();
       console.log(ctx);
       const btn = document.getElementById('btn');
       let sine = null;
       btn.onmousedown = () => {
         console.log('down');
-        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-        // ctx.resume();
+        ctx.resume();
         console.log(ctx);
         sine = ctx.createOscillator();
         sine.connect(ctx.destination);
