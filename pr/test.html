@@ -1,0 +1,47 @@
+<html lang="en">
+<head>
+  <title></title>
+  <style>
+    #btn {
+      cursor: pointer;
+      padding: 10px;
+      margin: 10px;
+      border: 1px solid grey;
+      background: lightgreen;
+    }
+    #btn:active {
+      background: red;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let ctx = new (window.AudioContext || window.webkitAudioContext)();
+      console.log(ctx);
+      const btn = document.getElementById('btn');
+      let sine = null;
+      const down = () => {
+        console.log('down');
+        ctx.resume();
+        console.log(ctx);
+        sine = ctx.createOscillator();
+        sine.connect(ctx.destination);
+        sine.start();
+      };
+      const up = () => {
+        console.log('up');
+        console.log(sine);
+        sine.stop();
+        sine.disconnect();
+        sine = null;
+      };
+      btn.onmousedown = down;
+      btn.onmouseup = up;
+      btn.addEventListener('touchstart', down);
+      btn.addEventListener('touchend', up);
+    });
+  </script>
+</head>
+<body>
+  <div id="btn">PRESS ME</div>
+</body>
+</html>
