@@ -1,0 +1,109 @@
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.app {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: #EEE;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.top {
+    flex-direction: row;
+    display: flex;
+}
+
+.top-tab {
+    background: #DDD;
+    padding: 10px;
+    margin: 0 4px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    cursor: pointer;
+}
+
+.top-tab.selected {
+    background: #888;
+    color: white;
+}
+
+.main-row {
+    flex: 1;
+    border-top: 1px solid #888;
+    display: flex;
+    flex-direction: row;
+}
+
+.main-row .left {
+    flex: 1;
+    border-right: 1px solid #888;
+}
+
+.main-row .main {
+    flex: 2;
+}
+
+.main-row .right {
+    flex: 1;
+    border-left: 1px solid #888;
+}
+
+.bottom {
+    background: #888;
+    height: 16px;
+    padding: 10px;
+    color: white;
+}
+
+.pattern-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.pattern-item {
+    display: flex;
+    flex-direction: row;
+    padding: 4px;
+}
+
+.pattern-item.selected {
+    background: #00ff26;
+}
+
+.patch-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.patch-item {
+    display: flex;
+    flex-direction: row;
+    padding: 4px;
+}
+
+.patch-item.selected {
+    background: #00ff26;
+}
+
+.pattern {
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    font-family: "Fira Mono", Monaco, Consolas, "Lucida Console", monospace;
+    font-size: 10px;
+}
+.pattern .row {
+    display: flex;
+    flex-direction: row;
+}
+.pattern .row .idx {
+    border-right: 1px solid #888;
+    padding-right: 2px;
+}
+

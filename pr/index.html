@@ -2,10 +2,11 @@
   <head>
     <script src="./lib/immer.js"></script>
     <script type="module">
-      import { render } from './common.js';
-      import app from './app.js';
-      render(app, document.body);
+      import { render, h } from './common.js';
+      import {App} from './app.js';
+      render(h(App), document.body);
     </script>
+    <link rel="stylesheet" href="./main.css">
   </head>
   <body>
 
