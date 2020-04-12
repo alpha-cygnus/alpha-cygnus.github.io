@@ -38,6 +38,7 @@ body {
     border-top: 1px solid #888;
     display: flex;
     flex-direction: row;
+    overflow: hidden;
 }
 
 .main-row .left {
@@ -47,6 +48,8 @@ body {
 
 .main-row .main {
     flex: 2;
+    display: flex;
+    overflow: scroll;
 }
 
 .main-row .right {
@@ -94,16 +97,47 @@ body {
 .pattern {
     padding: 4px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     font-family: "Fira Mono", Monaco, Consolas, "Lucida Console", monospace;
     font-size: 10px;
+    overflow-y: scroll;
 }
-.pattern .row {
+.pattern .col {
     display: flex;
-    flex-direction: row;
-}
-.pattern .row .idx {
+    flex-direction: column;
     border-right: 1px solid #888;
     padding-right: 2px;
+    flex-shrink: 0;
+}
+.pattern .idx-col {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #888;
+    padding-right: 4px;
+}
+.pattern .cols {
+    display: flex;
+    flex-direction: row;
+    overflow-x: scroll;
+    overflow-y: visible;
 }
 
+.pattern .col .cell {
+    display: flex;
+    flex-direction: row;
+    padding-right: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.cell > div {
+    margin-left: 4px;
+}
+
+.pattern .cell span {
+    display: inline-block;
+}
+
+.pattern .cell span.cursor {
+    display: inline-block;
+    outline: 1px solid black;
+}

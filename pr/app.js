@@ -1,7 +1,6 @@
-import {h, html, useState, createContext, useContext} from './common.js';
-import {Test0} from './audio.js';
-import {ILensProvider, ILensContext, compose, prop, useLens, find} from './ilens.js';
-import {useImmer} from './common';
+import {h, html, useState, useEffect, useRef, useCallback} from './common.js';
+import {Test0, key2Note} from './audio.js';
+import {KLensProvider, useKLens, find, idx, prop, tuple} from './k-lens.js';
 
 
 const appState = {
@@ -11,25 +10,18 @@ const appState = {
       patterns: [
         {
           name: 'ptn1',
-          rows: 16,
-          cols: 4,
+          rows: 64,
+          cols: 8,
           data: [
-            [{note: 'C4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'D4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'E4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'F4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'G4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'A4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'B4', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
-            [{note: 'C5', ins: 'Ins1'}, {}, {}, {}],
-            [{}, {}, {}, {}],
+            [
+              {note: 60, ins: 0}, {}, {note: 62, ins: 0}, {},
+              {note: 64, ins: 0}, {}, {note: 66, ins: 0}, {},
+              {note: 68, ins: 0}, {}, {note: 70, ins: 0}, {},
+              {note: 72, ins: 0}, {}, {note: 74, ins: 0}, {},
+            ],
+            [],
+            [],
+            [],
           ],
         },
       ],
@@ -65,7 +57,11 @@ const appState = {
   app: {
     tab: 'pattern',
     song: 'name',
-    pattern: 'ptn1',
+    pattern: {
+      name: 'ptn1',
+      cursor: [1, 2, 3], // row, col, cell-pos
+    },
+    ins: 0,
     patch: 'patch1',
   },
 };
@@ -87,14 +83,17 @@ function Hello({what, children, ...props}) {
 window.HTML = html;
 window.H = h;
 
-const ilApp = 'app';
-const ilSelectedTab = [ilApp, 'tab'];
-const ilSelectedSong = [ilApp, 'song'];
-const ilSelectedPattern = [ilApp, 'pattern'];
-const ilSelectedPatch = [ilApp, 'pattern'];
+const klApp = 'app';
+const klSelectedTab = [klApp, 'tab'];
+const klSelectedSong = [klApp, 'song'];
+const klSelectedPattern = [klApp, 'pattern', 'name'];
+const klSelectedPatch = [klApp, 'patch'];
+const klSelectedIns = [klApp, 'ins'];
+
+const klPatternCursor = [klApp, 'pattern', 'cursor'];
 
 export function TopTab({caption, id}) {
-  const [selected, setSelected] = useLens(ilSelectedTab);
+  const [selected, setSelected] = useKLens(klSelectedTab);
   return html`
     <div
       class="top-tab ${selected === id ? 'selected' : ''}"
@@ -133,51 +132,213 @@ export function UnknownRight() {
   return html`Not found`;
 }
 
-const ilFindByName = (byName) => find(({name}) => name === byName);
+const klFindByName = (byName) => find(({name}) => name === byName);
 
-const ilSongs = 'songs';
-const ilSongByName = (songName) => [ilSongs, ilFindByName(songName)];
-const ilPatterns = 'patterns';
-const ilPatches = 'patches';
+const klSongs = 'songs';
+const klSongByName = (songName) => [klSongs, klFindByName(songName)];
+const klPatterns = 'patterns';
+const klPatches = 'patches';
 
-export function PatternCell({row, col, ilPattern}) {
-  const [data] = useLens(ilPattern, 'data', row, col);
-  return html`<div class="cell">
-     ${JSON.stringify(data)}
+const noteToString = (n) => n
+  ? `${['C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-'][n%12]}${Math.floor(n/12)%10}`
+  : (n === 0 ? '===' : '...');
+
+const cmdToString = (cmd) => '...';
+
+const withCursor = (ci, strs) => strs.map((s, i) => html`<span class="${ci === i ? 'cursor' : ''}">${s}</span>`);
+
+export const klPatternCell = (klPattern, col, row) =>
+  [klPattern, prop('data', []), idx(col, []), idx(row, {})];
+
+export function PatternCell({col, row, klPattern}) {
+  const [data] = useKLens(klPatternCell(klPattern, col, row));
+  const {note, ins, cmds = []} = data || {};
+  const [cur, setCur] = useKLens(klPatternCursor);
+  const [cc, cr, cci] = cur;
+  const curInCell = cr === row && cc === col;
+  const ci = curInCell ? cci : -1;
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current && curInCell) {
+      ref.current.scrollIntoView({block: 'nearest'});
+    }
+  }, [curInCell]);
+  return html`<div class="cell" ref=${ref}>
+    <div class="note" onClick=${() => setCur([col, row, 0])}>${
+      withCursor(ci, [noteToString(note)])
+    }</div>
+    <div class="ins" onClick=${() => setCur([col, row, 1])}>${
+      withCursor(ci - 1, (ins == null ? '..' : ins.toString().padStart(2, '0')).split(''))
+    }</div>
+    <div class="cmd" onClick=${() => setCur([col, row, 3])}>${
+      withCursor(ci - 3, cmdToString(cmds[0]).split(''))
+    }</div>
+    <div class="cmd" onClick=${() => setCur([col, row, 6])}>${
+      withCursor(ci - 6, cmdToString(cmds[1]).split(''))
+    }</div>
   </div>`;
 }
 
-export function PatternRow({row, ilPattern}) {
-  const [cols] = useLens(ilPattern, 'cols');
-  const pCols = [];
-  for (let col = 0; col < cols; col++) {
-    pCols.push(h(PatternCell, {key: col, row, col, ilPattern}))
+export function PatternCol({col, klPattern}) {
+  const [rows] = useKLens(klPattern, 'rows');
+  const pRows = [];
+  for (let row = 0; row < rows; row++) {
+    pRows.push(h(PatternCell, {key: col, row, col, klPattern}))
   }
-  return html`<div class="row">
-    <div class="idx">${row.toString(16).padStart(2, '0').toUpperCase()}</div>
-    ${cols}
-    ${pCols}
+  return html`<div class="col" style=${{height: (14*rows) + 'px'}}>
+    ${pRows}
   </div>`
 }
 
-export function PatternMain() {
-  const [songName] = useLens(ilSelectedSong);
-  const [ptnName] = useLens(ilSelectedPattern);
-  const ilPattern = [ilSongs, ilFindByName(songName), ilPatterns, ilFindByName(ptnName)];
-  const [rows] = useLens(ilPattern, 'rows');
+export function PatternIdxCol({klPattern}) {
+  const [rows] = useKLens(klPattern, 'rows');
   const pRows = [];
   for (let row = 0; row < rows; row++) {
-    pRows.push(h(PatternRow, {key: row, row, ilPattern}));
+    pRows.push(html`<div class="idx">${row.toString(16).padStart(2, '0').toUpperCase()}</div>`)
+  }
+  return html`<div class="idx-col" style=${{height: (14*rows) + 'px'}}>
+    ${pRows}
+  </div>`
+}
+
+const CELL_CUR_POS = 9;
+
+const keyDigit = (key) => key.match(/[0-9]/) ? key.charCodeAt(0) - 48 : -1;
+const keyHexDigit = (key) => {
+  const d = keyDigit(key);
+  if (d >= 0) return d;
+  if (key.match(/[A-F]/)) return key.charCodeAt(0) - 97;
+  if (key.match(/[A-F]/)) return key.charCodeAt(0) - 65;
+  return -1;
+};
+
+const klNoteIns = tuple('note', 'ins');
+
+export function PatternCursorMover({klPattern}) {
+  const [{rows, cols}] = useKLens(klPattern);
+  const [[cc, cr, ci], setCursor] = useKLens(klPatternCursor);
+  const klCell = klPatternCell(klPattern, cc, cr);
+  const [[note, ins], setNoteIns] = useKLens(klCell, klNoteIns);
+  const [sIns] = useKLens(klSelectedIns);
+
+  const deps = [cc, cr, ci, rows, cols, note, ins];
+
+  const moveUp = useCallback(() => {
+    const ncr = cr <= 0 ? 0 : cr - 1;
+    setCursor([cc, ncr, ci]);
+  }, deps);
+  const moveDown = useCallback((nci) => () => {
+    const ncr = cr < rows - 1 ? cr + 1 : rows - 1;
+    setCursor([cc, ncr, nci ?? ci]);
+  }, deps);
+  const moveLeft = useCallback(() => {
+    const [nci, ncc] = ci > 0
+      ? [ci - 1, cc]
+      : cc > 0
+        ? [CELL_CUR_POS - 1, cc - 1]
+        : [ci, cc];
+    setCursor([ncc, cr, nci]);
+  }, deps);
+  const moveRight = useCallback(() => {
+    const [nci, ncc] = ci < CELL_CUR_POS - 1
+      ? [ci + 1, cc]
+      : cc < cols - 1
+        ? [0, cc + 1]
+        : [ci, cc];
+    setCursor([ncc, cr, nci]);
+  }, deps);
+  const moveLeftCol = useCallback(() => {
+    const ncc = cc <= 0 ? 0 : cc - 1;
+    setCursor([ncc, cr, ci]);
+  }, deps);
+  const moveRightCol = useCallback(() => {
+    const ncc = cc < cols - 1 ? cc + 1 : cc;
+    setCursor([ncc, cr, ci]);
+  }, deps);
+
+  useEffect(() => {
+    const go = (e, ...cmds) => {
+      for (const cmd of cmds) cmd(e);
+      e.preventDefault();
+      return false;
+    };
+
+    const onKeyDown = (e) => {
+      let key = e.key;
+      if (e.metaKey) key = 'meta-' + key;
+      if (e.altKey) key = 'alt-' + key;
+      if (e.ctrlKey) key = 'ctrl-' + key;
+      switch (key) {
+        case 'ArrowLeft': return go(e, moveLeft);
+        case 'ctrl-ArrowLeft': return go(e, moveLeftCol);
+        case 'ArrowRight': return go(e, moveRight);
+        case 'ctrl-ArrowRight': return go(e, moveRightCol);
+        case 'ArrowUp': return go(e, moveUp);
+        case 'ArrowDown': return go(e, moveDown());
+      }
+      if (ci === 0) {
+        const n = key2Note[key];
+        if (n) {
+          return go(e, () => setNoteIns([n, ins || sIns]), moveDown());
+        }
+        if (key === '.') {
+          return go(e, () => setNoteIns([null, null]), moveDown());
+        }
+        if (key === '=') {
+          return go(e, () => setNoteIns([0, null]), moveDown());
+        }
+      }
+      if ((ci === 1 || ci === 2) && note) {
+        const d = keyDigit(key);
+        if (d >= 0) {
+          if (ci === 1) {
+            return go(e,
+              () => setNoteIns([note, (ins ? ins % 10 : 0)  + d * 10]),
+              moveRight);
+          } else {
+            return go(e,
+              () => setNoteIns([note, (ins ? Math.floor(ins / 10) : 0)*10 + d]),
+              moveDown(1));
+          }
+        }
+        if (key === '.') {
+          return go(e,
+            () => setNoteIns([null, null]),
+            moveDown());
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    }
+  }, deps);
+
+  return null;
+}
+
+export function PatternMain() {
+  const [songName] = useKLens(klSelectedSong);
+  const [ptnName] = useKLens(klSelectedPattern);
+  const klPattern = [klSongs, klFindByName(songName), klPatterns, klFindByName(ptnName)];
+  const [{cols, rows}] = useKLens(klPattern);
+  const pCols = [];
+  for (let col = 0; col < cols; col++) {
+    pCols.push(h(PatternCol, {key: col, col, klPattern}));
   }
   return html`<div class="pattern">
-     ${pRows}
+    <${PatternIdxCol} klPattern=${klPattern} />
+    <div class="cols" style=${{height: (14*rows) + 'px'}}>
+      ${pCols}
+    </div>  
+    <${PatternCursorMover} klPattern=${klPattern} />
   </div>`;
 }
 
 export function PatternLeft() {
-  const [songName] = useLens(ilSelectedSong);
-  const [ptnName] = useLens(ilSelectedPattern);
-  const [patterns = []] = useLens(ilSongByName(songName), ilPatterns);
+  const [songName] = useKLens(klSelectedSong);
+  const [ptnName] = useKLens(klSelectedPattern);
+  const [patterns = []] = useKLens(klSongByName(songName), klPatterns);
   return html`<div class="pattern-list">
     ${patterns.map((p) => html`
       <div class="pattern-item ${ptnName === p.name ? 'selected' : ''}">
@@ -188,8 +349,8 @@ export function PatternLeft() {
 }
 
 export function PatternRight() {
-  const [songName] = useLens(ilSelectedSong);
-  const [patches = []] = useLens(ilSongByName(songName), ilPatches);
+  const [songName] = useKLens(klSelectedSong);
+  const [patches = []] = useKLens(klSongByName(songName), klPatches);
   return html`<div class="patch-list">
     ${patches.map((p) => html`
       <div class="patch-item">
@@ -200,7 +361,7 @@ export function PatternRight() {
 }
 
 export function MainRow() {
-  const [selected] = useLens(ilSelectedTab);
+  const [selected] = useKLens(klSelectedTab);
   let [Left, Main, Right] = [UnknownLeft, UnknownMain, UnknownRight];
   if (selected === 'pattern') {
     [Left, Main, Right] = [PatternLeft, PatternMain, PatternRight];
@@ -216,7 +377,7 @@ export function MainRow() {
 
 export function App() {
   return html`
-  <${ILensProvider} init=${appState}>
+  <${KLensProvider} init=${appState}>
     <div class="app">
       <${Top} />
       <${MainRow} />

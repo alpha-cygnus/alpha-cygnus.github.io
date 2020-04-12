@@ -52,7 +52,7 @@ export const nodeDef = (type, params = {}) => ({type, params});
 
 export const gainDef = (gain) => nodeDef('Gain', {gain});
 
-const portsToNodes = (ports) => 
+const portsToNodes = (ports) =>
   Object.fromEntries(
     Object.entries(([name, def]) => [name, {...gainDef(0), ...def}])
   );
@@ -220,7 +220,7 @@ function Dest({id}) {
 
 export function Connection({from, to, weight = 1.0}) {
   const [nodeRefs] = usePatchContext();
-  
+
   const [fromRef, toRef] = useMemo(() => {
     const [fromId, fromPort] = from.split('.');
     const [toId, toPort] = to.split('.');
@@ -487,7 +487,7 @@ function MidiHub({children}) {
   return h(MidiContext.Provider, {value: store}, children);
 }
 
-const key2Note = {
+export const key2Note = {
   q: 60,
   2: 61,
   w: 62,
