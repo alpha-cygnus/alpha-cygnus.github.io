@@ -1,6 +1,6 @@
 import {h, html, useState, useEffect, useRef, useCallback} from './common.js';
 import {Test0, key2Note} from './audio.js';
-import {KLensProvider, useKLens, find, idx, prop, tuple} from './k-lens.js';
+import {KLensProvider, useKLens, find, idx, prop, tuple, INSERT, DELETE} from './k-lens.js';
 
 
 const appState = {
@@ -63,6 +63,7 @@ const appState = {
     },
     ins: 0,
     patch: 'patch1',
+    octShift: 5,
   },
 };
 
@@ -89,6 +90,7 @@ const klSelectedSong = [klApp, 'song'];
 const klSelectedPattern = [klApp, 'pattern', 'name'];
 const klSelectedPatch = [klApp, 'patch'];
 const klSelectedIns = [klApp, 'ins'];
+const klOctShift = [klApp, 'octShift'];
 
 const klPatternCursor = [klApp, 'pattern', 'cursor'];
 
@@ -113,9 +115,11 @@ export function Top() {
 }
 
 export function Bottom() {
+  const [cur] = useKLens(klPatternCursor);
+  const [oct] = useKLens(klOctShift);
   return html`
     <div class="bottom">
-    Status goes here
+      ${JSON.stringify({cur, oct})}
     </div>
   `;
 }
@@ -147,8 +151,12 @@ const cmdToString = (cmd) => '...';
 
 const withCursor = (ci, strs) => strs.map((s, i) => html`<span class="${ci === i ? 'cursor' : ''}">${s}</span>`);
 
+export const klPData = prop('data', []);
+export const klPCol = (col) => idx(col, []);
+export const klPCell = (row) => idx(row, {});
+
 export const klPatternCell = (klPattern, col, row) =>
-  [klPattern, prop('data', []), idx(col, []), idx(row, {})];
+  [klPattern, klPData, klPCol(col), klPCell(row)];
 
 export function PatternCell({col, row, klPattern}) {
   const [data] = useKLens(klPatternCell(klPattern, col, row));
@@ -218,10 +226,19 @@ export function PatternCursorMover({klPattern}) {
   const [{rows, cols}] = useKLens(klPattern);
   const [[cc, cr, ci], setCursor] = useKLens(klPatternCursor);
   const klCell = klPatternCell(klPattern, cc, cr);
+  const [cell, setCell] = useKLens(klCell);
   const [[note, ins], setNoteIns] = useKLens(klCell, klNoteIns);
   const [sIns] = useKLens(klSelectedIns);
+  const [octShift, setOctShift, modOctShift] = useKLens(klOctShift);
 
-  const deps = [cc, cr, ci, rows, cols, note, ins];
+  const octInc = useCallback(() => {
+    modOctShift(oct => oct < 9 ? oct + 1 : oct);
+  }, [modOctShift]);
+  const octDec = useCallback(() => {
+    modOctShift(oct => oct > 1 ? oct - 1 : oct);
+  }, [modOctShift]);
+
+  const deps = [cc, cr, ci, rows, cols, note, ins, octShift];
 
   const moveUp = useCallback(() => {
     const ncr = cr <= 0 ? 0 : cr - 1;
@@ -275,9 +292,17 @@ export function PatternCursorMover({klPattern}) {
         case 'ctrl-ArrowRight': return go(e, moveRightCol);
         case 'ArrowUp': return go(e, moveUp);
         case 'ArrowDown': return go(e, moveDown());
+        case 'Insert': return go(e,
+          () => setCell(INSERT),
+        );
+        case 'Delete': return go(e,
+          () => setCell(DELETE),
+        );
+        case '[': return go(e, octDec);
+        case ']': return go(e, octInc);
       }
       if (ci === 0) {
-        const n = key2Note[key];
+        const n = key2Note[key] + octShift * 12 - 60;
         if (n) {
           return go(e, () => setNoteIns([n, ins || sIns]), moveDown());
         }

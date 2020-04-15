@@ -7,14 +7,26 @@ export const KLens = (get, set, name) => {
   }
 };
 
+export const DELETE = Symbol('delete');
+
+export const INSERT = Symbol('insert');
+
 export const prop = (pn, def) => KLens(s => s[pn] ?? def, (s, v) => {
   if (s[pn] === v) return s;
+  if (v === DELETE) return Object.fromEntries(Object.entries.filter(([n]) => n === pn));
+  if (v === INSERT) v = null;
   return {...s, [pn]: v};
 }, `.${pn}`);
 
 export const idx = (idx, def) => KLens(s => s[idx] ?? def, (s, v) => {
   if (s[idx] === v) return s;
   if (s.length <= idx) s = s.concat([...Array(idx - s.length + 1)]);
+  if (v === DELETE) {
+    return s.flatMap((e, i) => i === idx ? [] : e);
+  }
+  if (v === INSERT) {
+    return s.flatMap((e, i) => i === idx ? [null, e] : e);
+  }
   return s.map((e, i) => i === idx ? v : e)
 }, `[${idx}]`);
 
@@ -85,7 +97,10 @@ export function useKLens(...ls) {
   const setter = useCallback((v) => {
     dispatch({setter: (state) => set(state, v), name, v})
   }, [dispatch, set]);
-  return [get(state), setter];
+  const modder = useCallback((f) => {
+    dispatch({setter: (state) => set(state, f(get(state))), name, f})
+  }, [dispatch, get, set]);
+  return [get(state), setter, modder];
 }
 
 window.KL = {
