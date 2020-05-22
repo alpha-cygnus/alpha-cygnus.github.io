@@ -2,6 +2,8 @@ import {h, html, useState, useEffect, useRef, useCallback} from './common.js';
 import {Test0, key2Note} from './audio.js';
 import {KLensProvider, useKLens, find, idx, prop, tuple, INSERT, DELETE} from './k-lens.js';
 
+import {allocBuf, putFrame, putText, TextBuf} from './text-mode.js';
+
 
 const appState = {
   songs: [
@@ -400,7 +402,29 @@ export function MainRow() {
   `;
 }
 
+
+export function TestText() {
+  const width = 80;
+  const stride = width;
+  const height = 25;
+  const chars = allocBuf({width, height});
+  const colors = allocBuf({width, height, fill: 0x70});
+  putFrame({c: 1, r: 1, width: 30, height: 1, chars, stride, codes: [
+    0x80, 0x81, 0x82,
+    0x83,       0x84,
+    0x85, 0x86, 0x87]
+  });
+  putFrame({c: 1, r: 1, width: 30, height: 1, chars, stride, codes: [
+    0x8B, 0x86, 0x8A,
+    0x84,       0x83,
+    0x89, 0x81, 0x88]
+  });
+  putText({chars, stride, c: 2, r: 2, len: 30, text: 'C-328 .. .00'});
+  return h(TextBuf, {chars, colors, stride, width, height});
+}
+
 export function App() {
+  return h(TestText);
   return html`
   <${KLensProvider} init=${appState}>
     <div class="app">

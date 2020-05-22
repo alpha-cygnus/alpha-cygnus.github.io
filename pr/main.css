@@ -2,6 +2,26 @@ body {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+@font-face {
+    font-family: joystix;
+    src: url('./fonts/joystix.monospace.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: tester;
+    src: url('./fonts/software-tester-7.regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: square-block;
+    src: url('./fonts/square-block.regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: kongtext;
+    src: url('./fonts/kongtext.regular.ttf') format('truetype');
+}
+
 .app {
     position: absolute;
     left: 0;
@@ -140,4 +160,156 @@ body {
 .pattern .cell span.cursor {
     display: inline-block;
     outline: 1px solid black;
+}
+
+.text-buf {
+    width: auto;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    color: lightgreen;
+    background: black;
+    font-family: kongtext;
+}
+.text-buf .row {
+    display: flex;
+    flex-direction: row;
+}
+.text-buf .row .char {
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.text-buf .row .char span {
+    display: block;
+}
+
+.text-buf .row .char.c-80 {
+    border-left: solid 1px currentColor;
+    border-top: solid 1px currentColor;
+}
+.text-buf .row .char.c-81 {
+    border-top: solid 1px currentColor;
+}
+.text-buf .row .char.c-82 {
+    border-right: solid 1px currentColor;
+    border-top: solid 1px currentColor;
+}
+.text-buf .row .char.c-83 {
+    border-left: solid 1px currentColor;
+}
+.text-buf .row .char.c-84 {
+    border-right: solid 1px currentColor;
+}
+.text-buf .row .char.c-85 {
+    border-left: solid 1px currentColor;
+    border-bottom: solid 1px currentColor;
+}
+.text-buf .row .char.c-86 {
+    border-bottom: solid 1px currentColor;
+}
+.text-buf .row .char.c-87 {
+    border-right: solid 1px currentColor;
+    border-bottom: solid 1px currentColor;
+}
+
+.text-buf .row .char.fc-0 {
+    color: black;
+}
+.text-buf .row .char.fc-1 {
+    color: #00A;
+}
+.text-buf .row .char.fc-2 {
+    color: #0A0;
+}
+.text-buf .row .char.fc-3 {
+    color: #0AA;
+}
+.text-buf .row .char.fc-4 {
+    color: #A00;
+}
+.text-buf .row .char.fc-5 {
+    color: #A0A;
+}
+.text-buf .row .char.fc-6 {
+    color: #AA0;
+}
+.text-buf .row .char.fc-7 {
+    color: #AAA;
+}
+.text-buf .row .char.fc-8 {
+    color: #555;
+}
+.text-buf .row .char.fc-9 {
+    color: #55F;
+}
+.text-buf .row .char.fc-a {
+    color: #5F5;
+}
+.text-buf .row .char.fc-b {
+    color: #5FF;
+}
+.text-buf .row .char.fc-c {
+    color: #F55;
+}
+.text-buf .row .char.fc-d {
+    color: #F5F;
+}
+.text-buf .row .char.fc-e {
+    color: #FF5;
+}
+.text-buf .row .char.fc-f {
+    color: #FFF;
+}
+.text-buf .row .char.bc-0 {
+    background: black;
+}
+.text-buf .row .char.bc-1 {
+    background: #00A;
+}
+.text-buf .row .char.bc-2 {
+    background: #0A0;
+}
+.text-buf .row .char.bc-3 {
+    background: #0AA;
+}
+.text-buf .row .char.bc-4 {
+    background: #A00;
+}
+.text-buf .row .char.bc-5 {
+    background: #A0A;
+}
+.text-buf .row .char.bc-6 {
+    background: #AA0;
+}
+.text-buf .row .char.bc-7 {
+    background: #AAA;
+}
+.text-buf .row .char.bc-8 {
+    background: #555;
+}
+.text-buf .row .char.bc-9 {
+    background: #55F;
+}
+.text-buf .row .char.bc-a {
+    background: #5F5;
+}
+.text-buf .row .char.bc-b {
+    background: #5FF;
+}
+.text-buf .row .char.bc-c {
+    background: #F55;
+}
+.text-buf .row .char.bc-d {
+    background: #F5F;
+}
+.text-buf .row .char.bc-e {
+    background: #FF5;
+}
+.text-buf .row .char.bc-f {
+    background: #FFF;
 }
